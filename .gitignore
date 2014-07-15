@@ -1,0 +1,6 @@
+env/*
+*.pyc
+*.sqlite
+*.sqlite3
+*.db
+greenmanager/static_collected/*
