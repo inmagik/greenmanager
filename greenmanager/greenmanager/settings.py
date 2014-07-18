@@ -39,6 +39,9 @@ INSTALLED_APPS = (
     'django.contrib.gis',
 
     'debug_toolbar',
+    'bootstrap3',
+    'corsheaders',  
+    'leaflet',
 
     'coremodels',
     'vegetation',
@@ -50,6 +53,7 @@ INSTALLED_APPS = (
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -114,4 +118,11 @@ TEMPLATE_DIRS = (
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAdminUser',),
     'PAGINATE_BY': 10
+}
+
+CORS_ORIGIN_ALLOW_ALL = True
+
+
+LEAFLET_CONFIG = {
+    'DEFAULT_ZOOM' : 10
 }

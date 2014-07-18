@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="row">
+        <a class="btn btn-primary" href="{% url "territory_add" %}">New territory</a>
+    </div>
+
+    <hr>
+
+    <div class="row">
+    
+    <div class="list-group">
+    <a href="#" class="list-group-item active">
+        Territories
+    </a>
+    {% for t in object_list%}
+        <div href="#" class="list-group-item">
+            <div class="pull-left">
+                <h4>{{t.name}}</h4>
+                <p>{{t.description}}</p>
+            </div>
+            
+            <div class="pull-right">
+                <a class="btn btn-default" href="{% url "territory_edit" t.pk %}">Edit</a>
+                <button class="btn btn-default">Open</button>
+            </div>
+            <div class="clearfix"></div>
+        </div>
+    {% endfor %}
+    </div>
+  </div>
+    
+
+
+
+{% endblock %}

@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Hi there</h1>
+
+    
+    <div class="row">
+    
+  <div class="list-group">
+    <a href="#" class="list-group-item active">
+        A list of actions
+    </a>
+    <a href="{% url "territory_list" %}" class="list-group-item">Manage territories</a>
+    
+  </div>
+  </div>
+    
+
+
 
 {% endblock %}
