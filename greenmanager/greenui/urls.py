@@ -1,5 +1,5 @@
 from django.conf.urls import patterns, include, url
-from .views import IndexView, TerritoryList, TerritoryAdd, TerritoryEdit
+from .views import IndexView, TerritoryList, TerritoryAdd, TerritoryEdit, TerritoryDelete
 
 urlpatterns = patterns('',
     # Examples:
@@ -8,6 +8,7 @@ urlpatterns = patterns('',
     url(r'^territory/$', TerritoryList.as_view(), name="territory_list"),
     url(r'^territory-add/$', TerritoryAdd.as_view(), name="territory_add"),
     url(r'^territory-edit/(?P<pk>\d)/$', TerritoryEdit.as_view(), name="territory_edit"),
+    url(r'^territory-delete/(?P<pk>\d)/$', TerritoryDelete.as_view(), name="territory_delete"),
     url(r'^$', IndexView.as_view(), name="index"),
     
 

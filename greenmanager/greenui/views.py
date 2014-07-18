@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView, ListView
-from django.views.generic.edit import CreateView, UpdateView
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from vegetation.models import Territory
 from django.core.urlresolvers import reverse
 # Create your views here.
@@ -40,5 +40,11 @@ class TerritoryEdit(UpdateView):
     model = Territory
     template_name = "greenui/territory_edit.html"
     form_class = TerritoryForm
+    def get_success_url(self):
+        return reverse("territory_list")
+
+class TerritoryDelete(DeleteView):
+    model = Territory
+    template_name = "greenui/territory_delete.html"
     def get_success_url(self):
         return reverse("territory_list")

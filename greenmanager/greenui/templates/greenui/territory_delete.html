@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% load bootstrap3 %}
+
+{% block content %}
+
+    <form action="" method="post">{% csrf_token %}
+        <p>Are you sure you want to delete "{{ object }}"?</p>
+        {% buttons %}
+        <button type="submit" class="btn btn-danger">
+            Confirm
+        </button>
+        {% endbuttons %}
+    </form>
+    
+
+
+
+{% endblock %}

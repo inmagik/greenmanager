@@ -24,6 +24,12 @@
     
     </form>
  
+<div>
+    <a class="btn btn-danger" href="{% url "territory_delete" object.pk %}">
+            {% bootstrap_icon "delete" %} Delete this territory
+    </a>
+</div>
+
 
 {% endblock %}
  
