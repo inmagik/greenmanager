@@ -1,4 +1,4 @@
-from django.contrib.gis import models
+from django.contrib.gis.db import models
 from django.db.models import Max
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -22,9 +22,6 @@ class VegetationState(BaseState):
             aggr =  states.aggregate(Max('revision'))
             max_revision = aggr['revision__max'] or 0
             self.revision = max_revision + 1
-            
-
-        
         
         return super(VegetationState, self).save(*args, **kwargs)
 
