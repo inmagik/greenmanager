@@ -72,11 +72,35 @@ WSGI_APPLICATION = 'greenmanager.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'greenmanstore',
-        'PASSWORD' : ' grE3nun0',
+        'NAME': 'greenman',
+        'USER' : 'greenman',
+        'PASSWORD' : ' greenman',
         'HOST' : ''
     }
 }
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            os.path.join(BASE_DIR, "templates"),
+        ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                # Insert your TEMPLATE_CONTEXT_PROCESSORS here or use this
+                # list if you haven't customized them:
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
@@ -126,3 +150,9 @@ CORS_ORIGIN_ALLOW_ALL = True
 LEAFLET_CONFIG = {
     'DEFAULT_ZOOM' : 10
 }
+LEAFLET_CONFIG = {'DEFAULT_CENTER': (50.726, 3.1613),
+                  'DEFAULT_ZOOM': 13,
+                  'MIN_ZOOM': 4,
+                  'MAX_ZOOM': 18,
+                  'SCALE': 'metric'}
+

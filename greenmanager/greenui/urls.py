@@ -1,7 +1,7 @@
 from django.conf.urls import patterns, include, url
 from .views import IndexView, TerritoryList, TerritoryAdd, TerritoryEdit, TerritoryDelete
 
-urlpatterns = patterns('',
+urlpatterns =[
     # Examples:
     # url(r'^$', 'greenmanager.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
@@ -11,6 +11,5 @@ urlpatterns = patterns('',
     url(r'^territory-delete/(?P<pk>\d)/$', TerritoryDelete.as_view(), name="territory_delete"),
     url(r'^$', IndexView.as_view(), name="index"),
     
-
-)
+]
 

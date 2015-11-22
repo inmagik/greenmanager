@@ -16,12 +16,10 @@ class TerritoryList(ListView):
     template_name = "greenui/territory_list.html"
 
 
-
 from leaflet.forms.widgets import LeafletWidget
 from django import forms
 
 class TerritoryForm(forms.ModelForm):
-    #geom = forms.PolygonField(srid=4326, widget= forms.OSMWidget(attrs={'map_width': 800, 'map_height': 500}), required=False)
     class Meta:
         model = Territory
         fields = ['id', 'name', 'description', 'geom']
