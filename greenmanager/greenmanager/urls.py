@@ -9,6 +9,8 @@ from django.contrib import admin
 admin.autodiscover()
 
 
+
+
 urlpatterns =[
     # Examples:
     # url(r'^$', 'greenmanager.views.home', name='home'),
@@ -16,6 +18,11 @@ urlpatterns =[
     url(r'^admin/', include(admin.site.urls)),
     url(r'^api/', include('rest_api.urls')),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
+]
+
+from rest_framework.authtoken import views
+urlpatterns += [
+    url(r'^api-token-auth/', views.obtain_auth_token)
 ]
 
 urlpatterns = static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + urlpatterns
