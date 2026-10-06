@@ -17,9 +17,9 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager. P
 |---|---|---|
 | 0. Metodologia | questo file, `AGENTS.md` | completato |
 | 1. Analisi della specifica esistente | [01-analisi-spec-esistente.md](01-analisi-spec-esistente.md) | completato |
-| 2. Benchmark di prodotti simili | [02-benchmark.md](02-benchmark.md) | da iniziare |
-| 3. Feature del prodotto | [03-features.md](03-features.md) | da iniziare |
-| 4. Modello dati | [04-modello-dati.md](04-modello-dati.md) | da iniziare |
+| 2. Benchmark di prodotti simili | [02-benchmark.md](02-benchmark.md) | completato |
+| 3. Feature del prodotto | [03-features.md](03-features.md) | completato |
+| 4. Modello dati | [04-modello-dati.md](04-modello-dati.md) | in revisione |
 | 5. Consolidamento | [spec.md](spec.md) | da iniziare |
 
 ## I passi
@@ -45,6 +45,7 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager. P
 - **Input**: passi 1 e 2.
 - **Attività**:
   - attori di dominio
+  - posizionamento del prodotto (domanda 3 dello Step 2), da chiudere prima del catalogo
   - catalogo delle feature per modulo, con priorità MVP / v2 / futuro
   - flussi principali descritti come scenari
 - **Output**: [03-features.md](03-features.md)
