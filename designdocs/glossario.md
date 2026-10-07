@@ -2,7 +2,7 @@
 
 Termini di dominio e nome dell'entità corrispondente nel modello.
 - **Nome nel modello**: definito allo Step 4, con le schede in [04-modello-dati.md](04-modello-dati.md). "—" indica un termine senza entità propria; la definizione dice come è rappresentato.
-- **Origine**: indica da dove viene il termine (*Access* = specifica Access 97 in `resources/`; *Step n* = introdotto nel passo n della specifica).
+- **Origine**: indica da dove viene il termine (*Access* = specifica Access 97 in `resources/`; *Step n* = introdotto nel passo n della specifica; *Tn* = introdotto nel passo n del binario tecnico).
 
 | Termine | Nome nel modello | Definizione | Origine |
 |---|---|---|---|
@@ -96,3 +96,4 @@ Termini di dominio e nome dell'entità corrispondente nel modello.
 | Tipo di valutazione | `AssessmentType` | Livello di approfondimento della valutazione nel protocollo: visiva speditiva, ordinaria, avanzata a terra o in quota, biomeccanica; per i giochi, i tipi di ispezione. | Step 4 |
 | Classe del protocollo | `ProtocolClass` | Classe o esito di un protocollo di valutazione, con il termine massimo di ricontrollo e l'indicazione di esito critico. | Step 4 |
 | Causa di rimozione | `RemovalCause` | Motivo della rimozione di un elemento, da catalogo, ricondotto a una delle cause ISTAT di abbattimento (rischio di caduta, eventi atmosferici, altre cause). | Step 4 |
+| Organizzazione | `Organization`, realizzata da `Tenant` dell'app `tenants` | Soggetto che usa il sistema: ditta di manutenzione, ente pubblico, gestore privato. Gli utenti ne fanno parte e vi hanno ruoli propri. È distinta dal committente: una ditta lavora per più committenti, e sullo stesso patrimonio possono lavorare più organizzazioni (D-037). | T1 |

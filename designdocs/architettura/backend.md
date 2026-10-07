@@ -1,0 +1,380 @@
+# Backend
+
+> **Stato**: in revisione · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+
+- **Obiettivo**: descrivere il progetto Django di GreenManager: struttura, settings, app core, pattern delle app di dominio, ambiente di sviluppo, versioni.
+- **Fonte**: `server/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura e pattern, [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036). Commit e regole di copia in [README.md](README.md).
+- **Fuori da questo documento**: l'elenco delle app di dominio e dei loro permessi, che si definisce in T3 partendo da §5 di [04-modello-dati.md](../04-modello-dati.md).
+
+## 1. Struttura
+
+```
+server/
+├── greenmanager/               radice Django, contiene manage.py
+│   ├── manage.py
+│   ├── greenmanager/           package di progetto
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   ├── schema.py           hook di drf-spectacular per X-Tenant-ID
+│   │   ├── wsgi.py
+│   │   └── asgi.py
+│   ├── auth_core/              utenti, ruoli, permessi (§3.1)
+│   ├── tenants/                organizzazioni (§3.2)
+│   ├── jobs_core/              job asincroni e pianificati (§3.3)
+│   ├── inmagik_utils/          mixin e utilità condivise (§3.4)
+│   └── <app di dominio>/       definite in T3
+├── requirements.txt
+├── requirements_prod.txt       gunicorn
+├── Dockerfile
+├── docker-compose.yml          database e Redis per lo sviluppo
+├── build_image.sh
+├── .devcontainer/
+└── scripts/
+    ├── start                   server
+    ├── worker                  worker RQ
+    └── scheduler               scheduler RQ
+```
+
+Rotte del progetto, in `greenmanager/urls.py`:
+
+| Prefisso | Contenuto |
+|---|---|
+| `DJANGO_ADMIN_PATH` (default `admin/`) | admin di Django |
+| `api/userbase/` | django-userbase: attivazione dell'account, recupero della password |
+| `api/core/auth/` | token JWT, `me/`, `permissions/`, `users/`, `roles/` (§3.1) |
+| `api/core/` | `tenants/`, `tenant-memberships/` (§3.2) |
+| `api/<app>/` | un prefisso per ogni app di dominio (§4.5) |
+| `api/schema/`, `api/schema/swagger-ui/` | schema OpenAPI e Swagger UI |
+
+In `DEBUG` il server espone anche i file di `MEDIA_ROOT`.
+
+## 2. Settings
+
+Un solo `settings.py`, come in data-lab:
+- ogni valore che cambia tra ambienti si legge da una variabile d'ambiente `DJANGO_*`, con un default per lo sviluppo;
+- il file è diviso in blocchi `# region … / # endregion`: REST framework, email, deployment, utenti e autenticazione, RQ, job pianificati, sviluppo;
+- in fondo importa `localsettings.py`, se c'è, per le modifiche locali. Il file è in `.gitignore`.
+
+### 2.1 Contenuto
+
+| Blocco | Contenuto |
+|---|---|
+| Base | `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` |
+| `INSTALLED_APPS` | in tre gruppi commentati. *Django*: le app standard più `django.contrib.postgres` e `django.contrib.gis`. *Librerie*: `rest_framework`, `django_filters`, `axes`, `auditlog`, `drf_spectacular`, `userbase`, `inmagik_utils`, `django_rq`. *Locali*: `tenants`, `auth_core`, `jobs_core`, poi le app di dominio |
+| `MIDDLEWARE` | quelli standard più `axes.middleware.AxesMiddleware` e `auditlog.middleware.AuditlogMiddleware` |
+| Database | motore `django.contrib.gis.db.backends.postgis` |
+| Lingua e ora | `LANGUAGE_CODE = "it-it"`, `TIME_ZONE = "Europe/Rome"`, `USE_TZ = True` |
+| File | `STATIC_URL`, `MEDIA_URL`, `STATIC_ROOT`, `MEDIA_ROOT`, con lo slash finale aggiunto se manca |
+| REST framework | autenticazione JWT (simplejwt) e di sessione; `IsAuthenticated` come permesso di default; schema `drf_spectacular.openapi.AutoSchema` |
+| drf-spectacular | `TITLE`, `VERSION`, `COMPONENT_SPLIT_REQUEST`; lo schema di sicurezza `TenantId` (header `X-Tenant-ID`) e l'hook `greenmanager.schema.add_tenant_security_requirement`, che lo aggiunge a ogni operazione autenticata |
+| Email | `EMAIL_VENDOR`: `console` in sviluppo, `smtp` con i parametri del server |
+| Deployment | `DJANGO_ADMIN_PATH`, `FRONTEND_URL` (link nelle email), `SECURE_PROXY_SSL_HEADER`, `USE_X_FORWARDED_HOST` |
+| Utenti e autenticazione | `AUTH_USER_MODEL = "auth_core.User"`; `USERBASE_SETTINGS` (template e oggetti delle email, URL di reset e attivazione); `SIMPLE_JWT` (accesso 8 ore, refresh 7 giorni); backend di autenticazione con `AxesStandaloneBackend` per primo; blocco dopo 10 tentativi falliti per utente e IP |
+| RQ | connessione Redis e coda `default`, con timeout e durata dei risultati |
+| Job pianificati | `SCHEDULED_TASKS`: job con espressione cron, allineati all'avvio dello scheduler (§3.3) |
+| Sviluppo | `INTERNAL_IPS`, import di `localsettings.py` |
+
+### 2.2 Adattamenti rispetto a data-lab
+
+- Nome del progetto: `datalab` → `greenmanager` in `ROOT_URLCONF`, `WSGI_APPLICATION`, oggetti delle email, nome e utente di default del database.
+- Lingua e ora come in bottaro-pesatura (`it-it`, `Europe/Rome`); data-lab usa `en-us` e `UTC`.
+- `DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"`, `ASGI_APPLICATION`, `TITLE` e `VERSION` di drf-spectacular, `EMAIL_PORT` come intero: come in bottaro-pesatura.
+- Import di `localsettings.py` con `except ImportError`, come in bottaro-pesatura: un errore nel file locale non deve passare inosservato (data-lab usa `except Exception`).
+- Si tolgono `solo`, `docs_core`, le app di simulazione, `AVAILABLE_SIMULATORS` e `SIMULATIONS_WORKDIR`.
+- `urls.py` monta l'admin su `settings.DJANGO_ADMIN_PATH`; data-lab definisce la variabile ma usa `"admin/"` fisso.
+
+### 2.3 Variabili d'ambiente
+
+| Variabile | Default | Uso |
+|---|---|---|
+| `DJANGO_SECRET` | chiave insicura di sviluppo | `SECRET_KEY` |
+| `DJANGO_DEBUG` | `True` | |
+| `DJANGO_ALLOWED_HOSTS` | `*` | elenco separato da virgole |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | — | elenco separato da virgole |
+| `DJANGO_PG_NAME`, `DJANGO_PG_USER`, `DJANGO_PG_PASS` | `greenmanager` | database |
+| `DJANGO_PG_HOST`, `DJANGO_PG_PORT` | `127.0.0.1`, `5432` | database |
+| `DJANGO_STATIC_URL`, `DJANGO_MEDIA_URL` | `static/`, `media/` | |
+| `DJANGO_STATIC_ROOT`, `DJANGO_MEDIA_ROOT` | `static/` e `media/` nella radice Django | |
+| `DJANGO_EMAIL_VENDOR` | `console` | `console` o `smtp` |
+| `DJANGO_EMAIL_HOST`, `_PORT`, `_USER`, `_PASS`, `_TLS`, `_SSL` | — | solo con `smtp` |
+| `DJANGO_DEFAULT_FROM_EMAIL` | `support@mail.inmagik.com` | mittente |
+| `DJANGO_ADMIN_PATH` | `admin/` | percorso dell'admin |
+| `DJANGO_FRONTEND_URL` | `http://localhost:5173` | link nelle email di attivazione e reset |
+| `DJANGO_REDIS_HOST`, `DJANGO_REDIS_PORT`, `DJANGO_REDIS_DB` | `localhost`, `6379`, `0` | code RQ |
+| `DJANGO_RQ_DEFAULT_TIMEOUT`, `DJANGO_RQ_DEFAULT_RESULT_TTL` | `360`, `3600` | secondi |
+
+## 3. App core
+
+Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano da zero: la storia di data-lab (tenant di default, campi aggiunti nel tempo) non serve.
+
+### 3.1 `auth_core` — utenti, ruoli, permessi
+
+**Modelli.**
+- `User` estende `AbstractUser` di django-userbase: l'utente si autentica con email e password. Campi aggiunti:
+  - `roles`, i ruoli;
+  - `tenants`, le organizzazioni, tramite `TenantMembership`;
+  - `permissions`, i permessi assegnati direttamente;
+  - `all_permissions`, calcolato: permessi diretti più quelli dei ruoli.
+- `Role`: `tenant` (obbligatorio), `name` univoco per tenant, `permissions`.
+- I receiver ricalcolano `all_permissions` quando cambiano l'utente, i suoi ruoli o un ruolo.
+
+**Permessi.**
+- Ogni app dichiara i propri permessi in `fm_permissions.py`: `permissions = [{"name": "...", "description": "..."}]`. Il codice completo è `<app_label>.<name>`, per esempio `auth_core.LETTURA_UTENTI`.
+- `PermissionManager` raccoglie i permessi di tutte le app installate. L'endpoint `permissions/` li restituisce al frontend, che li usa nel form dei ruoli.
+- `ActionPermission` è la classe di permesso dei viewset. Il viewset dichiara `action_permissions = {action: [codici]}`; l'utente deve avere tutti i codici dell'action.
+- Ogni action deve comparire in `action_permissions`, comprese le action aggiunte e `bulk_delete`. Un'action senza voce solleva `NotImplementedError`: si sbaglia chiudendo, non aprendo. `OPTIONS` è sempre permesso.
+
+**Endpoint** sotto `api/core/auth/`:
+
+| Endpoint | Uso |
+|---|---|
+| `token/`, `token/refresh/` | login e rinnovo del token JWT |
+| `me/` | dati dell'utente corrente (`GET`), modifica del profilo (`PATCH`) |
+| `permissions/` | permessi disponibili |
+| `users/` | utenti del tenant corrente; un utente creato da qui entra nel tenant corrente. Action `unlock` per sbloccare un utente bloccato da axes; filtri per stato (attivo, disattivato, bloccato) e ruolo |
+| `roles/` | ruoli del tenant corrente; action `grant_to` per assegnare un ruolo a più utenti |
+
+**Adattamenti.** Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4). I codici dei permessi restano quelli di data-lab (`LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`): li usa il modulo `users` del frontend, condiviso tra i progetti.
+
+### 3.2 `tenants` — organizzazioni
+
+In GreenManager il tenant è l'**organizzazione** che usa il sistema, l'entità di confine `Organization` del modello dati (D-037).
+
+**Modelli.**
+- `Tenant`: `name`, `slug` univoco, `is_active`, date di creazione e modifica.
+- `TenantMembership`: lega un utente a un tenant. Ogni utente ha al più un tenant di default (vincolo nel database).
+- `TenantScopedModel`, astratto: chiave esterna `tenant` (`PROTECT`, indicizzata) e manager `TenantScopedQuerySet` con `for_tenant(tenant)`.
+
+**Mixin per i viewset.**
+- `TenantContextMixin.get_current_tenant()` legge il tenant dall'header `X-Tenant-ID` o dal parametro `?tenant=`. Un utente che non è staff vede solo i tenant di cui è membro; un tenant estraneo dà `404` con codice `tenant_not_found`.
+- Senza tenant nella richiesta, `restrict_queryset_without_tenant()` restituisce un queryset vuoto agli utenti che non sono staff.
+- `TenantScopedViewSetMixin` filtra il queryset con `tenant=<tenant corrente>` e, nella creazione, assegna il tenant corrente. Se manca, risponde con l'errore `tenant_required`.
+
+**Endpoint** sotto `api/core/`:
+- `tenants/`: lettura per i membri, scrittura solo per lo staff. Un tenant con dati collegati non si elimina (errore `tenant_has_related_data` con l'elenco dei dati). Action `users`, `add-users` e `remove-user` per gestire i membri;
+- `tenant-memberships/`.
+
+Le modifiche ai membri passano da `services.py`, che blocca con `select_for_update` utenti e tenant coinvolti e mantiene un tenant di default per ogni utente.
+
+**In GreenManager.**
+- Le entità che appartengono direttamente a un'organizzazione (persone, squadre, anagrafica degli esecutori, voci di catalogo dell'organizzazione) si appoggiano a questi strumenti.
+- I dati del patrimonio appartengono a un committente e si filtrano tramite `Client.managing_organization`; gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). `TenantScopedViewSetMixin` non basta: l'estensione si definisce in T3 (domanda 5).
+
+### 3.3 `jobs_core` — job asincroni e pianificati
+
+Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq-scheduler e Redis (D-039).
+
+**Modelli.**
+- `CronJobDefinition`: job ricorrente con espressione cron, argomenti, coda, abilitazione.
+- `ScheduledJobDefinition`: job da eseguire una volta, a una data e ora.
+- `JobRun`: un'esecuzione, con stato (`pending`, `running`, `completed`, `failed`), inizio, fine, errore.
+
+**Funzionamento.**
+- Ogni app dichiara le funzioni schedulabili in `fm_scheduling.py`: `schedulable_jobs = [{"name": "...", "func": "app.jobs.funzione"}]`. Solo queste si possono usare nelle definizioni.
+- Al salvataggio di una definizione, un receiver la registra nello scheduler. Lo scheduler esegue sempre `job_runner`, che chiama la funzione vera e aggiorna il `JobRun`.
+- Una `ScheduledJobDefinition` crea subito il suo `JobRun`. Per avviare un job da un'API e restituirne subito l'identificativo si crea una `ScheduledJobDefinition` con `start_at` adesso. La guida `how-to.md` dell'app spiega questo e gli altri casi, e si copia così com'è.
+- Il comando `schedule_auto_tasks` allinea allo scheduler i job di `SCHEDULED_TASKS`. Lo lancia `scripts/scheduler` all'avvio.
+- Processi: il worker (`python manage.py rqworker default`) e lo scheduler (`scripts/scheduler`), oltre al server.
+
+**In GreenManager**, usi previsti, da confermare in T3: import (`ImportBatch`) ed export CAM, GIS e tabellari; generazione degli interventi proposti dalle regole di ricorrenza (D-020, D-033); scadenzario e promemoria.
+
+**Adattamenti.** Si tolgono i job di esempio (`jobs.py`) e le loro voci in `fm_scheduling.py`.
+
+### 3.4 `inmagik_utils` — utilità condivise
+
+| Modulo | Contenuto |
+|---|---|
+| `pagination.py` | `StandardPagination` (20 per pagina; risposta con `count`, `full_count`, `page_size`, `next`, `previous`, `results`), `HugePagination` (10.000), `StandardPaginationMixin` e `HugePaginationMixin` per i viewset |
+| `mixins.py` | `BulkDeleteActionMixin`: action `POST bulk-delete/` con `{"ids": [...]}`, limitata al queryset visibile, in una transazione |
+| `structural_filters.py` | `StructuralFilterSet` e `StructuralFilterMixin` (sotto) |
+| `nested_multi_parser.py` | `NestedMultiPartParser`: interpreta chiavi multipart come `items[0].name` e `items[0].file` in dati annidati, per i form con file |
+| `audit_log/` | `standard_auditlog_manager()`: manager che annota `created_at`, `updated_at`, `created_by_email`, `updated_by_email` dalle voci di django-auditlog; `AuditLogFields`, i campi corrispondenti per i serializer |
+| `serializers.py` | `FullCleanValidatorSerializerMixin`: applica `full_clean()` del modello nella validazione del serializer |
+
+**Filtri strutturali.** Ogni filtro di uno `StructuralFilterSet` esiste anche con il prefisso `_sf_`.
+- I filtri con il prefisso li applica `StructuralFilterMixin` dentro `get_queryset()`: definiscono il contesto, per esempio gli elementi di un'area.
+- I filtri senza prefisso li applica `DjangoFilterBackend`, insieme a ricerca e ordinamento: sono le scelte dell'utente.
+- `full_count` conta il contesto, `count` i risultati. Il frontend li usa per distinguere "non ci sono dati" da "nessun risultato per questi filtri".
+
+**Adattamenti.**
+- `pagination.py` prende posto e nome da bottaro-pesatura e contenuto da `datasets/commons.py` di data-lab, che ha in più lo schema OpenAPI della risposta e `HugePagination`.
+- `FullCleanValidatorSerializerMixin` arriva da `datasets/commons.py`.
+- Si copiano anche i test di `inmagik_utils` di bottaro-pesatura.
+
+## 4. Pattern delle app di dominio
+
+Presi dall'app `datasets` di data-lab e adattati alle convenzioni di §5.3 di [04-modello-dati.md](../04-modello-dati.md).
+
+### 4.1 File dell'app
+
+| File | Contenuto |
+|---|---|
+| `models.py` | modelli, enumerazioni, QuerySet |
+| `services.py` | operazioni di dominio che toccano più record: copie e derivati, cambi di stato, generazione di interventi. Transazioni esplicite |
+| `serializers.py` | serializer di modello e di input |
+| `views.py` | viewset |
+| `urls.py` | router dell'app |
+| `admin.py` | registrazione nell'admin |
+| `fm_permissions.py` | permessi dell'app (§4.7) |
+| `fm_scheduling.py`, `jobs.py` | job schedulabili e loro funzioni, se l'app ne ha |
+| `importers.py`, `management/commands/` | import, export, comandi di manutenzione |
+| `receivers.py` | solo effetti tecnici dei segnali; importato in `AppConfig.ready()` |
+| `tests.py` o `tests/` | test (domanda 1) |
+
+Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento) si aggiornano nei servizi, nella stessa transazione del record che li cambia, non con i segnali (§5.3 di [04-modello-dati.md](../04-modello-dati.md)).
+
+### 4.2 Modelli
+
+- **Chiave**: UUID per le entità operative, generato di default e in v2 fornibile dal dispositivo (D-014). data-lab usa chiavi intere, tranne che per le feature geografiche. I campi comuni (§3.1 di [04-modello-dati.md](../04-modello-dati.md)) stanno in un modello astratto.
+- **Enumerazioni**: `models.TextChoices`, con valori stabili in inglese minuscolo (es. `GeometryType.POINT = "point", "Point"`).
+- **Geometrie**: campi di `django.contrib.gis.db.models` del tipo specifico (`PointField`, `LineStringField`, `PolygonField`), con `srid=4326` e senza tipi multiparte (D-035).
+- **Vincoli e indici**: in `Meta.constraints` (`UniqueConstraint`, anche con `condition`; `CheckConstraint`) e `Meta.indexes`, con nomi espliciti. Ordinamento di default in `Meta.ordering`.
+- **QuerySet**: i filtri ricorrenti del dominio sono metodi di un QuerySet usato come manager (`objects = ElementQuerySet.as_manager()`). In `datasets`: `for_dataset()`, `in_bbox()`, `as_geojson_values()`.
+- **Testi facoltativi**: `blank=True, default=""`, senza `null`.
+- **`__str__`** su ogni modello.
+
+### 4.3 Serializer
+
+- `ModelSerializer` con `read_only_fields` per i campi assegnati dal server (tenant, campi calcolati, date).
+- **Relazioni**: la chiave esterna si scrive con l'identificativo; un campo `<relazione>_data` annidato e in sola lettura la restituisce espansa. Esempio di `datasets`: `measure_type_data = MeasureTypeSerializer(source="measure_type", read_only=True)`.
+- **Lista e dettaglio**: per la lista un serializer con meno campi, scelto in `get_serializer_class()`.
+- **Valori calcolati**: annotati nel queryset del viewset. Il `SerializerMethodField` li legge dall'annotazione e li calcola solo se manca.
+- **Input non di modello**: serializer dedicati per il corpo delle action (es. parametri di un import) e per validare i parametri di query (es. `bbox`, con un metodo `validate_bbox`).
+- **Errori**: `ValidationError({"code": "...", "params": {...}, "detail": "..."})`.
+  - `code` è stabile, in snake_case; il frontend lo traduce con la chiave `serverErrors.<code>` e i `params`;
+  - `detail` è in inglese, per l'API e i log.
+- **Validazione del modello**: `FullCleanValidatorSerializerMixin` dove contano le regole di `clean()` del modello.
+
+### 4.4 Viewset
+
+- `ModelViewSet` con i mixin prima della classe base, in quest'ordine:
+  1. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2);
+  2. `StandardPaginationMixin`;
+  3. `StructuralFilterMixin`;
+  4. `BulkDeleteActionMixin`, se serve l'eliminazione multipla.
+- `permission_classes = [ActionPermission]` e `action_permissions` completo (§3.1).
+- `filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]`, con `filterset_class` (uno `StructuralFilterSet`), `search_fields` e `ordering_fields`.
+- Queryset con `select_related` e `prefetch_related` per i dati annidati, annotazioni per i valori calcolati, ordinamento di default.
+- La view valida l'input, chiama il servizio di dominio e serializza il risultato. La logica sta nei servizi.
+- **Action aggiunte**: `@action(detail=…, methods=[…], url_path="kebab-case")` con `@extend_schema` per richiesta, risposta e parametri.
+  - Upload con `parser_classes=[NestedMultiPartParser, FormParser]`.
+  - Operazioni lunghe: avvio di un job (§3.3), con risposta che contiene l'identificativo del `JobRun`.
+- **Export di file**: `HttpResponse` con `Content-Disposition: attachment; filename="…"`. Excel con openpyxl.
+- **GeoJSON per la mappa**:
+  - geometria convertita dal database: `Cast(AsGeoJSON("geometry"), output_field=JSONField())`, senza `json.loads` per riga;
+  - lettura a blocchi con `iterator(chunk_size=…)`;
+  - filtro `bbox=minx,miny,maxx,maxy` con `geometry__intersects`, senza paginazione: il limite è la porzione di mappa visibile;
+  - parametro `srid` facoltativo per trasformare le coordinate.
+
+### 4.5 URL
+
+- Un `DefaultRouter` per app, con risorse al plurale in kebab-case e `basename` al singolare: `router.register(r"geo-datasets", GeoDatasetViewSet, basename="geo-dataset")`.
+- `urlpatterns = router.urls`, incluso in `greenmanager/urls.py` sotto `api/<app>/`.
+
+### 4.6 Admin
+
+Ogni modello è registrato, con `list_display`, `list_filter`, `search_fields` e `autocomplete_fields` per le relazioni. I modelli con geometria usano `GISModelAdmin`. L'admin serve allo staff per supporto e verifiche; gli utenti usano il frontend.
+
+### 4.7 Permessi delle app di dominio
+
+- Codici in inglese, per area funzionale: `READ_*` per la lettura e `WRITE_*` per la scrittura (in `datasets`: `READ_CONTENTS`, `WRITE_LAYERS`). La `description` è in italiano.
+- Gli stessi codici compaiono come costanti nel `permissions.ts` del modulo frontend (§4 di [frontend.md](frontend.md)).
+- L'elenco per GreenManager si definisce in T3, insieme alle regole di accesso tra organizzazioni.
+
+## 5. Ambiente di sviluppo e immagini
+
+### 5.1 Sviluppo locale
+
+Servono Python 3.14 e le librerie GDAL, GEOS e PROJ richieste da GeoDjango (su macOS: `brew install gdal`).
+
+```bash
+cd server
+docker compose up -d db redis
+python3.14 -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+cd greenmanager
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+python manage.py rqworker default    # in un altro terminale, per i job
+python manage.py rqscheduler         # solo se servono job pianificati
+```
+
+`server/docker-compose.yml`:
+- `db`: `postgis/postgis:18-3.6`, con dati in `./data/db` e porta 5432. data-lab fissa `platform: linux/amd64`, perché l'immagine PostGIS non è sempre pubblicata per arm64;
+- `redis`: `redis:8`, con healthcheck e porta 6379.
+
+### 5.2 Devcontainer
+
+Si parte da quello di data-lab, con queste correzioni:
+- il `Dockerfile` installa anche GDAL, GEOS e PROJ (`gdal-bin`, `libgdal-dev`, `libgeos-dev`, `libproj-dev`, `binutils`);
+- il servizio `db` usa l'immagine PostGIS: data-lab usa `postgres:18`, che non ha PostGIS;
+- si aggiunge il servizio `redis` e la variabile `DJANGO_REDIS_HOST=redis`;
+- l'healthcheck usa l'utente del progetto (`pg_isready -U greenmanager`);
+- si toglie `DJANGO_DB_VENDOR`, che i settings non leggono;
+- estensioni di VS Code: black, isort, flake8, GitLens.
+
+### 5.3 Immagine del server
+
+- `Dockerfile` su `python:3.14-slim`, con GDAL, GEOS e PROJ; senza la CLI docker, che in data-lab serve ai simulatori.
+- Il codice va in `/code`, gli script in `/scripts`, aggiunti al `PATH`. Il comando di default è `start`.
+- La stessa immagine fa girare tre processi:
+
+  | Script | Processo |
+  |---|---|
+  | `start` | `collectstatic`, `migrate` (ripetuto finché il database risponde), gunicorn `greenmanager.wsgi:application` con 4 worker |
+  | `worker` | `python manage.py rqworker default`. Nuovo: data-lab lo lancia senza script |
+  | `scheduler` | `schedule_auto_tasks`, poi `rqscheduler` |
+
+- `build_image.sh` costruisce per `linux/amd64` e pubblica `docker.inmagik.com/greenmanager/server:latest`, come data-lab.
+
+## 6. Strumenti e convenzioni
+
+- **Formattazione e lint**: black (riga 88), isort (profilo black), flake8 (riga 88, `E203` e `W503` ignorati), come prevede bottaro-pesatura. Configurazione in `server/pyproject.toml` e `server/.flake8`.
+- **Lingua del codice**:
+  - identificatori in inglese (D-001);
+  - commenti e docstring in inglese, come in data-lab;
+  - descrizioni dei permessi e testi delle email in italiano;
+  - messaggi all'utente tradotti nel frontend a partire dai codici di errore (§4.3).
+- **Migrazioni**: una per modifica, con nome descrittivo quando non è generato (`--name`). Le migrazioni di dati restano separate da quelle di schema.
+
+## 7. Versioni
+
+Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di bottaro-pesatura al commit `3d4b313f00`.
+
+| Pacchetto | Versione | Fonte |
+|---|---|---|
+| Django | 6.1.1 | bottaro-pesatura |
+| djangorestframework | 3.18.1 | bottaro-pesatura |
+| django-filter | 26.2 | bottaro-pesatura |
+| django-auditlog | 3.4.1 | bottaro-pesatura |
+| drf-spectacular | 0.30.0 | bottaro-pesatura |
+| django-axes[ipware] | 8.3.1 | bottaro-pesatura |
+| djangorestframework-simplejwt | 5.5.1 | bottaro-pesatura |
+| PyJWT | 2.15.1 | bottaro-pesatura |
+| psycopg[binary,pool] | 3.3.6 | bottaro-pesatura |
+| inmagik-django-userbase | 0.0.3, wheel su `fra1.digitaloceanspaces.com/inmagik-builds` con hash | bottaro-pesatura |
+| gunicorn | 26.2.0, in `requirements_prod.txt` | bottaro-pesatura |
+| django-rq | 4.1.0 | data-lab |
+| rq | 2.9.0 | data-lab |
+| rq-scheduler | 0.14.0 | data-lab |
+| django-imagekit | 6.1.0 | data-lab |
+| pillow | 12.2.0 | data-lab |
+| openpyxl | 3.1.5 | data-lab |
+| python-dateutil | 2.9.0.post0 | data-lab |
+| requests | 2.34.2 | data-lab |
+
+- Si escludono `docker`, `numpy` e `qrcode`, che in data-lab servono ai simulatori e ai codici QR.
+- `django-solo` (impostazioni come singleton) e `jsonschema` (validazione degli attributi JSON rispetto alle definizioni della classe, §5.3 di [04-modello-dati.md](../04-modello-dati.md)) si valutano in T3.
+- In T4 si verifica che le librerie prese da data-lab, scritte per Django 6.0, funzionino con Django 6.1.
+- Strumenti di sviluppo (black, isort, flake8 ed eventualmente pytest) in un `requirements-dev.txt`, con le versioni correnti al momento dello scaffold.
+
+## Domande aperte
+
+1. **Test.** Runner di Django con `tests.py` per app, come data-lab, o pytest con pytest-django, come prevede bottaro-pesatura? Proposta: pytest con pytest-django, che permette fixture condivise per organizzazioni, committenti e geometrie. → da chiudere alla revisione di T1
+2. **Superuser e permessi.** Il frontend lascia passare il superuser in ogni controllo (`hasPermission`), il backend no: `ActionPermission` guarda solo `all_permissions`. Proposta: far passare il superuser anche nel backend, in `RuntimePermission`. → da chiudere alla revisione di T1
+3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → rinviata a T3
+4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. → rinviata a T3
+5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → rinviata a T3
+6. **Archiviazione di foto e allegati.** data-lab salva i file su disco (`MEDIA_ROOT`). Le foto sono il cuore del registro dello stato e crescono molto. Proposta: disco nell'MVP, con `STORAGES` pronto per un object storage compatibile S3. → rinviata a T3

@@ -407,7 +407,7 @@ Chiude la domanda 2 dello Step 2. Per i cataloghi che lo Step 2 aveva lasciato s
 
 L'organizzazione dell'autore e il dettaglio delle modifiche sono nello storico (`ChangeRecord`, §3.8).
 
-**Entità di confine.** `Organization` (l'organizzazione che usa il sistema) e `User` (l'utente autenticato) le definiscono la multi-tenancy e l'autenticazione, fuori perimetro. Il modello vi fa solo riferimento (§5.4).
+**Entità di confine.** `Organization` (l'organizzazione che usa il sistema) e `User` (l'utente autenticato) le definiscono la multi-tenancy e l'autenticazione, fuori perimetro. Il modello vi fa solo riferimento (§5.4). Nello scaffold sono `tenants.Tenant` e `auth_core.User` (D-037).
 
 ### 3.2 Soggetti e affidamenti
 
@@ -1506,11 +1506,13 @@ Indicazioni per lo sviluppo, senza codice.
 
 Le dipendenze vanno in una sola direzione: `catalogs` ← `parties` ← `territory` ← `inventory` ← `monitoring` ↔ `works` ← `contracts`. Tra `monitoring` e `works` il legame è doppio (la valutazione nasce da un intervento, la prescrizione genera interventi): i riferimenti tra le due app si dichiarano per nome.
 
+Accanto a queste ci sono le app core dello scaffold di riferimento: `auth_core`, `tenants`, `jobs_core`, `inmagik_utils` (D-036, §3 di [architettura/backend.md](architettura/backend.md)). L'elenco definitivo delle app di dominio si fissa al passo T3 del binario tecnico.
+
 ### 5.2 Estensioni
 
 - `django.contrib.gis` con PostGIS: campi geometria, indici spaziali GiST, funzioni per superfici e lunghezze sull'ellissoide, trasformazione dei sistemi di riferimento in import ed export.
 - `django.contrib.postgres`: campi lista (diametri dei fusti, sinonimi) e indici sui campi JSON.
-- Storico delle modifiche: si può scrivere nel livello dei servizi oppure con una libreria di storicizzazione (es. django-simple-history, django-pghistory), estesa con motivazione, organizzazione e stato di approvazione. La scelta spetta allo sviluppo; il contenuto richiesto è quello di `ChangeRecord`.
+- Storico delle modifiche: si può scrivere nel livello dei servizi oppure con una libreria di storicizzazione (es. django-simple-history, django-pghistory), estesa con motivazione, organizzazione e stato di approvazione. La scelta spetta allo sviluppo; il contenuto richiesto è quello di `ChangeRecord`. Lo scaffold include già django-auditlog; il rapporto con `ChangeRecord` è una domanda aperta di [architettura/backend.md](architettura/backend.md#domande-aperte).
 - Import ed export GIS: GDAL, già richiesto da GeoDjango, per shapefile e GeoJSON.
 
 ### 5.3 Convenzioni
@@ -1532,7 +1534,9 @@ Le dipendenze vanno in una sola direzione: `catalogs` ← `parties` ← `territo
 
 ### 5.4 Agganci per la multi-tenancy
 
-La multi-tenancy è fuori perimetro. Il modello le offre questi agganci:
+La multi-tenancy è fuori perimetro. L'implementazione di riferimento viene dallo scaffold: `Organization` è il `Tenant` dell'app `tenants` e `User` è l'utente di `auth_core` (D-037, §3 di [architettura/backend.md](architettura/backend.md)). Le regole qui sotto si innestano sullo scaffold al passo T3.
+
+Il modello offre alla multi-tenancy questi agganci:
 
 | Entità | Aggancio |
 |---|---|

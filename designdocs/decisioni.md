@@ -346,3 +346,43 @@ Stati possibili:
   - si conserva la precisione dichiarata della posizione e la sua origine (GPS, mappa, import).
 - **Motivazione**: WGS84 è il sistema del GPS del browser e delle mappe web. La trasformazione verso RDN2008 è di norma nulla nelle librerie, quindi le coordinate di un rilievo di precisione passano senza modifiche. Le misure sull'ellissoide valgono in tutta Italia senza scegliere un fuso. Vedi §4.2 di [04-modello-dati.md](04-modello-dati.md).
 - **Alternative scartate**: memorizzazione in RDN2008 proiettato, che richiede un fuso per committente; geometrie multiparte.
+
+## D-036 — Scaffold dai progetti di riferimento
+
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Decisione**:
+  - backend e frontend nascono copiando lo scaffold di [inmagik/data-lab](https://github.com/inmagik/data-lab): struttura, settings, app core (`auth_core`, `tenants`, `jobs_core`, `inmagik_utils`), componenti e pattern di modelli, API e interfaccia;
+  - le versioni delle dipendenze vengono da [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura), più aggiornato; Python 3.14;
+  - dalle app di dominio di data-lab si copiano i pattern, non il codice;
+  - le convenzioni proprie di bottaro-pesatura (identificatori in italiano, single-tenant, compatibilità con SQLite) non si applicano.
+- **Motivazione**: i progetti INMAGIK recenti usano lo stesso stack (Django, React, PostgreSQL) e risolvono già autenticazione, multi-tenancy, permessi e job. Riusare lo scaffold dà al team un codice che conosce e componenti condivisi tra i progetti. Vedi [architettura/README.md](architettura/README.md).
+- **Alternative scartate**: scaffold progettato da zero; template generico di Django e React.
+
+## D-037 — Organizzazione come tenant
+
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Decisione**:
+  - l'entità di confine `Organization` del modello dati è il `Tenant` dell'app `tenants`, e `User` è l'utente di `auth_core`;
+  - gli utenti appartengono a una o più organizzazioni tramite `TenantMembership`; i ruoli sono definiti per organizzazione;
+  - ogni richiesta autenticata indica l'organizzazione con l'header `X-Tenant-ID`;
+  - i dati del patrimonio appartengono a un committente e si filtrano tramite `Client.managing_organization`. L'accesso degli esecutori e dei valutatori di un'altra organizzazione tramite gli affidamenti si definisce in T3.
+- **Motivazione**: il tenant di data-lab è l'organizzazione che usa il sistema, come in §3.1 di [04-modello-dati.md](04-modello-dati.md). I dati del patrimonio non possono avere il tenant come unico proprietario, perché sullo stesso patrimonio lavorano più organizzazioni (D-012, D-032). Vedi §3.2 di [architettura/backend.md](architettura/backend.md).
+- **Alternative scartate**: tenant come committente, che non regge una ditta con più committenti; un'istanza per cliente senza tenant, come in bottaro-pesatura, che non regge esecutori di un'altra organizzazione.
+
+## D-038 — Frontend come SPA a moduli
+
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Decisione**:
+  - una sola SPA React con Vite, TypeScript e Mantine, organizzata in moduli che contribuiscono da soli al menu e alle rotte;
+  - data fetching con `@inmagik/react-crud` e TanStack Query; autenticazione con `@inmagik/react-auth`;
+  - form con `@mantine/form` e yup; traduzioni con i18next, con l'italiano come lingua di riferimento;
+  - pattern di lista, dettaglio, form e azioni del modulo `datasets` di data-lab. I pattern per sezione si definiscono in T2.
+- **Motivazione**: è il frontend dei progetti di riferimento, con componenti e pattern già condivisi. I moduli che si registrano da soli permettono di aggiungere le aree del dominio senza toccare file centrali. Vedi [architettura/frontend.md](architettura/frontend.md).
+- **Alternative scartate**: un'app separata per ogni area funzionale; un'altra libreria di componenti.
+
+## D-039 — Job asincroni e pianificati
+
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Decisione**: i lavori lunghi o periodici girano fuori dalla richiesta HTTP con l'app `jobs_core`, su django-rq, rq-scheduler e Redis. Usi previsti: import ed export, generazione degli interventi proposti, scadenzario. L'elenco si definisce in T3.
+- **Motivazione**: import di file CAM o shapefile e generazione del piano (D-020, D-033) possono durare più di una richiesta. `jobs_core` traccia ogni esecuzione e restituisce subito l'identificativo, che il frontend usa per seguirne lo stato. Vedi §3.3 di [architettura/backend.md](architettura/backend.md).
+- **Alternative scartate**: Celery; esecuzione sincrona nella richiesta.
