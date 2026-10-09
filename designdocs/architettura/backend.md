@@ -1,6 +1,6 @@
 # Backend
 
-> **Stato**: in revisione · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+> **Stato**: completato · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
 
 - **Obiettivo**: descrivere il progetto Django di GreenManager: struttura, settings, app core, pattern delle app di dominio, ambiente di sviluppo, versioni.
 - **Fonte**: `server/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura e pattern, [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036). Commit e regole di copia in [README.md](README.md).
@@ -123,6 +123,7 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 - `PermissionManager` raccoglie i permessi di tutte le app installate. L'endpoint `permissions/` li restituisce al frontend, che li usa nel form dei ruoli.
 - `ActionPermission` è la classe di permesso dei viewset. Il viewset dichiara `action_permissions = {action: [codici]}`; l'utente deve avere tutti i codici dell'action.
 - Ogni action deve comparire in `action_permissions`, comprese le action aggiunte e `bulk_delete`. Un'action senza voce solleva `NotImplementedError`: si sbaglia chiudendo, non aprendo. `OPTIONS` è sempre permesso.
+- Il superuser passa ogni controllo, come nel frontend (§5.6 di [frontend.md](frontend.md)).
 
 **Endpoint** sotto `api/core/auth/`:
 
@@ -134,7 +135,10 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 | `users/` | utenti del tenant corrente; un utente creato da qui entra nel tenant corrente. Action `unlock` per sbloccare un utente bloccato da axes; filtri per stato (attivo, disattivato, bloccato) e ruolo |
 | `roles/` | ruoli del tenant corrente; action `grant_to` per assegnare un ruolo a più utenti |
 
-**Adattamenti.** Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4). I codici dei permessi restano quelli di data-lab (`LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`): li usa il modulo `users` del frontend, condiviso tra i progetti.
+**Adattamenti.**
+- Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4).
+- `RuntimePermission` e `ActionPermission` lasciano passare il superuser, come in bottaro-pesatura; in data-lab guardano solo `all_permissions` (domanda 2).
+- I codici dei permessi restano quelli di data-lab (`LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`): li usa il modulo `users` del frontend, condiviso tra i progetti.
 
 ### 3.2 `tenants` — organizzazioni
 
@@ -188,8 +192,10 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 | `mixins.py` | `BulkDeleteActionMixin`: action `POST bulk-delete/` con `{"ids": [...]}`, limitata al queryset visibile, in una transazione |
 | `structural_filters.py` | `StructuralFilterSet` e `StructuralFilterMixin` (sotto) |
 | `nested_multi_parser.py` | `NestedMultiPartParser`: interpreta chiavi multipart come `items[0].name` e `items[0].file` in dati annidati, per i form con file |
-| `audit_log/` | `standard_auditlog_manager()`: manager che annota `created_at`, `updated_at`, `created_by_email`, `updated_by_email` dalle voci di django-auditlog; `AuditLogFields`, i campi corrispondenti per i serializer |
+| `audit_log/` | `standard_auditlog_manager()`: manager che annota `created_at`, `updated_at`, `created_by_email`, `updated_by_email` dalle voci di django-auditlog; `AuditLogFields`, i campi corrispondenti per i serializer; `AuditlogActorMixin` (sotto) |
 | `serializers.py` | `FullCleanValidatorSerializerMixin`: applica `full_clean()` del modello nella validazione del serializer |
+
+**Autore delle modifiche.** `AuditlogMiddleware` legge l'utente prima della view, ma con l'autenticazione JWT di DRF l'utente si conosce solo dentro la view: senza altro, le voci di django-auditlog restano senza autore. `AuditlogActorMixin`, in `audit_log/audit_log_mixins.py`, imposta l'utente autenticato da DRF come autore per tutta la richiesta. Si usa in ogni viewset che modifica dati (§4.4).
 
 **Filtri strutturali.** Ogni filtro di uno `StructuralFilterSet` esiste anche con il prefisso `_sf_`.
 - I filtri con il prefisso li applica `StructuralFilterMixin` dentro `get_queryset()`: definiscono il contesto, per esempio gli elementi di un'area.
@@ -199,11 +205,12 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 **Adattamenti.**
 - `pagination.py` prende posto e nome da bottaro-pesatura e contenuto da `datasets/commons.py` di data-lab, che ha in più lo schema OpenAPI della risposta e `HugePagination`.
 - `FullCleanValidatorSerializerMixin` arriva da `datasets/commons.py`.
+- `audit_log/audit_log_mixins.py` arriva da bottaro-pesatura.
 - Si copiano anche i test di `inmagik_utils` di bottaro-pesatura.
 
 ## 4. Pattern delle app di dominio
 
-Presi dall'app `datasets` di data-lab e adattati alle convenzioni di §5.3 di [04-modello-dati.md](../04-modello-dati.md).
+Presi dall'app `datasets` di data-lab e dall'app `anagrafica` di bottaro-pesatura, adattati alle convenzioni di §5.3 di [04-modello-dati.md](../04-modello-dati.md).
 
 ### 4.1 File dell'app
 
@@ -219,7 +226,7 @@ Presi dall'app `datasets` di data-lab e adattati alle convenzioni di §5.3 di [0
 | `fm_scheduling.py`, `jobs.py` | job schedulabili e loro funzioni, se l'app ne ha |
 | `importers.py`, `management/commands/` | import, export, comandi di manutenzione |
 | `receivers.py` | solo effetti tecnici dei segnali; importato in `AppConfig.ready()` |
-| `tests.py` o `tests/` | test (domanda 1) |
+| `tests.py` o `tests/` | test, con il runner di Django (domanda 1) |
 
 Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento) si aggiornano nei servizi, nella stessa transazione del record che li cambia, non con i segnali (§5.3 di [04-modello-dati.md](../04-modello-dati.md)).
 
@@ -227,7 +234,7 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 
 - **Chiave**: UUID per le entità operative, generato di default e in v2 fornibile dal dispositivo (D-014). data-lab usa chiavi intere, tranne che per le feature geografiche. I campi comuni (§3.1 di [04-modello-dati.md](../04-modello-dati.md)) stanno in un modello astratto.
 - **Enumerazioni**: `models.TextChoices`, con valori stabili in inglese minuscolo (es. `GeometryType.POINT = "point", "Point"`).
-- **Geometrie**: campi di `django.contrib.gis.db.models` del tipo specifico (`PointField`, `LineStringField`, `PolygonField`), con `srid=4326` e senza tipi multiparte (D-035).
+- **Geometrie**: campi di `django.contrib.gis.db.models` con `srid=4326`. Linee e poligoni possono essere multiparte (D-035): l'area ha un `MultiPolygonField`. Per l'elemento, il cui tipo dipende dalla classe, campo e normalizzazione (per esempio linee e poligoni salvati sempre come multiparte) si fissano in T3.
 - **Vincoli e indici**: in `Meta.constraints` (`UniqueConstraint`, anche con `condition`; `CheckConstraint`) e `Meta.indexes`, con nomi espliciti. Ordinamento di default in `Meta.ordering`.
 - **QuerySet**: i filtri ricorrenti del dominio sono metodi di un QuerySet usato come manager (`objects = ElementQuerySet.as_manager()`). In `datasets`: `for_dataset()`, `in_bbox()`, `as_geojson_values()`.
 - **Testi facoltativi**: `blank=True, default=""`, senza `null`.
@@ -248,10 +255,11 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 ### 4.4 Viewset
 
 - `ModelViewSet` con i mixin prima della classe base, in quest'ordine:
-  1. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2);
-  2. `StandardPaginationMixin`;
-  3. `StructuralFilterMixin`;
-  4. `BulkDeleteActionMixin`, se serve l'eliminazione multipla.
+  1. `AuditlogActorMixin`, per l'autore delle modifiche (§3.4);
+  2. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2);
+  3. `StandardPaginationMixin`;
+  4. `StructuralFilterMixin`;
+  5. `BulkDeleteActionMixin`, se serve l'eliminazione multipla.
 - `permission_classes = [ActionPermission]` e `action_permissions` completo (§3.1).
 - `filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]`, con `filterset_class` (uno `StructuralFilterSet`), `search_fields` e `ordering_fields`.
 - Queryset con `select_related` e `prefetch_related` per i dati annidati, annotazioni per i valori calcolati, ordinamento di default.
@@ -368,13 +376,13 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
 - Si escludono `docker`, `numpy` e `qrcode`, che in data-lab servono ai simulatori e ai codici QR.
 - `django-solo` (impostazioni come singleton) e `jsonschema` (validazione degli attributi JSON rispetto alle definizioni della classe, §5.3 di [04-modello-dati.md](../04-modello-dati.md)) si valutano in T3.
 - In T4 si verifica che le librerie prese da data-lab, scritte per Django 6.0, funzionino con Django 6.1.
-- Strumenti di sviluppo (black, isort, flake8 ed eventualmente pytest) in un `requirements-dev.txt`, con le versioni correnti al momento dello scaffold.
+- Strumenti di sviluppo (black, isort, flake8) in un `requirements-dev.txt`, con le versioni correnti al momento dello scaffold. I test usano il runner di Django, senza dipendenze aggiuntive.
 
 ## Domande aperte
 
-1. **Test.** Runner di Django con `tests.py` per app, come data-lab, o pytest con pytest-django, come prevede bottaro-pesatura? Proposta: pytest con pytest-django, che permette fixture condivise per organizzazioni, committenti e geometrie. → da chiudere alla revisione di T1
-2. **Superuser e permessi.** Il frontend lascia passare il superuser in ogni controllo (`hasPermission`), il backend no: `ActionPermission` guarda solo `all_permissions`. Proposta: far passare il superuser anche nel backend, in `RuntimePermission`. → da chiudere alla revisione di T1
-3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → rinviata a T3
-4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. → rinviata a T3
-5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → rinviata a T3
+1. **Test.** Runner di Django con `tests.py` per app, come data-lab, o pytest con pytest-django, come prevede bottaro-pesatura? → **chiusa** alla revisione: runner di Django (`python manage.py test`), con `tests.py` o `tests/` per app, come data-lab.
+2. **Superuser e permessi.** Il frontend lascia passare il superuser in ogni controllo (`hasPermission`), il backend no: `ActionPermission` guarda solo `all_permissions`. → **chiusa** alla revisione: il superuser passa anche nel backend, in `RuntimePermission` e `ActionPermission`, come in bottaro-pesatura (§3.1).
+3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
+4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
+5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
 6. **Archiviazione di foto e allegati.** data-lab salva i file su disco (`MEDIA_ROOT`). Le foto sono il cuore del registro dello stato e crescono molto. Proposta: disco nell'MVP, con `STORAGES` pronto per un object storage compatibile S3. → rinviata a T3

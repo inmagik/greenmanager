@@ -1,6 +1,6 @@
 # 04 — Modello dati
 
-> **Stato**: in revisione · **Passo**: 4 di 5 · Metodologia in [README.md](README.md)
+> **Stato**: completato · **Passo**: 4 di 5 · Metodologia in [README.md](README.md)
 
 - **Obiettivo**: definire il modello dati del dominio, pronto per essere tradotto in modelli Django.
 - **Input**: [03-features.md](03-features.md), [glossario.md](glossario.md), [decisioni.md](decisioni.md).
@@ -569,7 +569,7 @@ Porzione di territorio gestita, con il suo perimetro (AR-1). Corrisponde all'are
 | `zone` | → Zone | | |
 | `number`, `sub_number` | testo | sì, no | Numerazione e subalterno: insieme sono il codice dell'area, univoco per committente. |
 | `name` | testo | sì | |
-| `geometry` | poligono | sì | Perimetro, semplice (non multiparte) come chiede il CAM. Disegnato o importato (AR-2). |
+| `geometry` | poligono, anche multiparte | sì | Perimetro; può avere buchi e più parti (D-035). Disegnato o importato (AR-2). |
 | `surface_m2`, `perimeter_m` | decimale | — | *Calcolati* dalla geometria. |
 | `is_fictitious` | booleano | sì | Area fittizia, esclusa dal calcolo delle superfici (AR-3). |
 | `urban_green_type` | → UrbanGreenType | sì | Tipologia ISTAT (D-009). |
@@ -587,7 +587,7 @@ Porzione di territorio gestita, con il suo perimetro (AR-1). Corrisponde all'are
 
 Regole:
 - **sovrapposizioni** (AR-5): le aree dello stesso committente non si sovrappongono. Il sistema avvisa e non blocca; le aree sovrapposte restano in un elenco da correggere;
-- **più parti**: un parco diviso da una strada è formato da due aree della stessa zona (D-019);
+- **più parti**: un parco diviso da una strada può essere una sola area con un poligono multiparte (D-035). Le parti con gestione o classificazione diverse restano aree distinte della stessa zona (D-019);
 - **fine gestione**: un'area con `management_end` resta nello storico. Gli elementi che contiene vanno rimossi o spostati in un'altra area;
 - un cambio di perimetro o di classificazione resta nello storico delle modifiche. Da lì si ricostruiscono le superfici a una data (§4.3).
 
@@ -654,7 +654,7 @@ Oggetto censito con la sua geometria (EL-1). È l'unità di censimento (D-002).
 | `client` | → Client | sì | Copia del committente dell'area: serve ai vincoli di unicità e alla multi-tenancy. |
 | `area` | → Area | sì | Proposta dalla posizione, modificabile dal rilevatore (scenario 4.2). |
 | `element_class` | → ElementClass | sì | |
-| `geometry` | punto, linea o poligono | sì | Del tipo previsto dalla classe; semplice, non multiparte. |
+| `geometry` | punto, linea o poligono | sì | Del tipo previsto dalla classe. Linee e poligoni anche multiparte, i punti no (D-035). |
 | `location_status` | enum: verificata, provvisoria | sì | Posizione provvisoria (D-026, EL-10). |
 | `location_source` | enum: GPS, mappa, import, centro dell'area | | Origine della posizione. |
 | `location_accuracy_m` | decimale | | Precisione dichiarata dal GPS del dispositivo (TR-4). |
@@ -1232,8 +1232,8 @@ La progettazione di dettaglio spetta alla v2.
 
 | Oggetto | Geometria | Note |
 |---|---|---|
-| Elemento | punto, linea o poligono, secondo la classe | Semplice, non multiparte (CAM). Un solo campo geometria con il tipo controllato dalla classe. |
-| Area | poligono | Semplice; può avere buchi. Le parti separate sono aree distinte. |
+| Elemento | punto, linea o poligono, secondo la classe | Linee e poligoni anche multiparte; punti semplici. Un solo campo geometria con il tipo controllato dalla classe. |
+| Area | poligono, anche multiparte | Può avere buchi. Un parco diviso da una strada può essere una sola area. |
 | Zona | poligono, anche multiparte | Facoltativo. |
 | Vincolo *(v2)*, campagna *(v2)* | poligono | Zona disegnata sulla mappa. |
 | Bersaglio *(v2)* | linea o poligono | Tratto di strada o porzione di area. |
@@ -1245,6 +1245,17 @@ La progettazione di dettaglio spetta alla v2.
 - superfici e lunghezze si calcolano sull'ellissoide, quindi in metri reali in tutta Italia.
 
 L'export CAM usa il sistema RDN2008 scelto per il committente (`cam_export_srid`: 6706 geografico, oppure 7791–7794 proiettato). L'import accetta i sistemi RDN2008 e i più comuni (WGS84, UTM) e converte.
+
+**Geometrie multiparte** (D-035). Linee e poligoni di elementi e aree possono avere più parti; i punti no. Esempi:
+- una siepe interrotta da un passo carraio;
+- un prato diviso dai vialetti;
+- un parco diviso da una strada.
+
+In questi casi resta una sola unità di gestione, con un codice, una classificazione e gli stessi interventi. Conseguenze:
+- **misure**: superficie, perimetro e lunghezza sono la somma delle parti;
+- **import**: una feature multiparte di uno shapefile o di un GeoJSON diventa un solo elemento o una sola area, senza spezzarla;
+- **export CAM**: il CAM vuole geometrie semplici, quindi l'export scrive un oggetto per ogni parte. Le parti hanno gli stessi dati dell'elemento o dell'area, compreso il codice, con un `OBJ_ID` distinto e le misure della singola parte (§4.8);
+- **controlli**: i controlli topologici valgono sull'intera geometria.
 
 **Precisione.** Il CAM chiede ±10 cm in scala 1:500 (per gli alberi, una tolleranza pari al diametro). Il GPS di uno smartphone dà qualche metro. Il modello conserva la precisione dichiarata (`location_accuracy_m`) e l'origine della posizione. Così i rilievi da smartphone restano distinguibili da quelli strumentali, senza bloccarli.
 
@@ -1420,7 +1431,7 @@ Motivi, verificati sul modello v2.1:
 | tutti | `CODE_ISTAT` | `Area.municipality_code` |
 | tutti | `ZONA` | `Zone.code`; per le aree senza zona, un codice predefinito del committente |
 | tutti | `AREA` | Codice dell'area (`number` e `sub_number`) |
-| tutti | `OBJ_ID` | Progressivo generato all'export |
+| tutti | `OBJ_ID` | Progressivo generato all'export, uno per ogni parte di una geometria multiparte (§4.2) |
 | tutti | `TP`, `TS`, `CODICE` | `CamObjectType`, dalla corrispondenza (§2.4) |
 | tutti | `DATA_INI`, `DATA_FINE` | `planted_on`, `removed_on` dell'elemento; per le aree, inizio e fine gestione |
 | tutti | `DATA_AGG`, `MODIF_DA` | Ultima modifica nello storico |
@@ -1428,11 +1439,11 @@ Motivi, verificati sul modello v2.1:
 | P1, L1, S1 (vegetazione) | `PT` | `Element.code` |
 | P1, L1, S1 | `GENERE`, `SPECIE`, `VARIETA'` | `Species`: genere, epiteto, cultivar. Per un elemento con composizione, la specie prevalente |
 | P1, L1 | `H_m` | Copia dell'altezza |
-| P1 | `DIAM_TRONC`, `DIAM_CHIOM` | Copie del diametro (cm) e della chioma (m). Per gli alberi con più fusti vedi le domande aperte |
+| P1 | `DIAM_TRONC`, `DIAM_CHIOM` | Copie del diametro (cm) e della chioma (m). Per gli alberi con più fusti, il diametro equivalente: radice quadrata della somma dei quadrati dei diametri dei fusti |
 | L1 | `LARG_m` | Misura "larghezza" della classe siepe |
 | P1, L1, S1 | `STATO` | `cam_state_label` della condizione corrente |
-| L1, L2, L3 | `LUNG_m`, `LUNGH_m` | Calcolata dalla geometria |
-| S1, S2, S3, S4 | `AREA_mq`, `PERIM_m` | Calcolate dalla geometria |
+| L1, L2, L3 | `LUNG_m`, `LUNGH_m` | Calcolata dalla geometria; per una geometria multiparte, della singola parte |
+| S1, S2, S3, S4 | `AREA_mq`, `PERIM_m` | Calcolate dalla geometria; per una geometria multiparte, della singola parte |
 | S3 (aree di gestione) | `CODICE` | `S325000` se l'area è fittizia, altrimenti `S325500` |
 | S3 | `NOME_AREA`, `CODE_VIA`, `DATA_RIL` | `name`, `street_code`, `surveyed_on` dell'area |
 | S3 | `GESTORE` | Nome dell'organizzazione di gestione del committente |
@@ -1525,7 +1536,7 @@ Accanto a queste ci sono le app core dello scaffold di riferimento: `auth_core`,
 - **Enumerazioni**: scelte testuali nel codice (§2.6), salvate con valori stabili in inglese.
 - **Vincoli nel database**, dove possibile:
   - *esattamente uno tra*: oggetto dell'osservazione, oggetto dell'intervento, proprietario dell'allegato, area o livello della regola;
-  - tipo di geometria coerente con la classe;
+  - tipo di geometria coerente con la classe (linee e poligoni anche multiparte, D-035);
   - ordine delle date (posa prima della rimozione, inizio prima della fine);
   - unicità condizionata: codice dell'elemento per committente; cartellino tra gli elementi presenti; codice delle voci per organizzazione.
 - **Copie e derivati**: le copie sull'elemento (§3.4) si aggiornano nei servizi di dominio, nella stessa transazione del record che le cambia, non con i segnali. Così l'aggiornamento è esplicito, testabile e sincronizzato anche in v2. Superfici e lunghezze si salvano all'aggiornamento della geometria, per ordinamenti e totali veloci.
@@ -1563,17 +1574,17 @@ Le decisioni e i termini seguenti sono registrati in [decisioni.md](decisioni.md
 
 | ID | Decisione | Stato |
 |---|---|---|
-| D-027 | Cataloghi estendibili con voci di sistema (senza organizzazione), voci dell'organizzazione, voci ritirate e nascoste; enumerazioni nel codice per i valori che guidano la logica. Sui dati di un committente valgono le voci della sua organizzazione di gestione (§2.1, §2.2) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-028 | Misure nelle osservazioni, con una copia dell'ultimo valore sull'elemento (§4.4) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-029 | Posto d'impianto: nessuna entità; classi posto libero e ceppaia e legame di sostituzione tra elementi (§4.3) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-030 | Codici CAM come corrispondenza: catalogo fisso dei codici, codice predefinito per classe, corrispondenze per valore di attributo (§2.4, §4.8) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-031 | Persone del dominio distinte dagli utenti; esecutori come anagrafica dell'organizzazione di gestione, collegabili all'organizzazione dell'esecutore; squadre dell'organizzazione dell'esecutore (§3.2) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-032 | Committente come titolare del patrimonio, con un'organizzazione di gestione; nessuna entità proprietario; comune dell'area sull'area (§4.7) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-033 | Interventi generati nello stato *proposto*; piano come vista sugli interventi; origini *ricontrollo* e *campagna*; esecuzione parziale con intervento residuo (§4.5) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-034 | Storico delle modifiche come entità del dominio; registri non cancellabili, correzioni con motivazione; revisione per la sincronizzazione (§4.1) | ipotesi, da confermare alla revisione dello Step 4 |
-| D-035 | Geometrie semplici in WGS84 (EPSG:4326), misure sull'ellissoide, export CAM in RDN2008 (§4.2) | ipotesi, da confermare alla revisione dello Step 4 |
+| D-027 | Cataloghi estendibili con voci di sistema (senza organizzazione), voci dell'organizzazione, voci ritirate e nascoste; enumerazioni nel codice per i valori che guidano la logica. Sui dati di un committente valgono le voci della sua organizzazione di gestione (§2.1, §2.2) | confermata |
+| D-028 | Misure nelle osservazioni, con una copia dell'ultimo valore sull'elemento (§4.4) | confermata |
+| D-029 | Posto d'impianto: nessuna entità; classi posto libero e ceppaia e legame di sostituzione tra elementi (§4.3) | confermata |
+| D-030 | Codici CAM come corrispondenza: catalogo fisso dei codici, codice predefinito per classe, corrispondenze per valore di attributo (§2.4, §4.8) | confermata |
+| D-031 | Persone del dominio distinte dagli utenti; esecutori come anagrafica dell'organizzazione di gestione, collegabili all'organizzazione dell'esecutore; squadre dell'organizzazione dell'esecutore (§3.2) | confermata |
+| D-032 | Committente come titolare del patrimonio, con un'organizzazione di gestione; nessuna entità proprietario; comune dell'area sull'area (§4.7) | confermata |
+| D-033 | Interventi generati nello stato *proposto*; piano come vista sugli interventi; origini *ricontrollo* e *campagna*; esecuzione parziale con intervento residuo (§4.5) | confermata |
+| D-034 | Storico delle modifiche come entità del dominio; registri non cancellabili, correzioni con motivazione; revisione per la sincronizzazione (§4.1) | confermata |
+| D-035 | Geometrie in WGS84 (EPSG:4326), linee e poligoni anche multiparte, misure sull'ellissoide, export CAM in RDN2008 con un oggetto per parte (§4.2) | confermata, con la modifica della revisione: l'ipotesi prevedeva solo geometrie semplici |
 
-Cambiano stato le ipotesi verificate in §4.10: D-006, D-007, D-009, D-010, D-011, D-013, D-018–D-026 sono confermate allo Step 4, alcune con le precisazioni indicate.
+Cambiano stato le ipotesi verificate in §4.10: D-006, D-007, D-009, D-010, D-011, D-013, D-018–D-026 sono confermate allo Step 4, alcune con le precisazioni indicate. D-019 ha anche la precisazione di D-035: un parco diviso da una strada può essere una sola area.
 
 ### 6.2 Glossario
 
@@ -1583,7 +1594,7 @@ Cambiano stato le ipotesi verificate in §4.10: D-006, D-007, D-009, D-010, D-01
 
 ## Domande aperte
 
-Le domande ereditate sono tutte chiuse. Quelle emerse in questo passo sono da chiudere alla revisione o rinviate allo Step 5.
+Le domande ereditate sono tutte chiuse. Quelle emerse in questo passo sono chiuse alla revisione o rinviate allo Step 5.
 
 Ereditate dallo [Step 2](02-benchmark.md#domande-aperte), con il numero originale:
 - **Fonti dei cataloghi** (2): da quali fonti si costruiscono i cataloghi iniziali? → **chiusa** (§2.7). Per specie e tipi di intervento si propone una fonte: open data dei censimenti comunali normalizzati su una nomenclatura di riferimento, e prezzari regionali. La periodicità non è più un catalogo. La compilazione dei dati iniziali è un'attività dello sviluppo.
@@ -1595,10 +1606,11 @@ Ereditate dallo [Step 3](03-features.md#domande-aperte), con il numero originale
 - **Cataloghi tra organizzazioni** (2): quali voci aggiuntive valgono quando due organizzazioni lavorano sullo stesso patrimonio? → **chiusa** da D-027: quelle dell'organizzazione di gestione del committente (§2.2).
 
 Emerse in questo passo:
-1. **Dettagli dell'export CAM.** Il modello v2.1 lascia aperti tre punti che vanno verificati su file CAM reali, ricevuti da un ente:
+1. **Dettagli dell'export CAM.** Il modello v2.1 lascia aperti alcuni punti, da verificare su file CAM reali ricevuti da un ente:
    - *alberi con più fusti*: `DIAM_TRONC` accetta un solo valore. Proposta: il diametro equivalente, cioè la radice quadrata della somma dei quadrati dei diametri;
    - *codice ISTAT*: il modello lo dà di 5 caratteri, ma i codici dei comuni sono di 6 cifre;
-   - *valori di `STATO`*: è testo libero (es. "Pianta viva"); conviene allinearlo all'uso degli enti.
+   - *valori di `STATO`*: è testo libero (es. "Pianta viva"); conviene allinearlo all'uso degli enti;
+   - *geometrie multiparte* (D-035, emersa alla revisione): l'export scrive un oggetto per parte (§4.2). Un altro software che legge il file vede più oggetti con lo stesso codice; da verificare se gli enti lo accettano.
 
-   → da chiudere alla revisione per la proposta sul diametro; il resto è rinviato allo Step 5
+   → **chiusa** alla revisione per i fusti multipli: diametro equivalente (§4.8). Codice ISTAT, valori di `STATO` e oggetti per parte sono rinviati allo Step 5, da verificare su file CAM reali
 2. **Verifica legale sui dati personali** (§4.9): consenso alla pubblicazione del testo delle dediche; dati di data, ora e posizione dell'attività degli operatori. → rinviata allo Step 5, da riportare nella specifica come verifica prima del rilascio

@@ -22,12 +22,12 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager e,
 | 1. Analisi della specifica esistente | [01-analisi-spec-esistente.md](01-analisi-spec-esistente.md) | completato |
 | 2. Benchmark di prodotti simili | [02-benchmark.md](02-benchmark.md) | completato |
 | 3. Feature del prodotto | [03-features.md](03-features.md) | completato |
-| 4. Modello dati | [04-modello-dati.md](04-modello-dati.md) | in revisione |
-| 5. Consolidamento | [spec.md](spec.md) | da iniziare |
-| T1. Stack e scaffold di riferimento | [architettura/README.md](architettura/README.md), [backend.md](architettura/backend.md), [frontend.md](architettura/frontend.md) | in revisione |
-| T2. Pattern dell'interfaccia | `architettura/frontend-pattern.md` | da iniziare |
-| T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | da iniziare |
-| T4. Scaffold | codice in `server/` e `frontend/` | da iniziare |
+| 4. Modello dati | [04-modello-dati.md](04-modello-dati.md) | completato |
+| 5. Consolidamento | [spec.md](spec.md) | da iniziare, in parallelo allo sviluppo (D-040) |
+| T1. Stack e scaffold di riferimento | [architettura/README.md](architettura/README.md), [backend.md](architettura/backend.md), [frontend.md](architettura/frontend.md) | completato |
+| T2. Pattern dell'interfaccia | `architettura/frontend-pattern.md` | da iniziare, con la prima fetta verticale |
+| T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | da iniziare, con la prima fetta verticale |
+| T4. Scaffold | codice in `server/` e `frontend/` | da iniziare: è il prossimo passo |
 
 ## I passi della specifica del dominio
 
@@ -68,6 +68,7 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager e,
 
 ### 5. Consolidamento
 - **Input**: passi 1–4.
+- **Quando**: in parallelo al binario tecnico, senza bloccare lo sviluppo (D-040).
 - **Attività**: scrivere una specifica autosufficiente, che rimanda ai documenti 01–04 come appendici, e farne la revisione finale. Per stack e struttura del codice rimanda ai documenti del binario tecnico.
 - **Output**: [spec.md](spec.md)
 
@@ -75,11 +76,14 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager e,
 
 Fissa tecnologie, struttura e pattern di backend e frontend, copiando lo scaffold dei progetti INMAGIK recenti invece di progettarlo da zero (D-036). Valgono le regole degli Step: un documento per passo, che finisce con "Domande aperte"; chiusura con la revisione del responsabile di progetto; decisioni in [decisioni.md](decisioni.md).
 
-Il binario procede in parallelo alla specifica del dominio. I legami sono questi:
-- T1 non dipende dagli Step;
-- T2 parte dalle feature e dagli scenari dello Step 3;
-- T3 parte dal modello dati dello Step 4 chiuso;
-- T4 può precedere T3: lo scaffold nasce senza app di dominio, che si aggiungono dopo.
+Il binario procede in parallelo alla specifica del dominio. Dopo la revisione dello Step 4 e di T1 la sequenza è questa (D-040):
+1. T1 non dipende dagli Step;
+2. T4 viene subito dopo T1: lo scaffold nasce senza app di dominio, che si aggiungono dopo;
+3. T2 e T3 si svolgono insieme a una **prima fetta verticale**:
+   - contenuto: cataloghi (`Species`, `ElementClass`), committente (`Client`), zone e aree, elementi su mappa;
+   - T2 parte dalle feature e dagli scenari dello Step 3, T3 dal modello dati dello Step 4;
+   - i loro documenti registrano le scelte fatte nella fetta;
+4. lo Step 5 procede in parallelo e non blocca lo sviluppo.
 
 ### T1. Stack e scaffold di riferimento
 - **Input**: i progetti di riferimento [inmagik/data-lab](https://github.com/inmagik/data-lab) (struttura, app core, pattern) e [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) (versioni); il vincolo di stack di [AGENTS.md](../AGENTS.md).
@@ -92,7 +96,7 @@ Il binario procede in parallelo alla specifica del dominio. I legami sono questi
 - **Output**: [architettura/README.md](architettura/README.md), [architettura/backend.md](architettura/backend.md), [architettura/frontend.md](architettura/frontend.md)
 
 ### T2. Pattern dell'interfaccia
-- **Input**: T1, feature e scenari dello Step 3.
+- **Input**: T1, feature e scenari dello Step 3, la prima fetta verticale.
 - **Attività**: i pattern per sezione, oltre a quelli di base di T1:
   - liste, dettaglio e form delle entità principali;
   - mappa: libreria, layer, disegno e modifica delle geometrie;
@@ -101,7 +105,7 @@ Il binario procede in parallelo alla specifica del dominio. I legami sono questi
 - **Output**: `architettura/frontend-pattern.md`
 
 ### T3. Corrispondenza tra dominio e componenti
-- **Input**: T1, lo Step 4 chiuso.
+- **Input**: T1, lo Step 4 chiuso, la prima fetta verticale.
 - **Attività**:
   - app Django e moduli del frontend per le entità del dominio, partendo da §5 di [04-modello-dati.md](04-modello-dati.md);
   - permessi di ogni app (`fm_permissions.py`);
@@ -111,9 +115,9 @@ Il binario procede in parallelo alla specifica del dominio. I legami sono questi
 - **Output**: aggiornamento di [architettura/backend.md](architettura/backend.md) e [architettura/frontend.md](architettura/frontend.md)
 
 ### T4. Scaffold
-- **Input**: T1; T3, se è chiuso.
+- **Input**: T1 chiuso. Si fa prima di T2 e T3 (D-040).
 - **Attività**:
-  - copiare server e frontend dai progetti di riferimento secondo le regole di T1, con le versioni indicate;
+  - copiare server e frontend dai commit più recenti dei progetti di riferimento, secondo le regole di T1. Prima si riverificano le tabelle di §3 di [architettura/README.md](architettura/README.md) e le versioni;
   - creare `server/AGENTS.md` e `frontend/AGENTS.md` con le istruzioni per gli agenti che lavorano sul componente, ciascuno accanto a un `CLAUDE.md` che contiene solo `@AGENTS.md`;
   - verificare che il progetto parte: migrazioni, server, worker, build del frontend, login;
   - aggiornare i comandi e lo stato in [AGENTS.md](../AGENTS.md).

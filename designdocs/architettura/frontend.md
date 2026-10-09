@@ -1,6 +1,6 @@
 # Frontend
 
-> **Stato**: in revisione · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+> **Stato**: completato · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
 
 - **Obiettivo**: descrivere la SPA React di GreenManager: struttura, provider, moduli, data fetching, pattern UI di base, versioni.
 - **Fonte**: `admin/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura, componenti e pattern; [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036, D-038). Commit e regole di copia in [README.md](README.md).
@@ -105,7 +105,7 @@ src/modules/<modulo>/
 
 ## 5. Pattern dei moduli di dominio
 
-Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli per le singole sezioni sono il passo T2.
+Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pesatura. Qui si fissano i pattern comuni; quelli per le singole sezioni sono il passo T2.
 
 ### 5.1 API e data fetching
 
@@ -154,10 +154,11 @@ Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli
 - Il primo tab mostra il form in `layout="page"` e in sola lettura; il bottone *Modifica* dell'header lo rende modificabile.
 - Con modifiche non salvate, `BlockNavigation` chiede conferma prima di lasciare la pagina.
 - L'header può mostrare l'ultima modifica (`lastEditDetails`), dai campi di django-auditlog (§3.4 di [backend.md](backend.md)).
+- Lo storico completo delle modifiche del record si apre con `AuditHistoryModal`, copiato da bottaro-pesatura. Il rapporto con lo storico del dominio (`ChangeRecord`, D-034) si decide in T3 (domanda 3 di [backend.md](backend.md#domande-aperte)).
 
 ### 5.6 Permessi nell'interfaccia
 
-- `hasPermission(user, permesso)` e `useHasPermission(permesso)` accettano un codice, `{ oneOf: [...] }` o `{ allOf: [...] }`. Il superuser passa sempre (domanda 2 di [backend.md](backend.md#domande-aperte)).
+- `hasPermission(user, permesso)` e `useHasPermission(permesso)` accettano un codice, `{ oneOf: [...] }` o `{ allOf: [...] }`. Il superuser passa sempre, come nel backend (§3.1 di [backend.md](backend.md)).
 - `CheckPermission` mostra i figli solo con il permesso; `CheckStaff` solo allo staff.
 - Il controllo nell'interfaccia nasconde ciò che non si può fare. Il controllo vero è quello del backend.
 
@@ -173,7 +174,7 @@ Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli
 - **Adattamenti**:
   - l'italiano è la lingua di riferimento: il tipo delle traduzioni si ricava dai file `it`, non da `en` come in data-lab, e `fallbackLng` è `it`;
   - si copiano solo le traduzioni comuni (`auth`, `common`, `tenants`, `users`);
-  - le altre lingue dipendono dalla domanda 1.
+  - solo italiano nell'MVP (domanda 1). La struttura di i18next resta, per aggiungere altre lingue; `LanguageSelector` resta nascosto finché le lingue sono una.
 
 ## 7. Strumenti, build e immagine
 
@@ -233,6 +234,6 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 
 ## Domande aperte
 
-1. **Lingue dell'interfaccia.** Solo italiano nell'MVP, mantenendo la struttura di i18next per aggiungerne altre, o anche l'inglese, già tradotto nelle parti copiate? Proposta: solo italiano; il selettore della lingua resta nascosto finché le lingue sono una. → da chiudere alla revisione di T1
-2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. → rinviata a T2
+1. **Lingue dell'interfaccia.** Solo italiano nell'MVP, mantenendo la struttura di i18next per aggiungerne altre, o anche l'inglese, già tradotto nelle parti copiate? → **chiusa** alla revisione: solo italiano; il selettore della lingua resta nascosto finché le lingue sono una (§6).
+2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → rinviata a T2, da chiudere nella prima fetta verticale (D-040)
 3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2
