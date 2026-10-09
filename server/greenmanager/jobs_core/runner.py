@@ -37,3 +37,5 @@ def job_runner(*args, **kwargs):
             job_run.error_details = str(e)
             job_run.completed_at = timezone.now()
             job_run.save()
+            # Let RQ mark the job as failed and apply its failure handling.
+            raise

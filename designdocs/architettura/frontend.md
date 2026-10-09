@@ -54,7 +54,7 @@ Import con l'alias `@/` per tutto ciò che sta fuori dal modulo corrente (`@/com
 | `ThemeProvider` | `MantineProvider` con il tema (palette `default`, spaziature aggiuntive `3xs` e `xxs`), notifiche, `ModalsProvider`, `DatesProvider` con la lingua corrente |
 
 `Navigation.tsx` crea il router (`createBrowserRouter`):
-- **rotte guest** sotto `GuestLayout`, che rimanda alla home chi è già autenticato: `/login`, `/forgot-password`, `/reset-password`, `/verify-email`, `/welcome`;
+- **rotte guest** sotto `GuestLayout`, che rimanda alla home chi è già autenticato: `/login`, `/forgot-password`, `/reset-password`, `/welcome`. data-lab ha anche `/verify-email`, che non chiama nessun endpoint: non si copia, perché l'attivazione dell'account passa dal link verso `/welcome`;
 - **rotte autenticate** sotto `AuthLayout`, che rimanda al login chi non lo è: `/` (home), `/profile` e tutte le rotte dei moduli.
 
 `AuthLayout` usa l'`AppShell` di Mantine:
@@ -236,6 +236,11 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
   - `Table` dà una `key` a ogni riga, per l'avviso di React sulle liste;
   - `DataProvider` chiama `setState` in un effetto per svuotare la cache al cambio di organizzazione. È voluto: la regola `react-hooks/set-state-in-effect` è disattivata su quella riga, con il motivo;
   - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio.
+- **Revisione della PR dello scaffold**, correzioni al modulo `users`:
+  - disattivazione e riattivazione mandano solo `is_active`, il salvataggio di ruoli e permessi solo quei campi;
+  - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `SCRITTURA_RUOLI`, come l'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`);
+  - la rimozione del ruolo dagli utenti selezionati chiama `revoke_from`: in data-lab scriveva solo in console;
+  - `RoleMultiSelect` e `UserMultiSelect` tengono tra le opzioni gli elementi selezionati anche quando la ricerca non li restituisce.
 
 ## Domande aperte
 

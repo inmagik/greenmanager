@@ -5,7 +5,6 @@ import { Login } from "./pages/login"
 import { MODULES_ROUTES } from "virtual:routes"
 import { ForgotPassword } from "./pages/forgot-password"
 import { ResetPassword } from "./pages/reset-password"
-import { VerifyEmail } from "./pages/verify-email"
 import { Welcome } from "./pages/welcome"
 import { Profile } from "./pages/profile"
 import { Home } from "./pages/home"
@@ -79,20 +78,6 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <ResetPassword />,
-      },
-    ],
-  },
-  {
-    path: "/verify-email",
-    element: (
-      <ScreenWidthGuard>
-        <GuestLayout redirect_to="/" />
-      </ScreenWidthGuard>
-    ),
-    children: [
-      {
-        index: true,
-        element: <VerifyEmail />,
       },
     ],
   },

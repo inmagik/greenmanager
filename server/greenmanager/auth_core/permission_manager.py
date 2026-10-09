@@ -27,7 +27,9 @@ class PermissionManager:
     def collect_permissions(self):
         from django.apps import apps
 
-        self._permissions = []  # Clear existing permissions before collecting
+        # Build a local list and assign it at the end: concurrent first requests
+        # would otherwise append to the same shared list and duplicate entries.
+        permissions = []
         found_permission_codes = set()  # To track and avoid duplicate permission codes
 
         for app_config in apps.get_app_configs():
@@ -37,7 +39,7 @@ class PermissionManager:
                 for perm in declared_permissions:
                     perm_code = f"{app_config.label}.{perm['name']}"
                     if perm_code not in found_permission_codes:
-                        self._permissions.append(
+                        permissions.append(
                             {
                                 "module": app_config.name,
                                 "name": perm["name"],
@@ -48,6 +50,7 @@ class PermissionManager:
                         found_permission_codes.add(perm_code)
             except (ImportError, AttributeError):
                 continue
+        self._permissions = permissions
         self._loaded = True
 
 

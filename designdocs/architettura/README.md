@@ -120,7 +120,8 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 | `src/components/`: `DocumentEditor`, `LexicalEditor`, `ViewFrame`, `PhoneFrame`, `Simulations`, `SimulatorIcons`, `ChartExportModal`; `src/all-blocks.ts` | si scarta | editor di documenti e simulazioni |
 | `src/components/AuditHistoryModal`, da bottaro-pesatura | si copia | storico di django-auditlog di un record |
 | `src/components/Allegati` | da valutare in T3 | per `Attachment` |
-| `src/pages/`: accesso, recupero e reset della password, verifica email, benvenuto, profilo, home | si copia | la home si riscrive |
+| `src/pages/`: accesso, recupero e reset della password, benvenuto, profilo, home | si copia | la home si riscrive |
+| `src/pages/verify-email` | si scarta | non chiama nessun endpoint (§2 di [frontend.md](frontend.md)) |
 | `src/i18n/` | si adatta | solo le parti comuni (`auth`, `common`, `tenants`, `users`); solo italiano nell'MVP (§6 di [frontend.md](frontend.md)) |
 | `src/modules/users`, `src/modules/tenants` | si copia | |
 | `src/modules/datasets` | si scarta | resta il modello dei pattern dei moduli di dominio |

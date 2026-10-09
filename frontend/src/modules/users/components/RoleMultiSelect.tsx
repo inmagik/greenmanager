@@ -17,7 +17,22 @@ export function RoleMultiSelect({ value, onChange, ...props }: Props) {
   const filters = useMemo(() => ({ page: 1, search: debSearchValue }), [debSearchValue])
   const { data: roles } = useRoles(filters)
 
-  const options = roles?.results.map((role) => ({ value: role.id.toString(), label: role.name })) ?? []
+  // Selected roles stay available when the search no longer returns them.
+  const rolesById = useMemo(() => {
+    const map = new Map<string, Role>()
+
+    for (const role of value) {
+      map.set(role.id.toString(), role)
+    }
+
+    for (const role of roles?.results ?? []) {
+      map.set(role.id.toString(), role)
+    }
+
+    return map
+  }, [roles?.results, value])
+
+  const options = Array.from(rolesById.values(), (role) => ({ value: role.id.toString(), label: role.name }))
 
   return (
     <MultiSelect
@@ -26,7 +41,9 @@ export function RoleMultiSelect({ value, onChange, ...props }: Props) {
       onSearchChange={setSearchValue}
       data={options}
       value={value.map((role) => role.id.toString())}
-      onChange={(val) => onChange(val.map((id) => roles!.results.find((role) => role.id.toString() === id)!))}
+      onChange={(val) =>
+        onChange(val.map((id) => rolesById.get(id)).filter((role): role is Role => role !== undefined))
+      }
       {...props}
     />
   )

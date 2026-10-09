@@ -1,5 +1,5 @@
 import django_filters as FS
-from auth_core.utils import ActionPermission, ManageUserPrivilegesPermission
+from auth_core.utils import ActionPermission
 from axes.models import AccessAttempt
 from axes.utils import reset as reset_axes
 from django.conf import settings
@@ -23,10 +23,12 @@ from tenants.models import TenantMembership
 from .models import Role, User
 from .permission_manager import permission_manager
 from .serializers import (
-    GrantRoleToUsersSerializer,
     RoleSerializer,
+    RoleUsersSerializer,
     UpdateMeSerializer,
     UserSerializer,
+    is_shared_with_other_tenants,
+    shared_user_error,
 )
 
 
@@ -124,12 +126,11 @@ class UsersViewset(
     action_permissions = {
         "list": ["auth_core.LETTURA_UTENTI"],
         "retrieve": ["auth_core.LETTURA_UTENTI"],
-        "create": ["auth_core.SCRITTURA_UTENTI", ManageUserPrivilegesPermission],
-        "update": ["auth_core.SCRITTURA_UTENTI", ManageUserPrivilegesPermission],
-        "partial_update": [
-            "auth_core.SCRITTURA_UTENTI",
-            ManageUserPrivilegesPermission,
-        ],
+        # Changing roles or permissions also requires SCRITTURA_RUOLI: the check is
+        # in UserSerializer, which knows the current values.
+        "create": ["auth_core.SCRITTURA_UTENTI"],
+        "update": ["auth_core.SCRITTURA_UTENTI"],
+        "partial_update": ["auth_core.SCRITTURA_UTENTI"],
         "destroy": ["auth_core.SCRITTURA_UTENTI"],
         "unlock": ["auth_core.SCRITTURA_UTENTI"],
         "bulk_delete": ["auth_core.SCRITTURA_UTENTI"],
@@ -145,6 +146,20 @@ class UsersViewset(
         if tenant is None:
             return self.restrict_queryset_without_tenant(qs)
         return qs.filter(tenant_memberships__tenant=tenant)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["tenant"] = self.get_current_tenant()
+        return context
+
+    def perform_destroy(self, instance):
+        # A user shared with other tenants would disappear from them too.
+        tenant = self.get_current_tenant()
+        if not self.request.user.is_staff and is_shared_with_other_tenants(
+            instance, tenant
+        ):
+            raise shared_user_error(instance)
+        instance.delete()
 
     def perform_create(self, serializer):
         tenant = self.get_current_tenant()
@@ -173,7 +188,9 @@ class UsersViewset(
         instance = self.get_object()
         reset_axes(username=instance.email)
         instance.refresh_from_db()
-        return Response(UserSerializer(instance).data)
+        return Response(
+            UserSerializer(instance, context=self.get_serializer_context()).data
+        )
 
 
 class RolesViewset(
@@ -202,6 +219,11 @@ class RolesViewset(
             return self.restrict_queryset_without_tenant(qs)
         return qs.filter(tenant=tenant)
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["tenant"] = self.get_current_tenant()
+        return context
+
     def perform_create(self, serializer):
         tenant = self.get_current_tenant()
         if tenant is None:
@@ -215,8 +237,25 @@ class RolesViewset(
             )
         serializer.save(tenant=tenant)
 
+    def role_users(self, request):
+        serializer = RoleUsersSerializer(
+            data=request.data, context=self.get_serializer_context()
+        )
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data["user_ids"]
+
+    def users_response(self, users):
+        queryset = User.objects.filter(id__in=[user.id for user in users])
+        return Response(
+            UserSerializer(
+                queryset.prefetch_related("roles"),
+                many=True,
+                context=self.get_serializer_context(),
+            ).data
+        )
+
     @extend_schema(
-        request=GrantRoleToUsersSerializer,
+        request=RoleUsersSerializer,
         responses={200: UserSerializer(many=True)},
     )
     @action(
@@ -227,10 +266,24 @@ class RolesViewset(
     )
     def grant_to(self, request, *args, **kwargs):
         role = self.get_object()
-        serializer = GrantRoleToUsersSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user_ids = serializer.validated_data["user_ids"]
-        users = User.objects.filter(id__in=[u.id for u in user_ids])
+        users = self.role_users(request)
         for user in users:
             user.roles.add(role)
-        return Response(UserSerializer(users, many=True).data)
+        return self.users_response(users)
+
+    @extend_schema(
+        request=RoleUsersSerializer,
+        responses={200: UserSerializer(many=True)},
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[ActionPermission],
+        action_permissions={"revoke_from": ["auth_core.SCRITTURA_RUOLI"]},
+    )
+    def revoke_from(self, request, *args, **kwargs):
+        role = self.get_object()
+        users = self.role_users(request)
+        for user in users:
+            user.roles.remove(role)
+        return self.users_response(users)

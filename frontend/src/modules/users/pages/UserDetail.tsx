@@ -54,19 +54,27 @@ export function UserDetail() {
     )
   }
 
+  // Roles and permissions are changed only with the role-write permission.
+  const editPermission =
+    activeTab === "permissions" ? AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI : AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI
+
   const mainActions: React.ReactNode = (
-    <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
-      <Button
-        leftSection={<TbPencil />}
-        disabled={editable}
-        onClick={() => {
-          setEditable(true)
-        }}
-      >
-        {t("common.edit")}
-      </Button>
-      <UserContextActions user={user} onDelete={() => navigate(-1)} />
-    </CheckPermission>
+    <>
+      <CheckPermission permission={editPermission}>
+        <Button
+          leftSection={<TbPencil />}
+          disabled={editable}
+          onClick={() => {
+            setEditable(true)
+          }}
+        >
+          {t("common.edit")}
+        </Button>
+      </CheckPermission>
+      <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+        <UserContextActions user={user} onDelete={() => navigate(-1)} />
+      </CheckPermission>
+    </>
   )
   const tenantById = new Map(tenants.map((tenant) => [tenant.id, tenant]))
   const userTenants = user.tenants.map((tenantId) => tenantById.get(tenantId) ?? { id: tenantId, name: `Tenant #${tenantId}`, slug: "", is_active: undefined })
@@ -120,7 +128,7 @@ export function UserDetail() {
                   title={t("users.detail.disabledTitle")}
                   message={t("users.detail.disabledMessage")}
                   action={t("users.detail.reactivate")}
-                  onAction={() => updateUser({ ...user, is_active: true })}
+                  onAction={() => updateUser({ id: user.id, is_active: true })}
                   actionPermission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}
                 />
               </Box>
@@ -159,7 +167,7 @@ export function UserDetail() {
               readonly={!editable}
               onSubmit={async (values) => {
                 await updateUser({
-                  ...user,
+                  id: user.id,
                   permissions: values.permissions,
                   roles: values.roles.map((role) => role.id),
                 })

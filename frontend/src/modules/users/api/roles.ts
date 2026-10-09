@@ -34,6 +34,10 @@ export function useGrantRoleToUsers(id: number) {
   return useAction(`${API_URL}/api/core/auth/roles/${id}/grant_to`)
 }
 
+export function useRevokeRoleFromUsers(id: number) {
+  return useAction(`${API_URL}/api/core/auth/roles/${id}/revoke_from`)
+}
+
 export function useBulkDeleteRoles() {
   const queryClient = useQueryClient()
   return useAction(`${API_URL}/api/core/auth/roles/bulk-delete`, {

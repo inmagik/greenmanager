@@ -7,7 +7,7 @@ import { useDebouncedValue, usePrevious } from "@mantine/hooks"
 import { useEffect, useMemo, useState } from "react"
 import { TbClipboardList, TbPencil, TbSearch, TbUser, TbUserX, TbVectorBezierCircle } from "react-icons/tb"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { useRole, useUpdateRole } from "../api/roles"
+import { useRevokeRoleFromUsers, useRole, useUpdateRole } from "../api/roles"
 import { UpdateRoleForm } from "../components/UpdateRoleForm"
 import { useUsers } from "../api/users"
 import GrantRoleToUsersAction from "../components/GrantRoleToUsersAction"
@@ -42,6 +42,7 @@ export function RoleDetail() {
   // React query
   const { data: role } = useRole(id)
   const { mutateAsync: updateRole } = useUpdateRole()
+  const { mutateAsync: revokeRoleFromUsers } = useRevokeRoleFromUsers(id)
   const { data: usersWithRole, isLoading: isLoadingUsers, refetch: refetchUsers } = useUsers(filters)
 
   const selectedUsers = useMemo(() => {
@@ -55,7 +56,7 @@ export function RoleDetail() {
         title={t("roles.detail.emptyTitle")}
         description={t("roles.detail.emptyDescription")}
         action={
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
             <GrantRoleToUsersAction id={id} refetchUsers={refetchUsers} setSelection={setSelection} />
           </CheckPermission>
         }
@@ -96,7 +97,7 @@ export function RoleDetail() {
   )
   if (activeTab === "users") {
     mainActionsRole = (
-      <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+      <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
         <GrantRoleToUsersAction id={id} refetchUsers={refetchUsers} setSelection={setSelection} />
       </CheckPermission>
     )
@@ -113,7 +114,7 @@ export function RoleDetail() {
         >
           {t("common.cancel")}
         </Button>
-        <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+        <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
           <Button
             leftSection={<TbUserX />}
             color="red.8"
@@ -131,15 +132,19 @@ export function RoleDetail() {
                         </Text>
                       }
                     >
-                      <Text size="sm">{t("users.irreversible")}</Text>
+                      <Text size="sm">{t("roles.detail.removeSelectedWarning")}</Text>
                     </Alert>
                   </>
                 ),
                 labels: { confirm: t("common.confirm"), cancel: t("common.cancel") },
                 confirmProps: { color: "red.9" },
                 cancelProps: { color: "gray", variant: "subtle" },
-                onCancel: () => console.log("Cancel"),
-                onConfirm: () => console.log("Confirmed"),
+                onConfirm: () => {
+                  revokeRoleFromUsers({ user_ids: selection }).then(() => {
+                    setSelection([])
+                    refetchUsers()
+                  })
+                },
               })
             }}
           >

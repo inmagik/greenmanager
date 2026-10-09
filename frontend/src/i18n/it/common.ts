@@ -76,6 +76,9 @@ const translations = {
     tenant_required: "È necessaria un'organizzazione.",
     tenant_not_found: "Organizzazione non trovata.",
     user_already_has_default_tenant: "L'utente ha già un'organizzazione predefinita.",
+    user_shared_with_other_tenants:
+      "{{name}} appartiene anche ad altre organizzazioni: solo lo staff può disattivarne o eliminarne l'account.",
+    role_write_permission_required: "Per cambiare ruoli e permessi serve il permesso di gestione dei ruoli.",
     invalid_bbox_format: "Formato bbox non valido. Usa 'minx,miny,maxx,maxy'.",
     invalid_bbox_bounds: "Limiti bbox non validi. Verifica che minx < maxx e miny < maxy.",
     invalid_srid: "Lo SRID {{value}} non è valido.",

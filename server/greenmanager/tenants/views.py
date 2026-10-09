@@ -23,7 +23,12 @@ from tenants.serializers import (
     TenantUserSerializer,
     TenantUsersSerializer,
 )
-from tenants.services import add_tenant_users, remove_tenant_user, replace_tenant_users
+from tenants.services import (
+    add_tenant_users,
+    ensure_default_membership_id,
+    remove_tenant_user,
+    replace_tenant_users,
+)
 
 
 class TenantViewSet(
@@ -199,12 +204,29 @@ class TenantMembershipViewSet(
     ordering_fields = ["tenant__name", "user__email", "created_at"]
     action_permissions = TenantViewSet.action_permissions
 
+    def get_permissions(self):
+        # Memberships decide who sees the data of a tenant: as for tenants, only
+        # staff users change them (the users API adds members to the current one).
+        if self.action in ["list", "retrieve"]:
+            return super().get_permissions()
+        return [IsAdminUser()]
+
     def get_queryset(self):
         qs = super().get_queryset()
         tenant = self.get_current_tenant()
         if tenant is None:
             return qs.filter(user=self.request.user)
         return qs.filter(tenant=tenant)
+
+    def perform_update(self, serializer):
+        previous_user_id = serializer.instance.user_id
+        membership = serializer.save()
+        ensure_default_membership_id(previous_user_id)
+        ensure_default_membership_id(membership.user_id)
+
+    def perform_destroy(self, instance):
+        # The service keeps a default membership for the user.
+        remove_tenant_user(instance.tenant, instance.user)
 
     def perform_create(self, serializer):
 

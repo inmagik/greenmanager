@@ -30,7 +30,8 @@ class DynamicSchedulingManager:
     def collect_schedulable_jobs(self):
         from django.apps import apps
 
-        self._funcs = []  # Clear existing functions before collecting
+        # Build a local list and assign it at the end, as in PermissionManager.
+        funcs = []
         found_func_codes = set()  # To track and avoid duplicate function codes
 
         for app_config in apps.get_app_configs():
@@ -42,7 +43,7 @@ class DynamicSchedulingManager:
                 for job in declared_schedulable_jobs:
                     func_code = job["func"]
                     if func_code not in found_func_codes:
-                        self._funcs.append(
+                        funcs.append(
                             {
                                 "name": app_config.label + ": " + job["name"],
                                 "func": job["func"],
@@ -51,6 +52,7 @@ class DynamicSchedulingManager:
                         found_func_codes.add(func_code)
             except (ImportError, AttributeError):
                 continue
+        self._funcs = funcs
         self._loaded = True
 
 

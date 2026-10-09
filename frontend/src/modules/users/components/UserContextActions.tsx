@@ -36,7 +36,7 @@ export function UserContextActions({ user, onDelete, onDeactivate }: Props) {
               t("users.actions.deactivateWarning")
             ).then((confirmed) => {
               if (confirmed) {
-                updateUser({ ...user, is_active: false }).then(() => {
+                updateUser({ id: user.id, is_active: false }).then(() => {
                   onDeactivate?.()
                 })
               }

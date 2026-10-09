@@ -27,6 +27,7 @@ class BulkDeleteActionMixin:
         ser = ser_class(data=request.data)
         ser.is_valid(raise_exception=True)
 
+        # Same path as the single deletion, so that the rules of the viewset apply.
         for instance in ser.validated_data["ids"]:
-            instance.delete()
+            self.perform_destroy(instance)
         return Response(status=204)

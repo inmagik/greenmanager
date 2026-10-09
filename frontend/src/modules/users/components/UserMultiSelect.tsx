@@ -18,7 +18,6 @@ export function UserMultiSelect({ value, onChange, roleId, ...props }: Props) {
   const filters = useMemo(() => ({ page: 1, search: debSearchValue, without_role: roleId }), [debSearchValue, roleId])
   const { data: users } = useUsers(filters)
 
-  const options = users?.results.map((user) => ({ value: user.id.toString(), label: user.full_name })) ?? []
   const usersById = useMemo(() => {
     const map = new Map<string, User>()
 
@@ -32,6 +31,9 @@ export function UserMultiSelect({ value, onChange, roleId, ...props }: Props) {
 
     return map
   }, [users?.results, value])
+
+  // Selected users stay among the options, so that their labels are shown.
+  const options = Array.from(usersById.values(), (user) => ({ value: user.id.toString(), label: user.full_name }))
 
   return (
     <MultiSelect

@@ -134,12 +134,21 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 | `me/` | dati dell'utente corrente (`GET`), modifica del profilo (`PATCH`) |
 | `permissions/` | permessi disponibili |
 | `users/` | utenti del tenant corrente; un utente creato da qui entra nel tenant corrente. Action `unlock` per sbloccare un utente bloccato da axes; filtri per stato (attivo, disattivato, bloccato) e ruolo |
-| `roles/` | ruoli del tenant corrente; action `grant_to` per assegnare un ruolo a più utenti |
+| `users/` visto dal tenant | ruoli, permessi effettivi e appartenenze dell'utente sono quelli del tenant corrente; solo lo staff vede le altre appartenenze |
+| `roles/` | ruoli del tenant corrente; action `grant_to` e `revoke_from` per assegnare un ruolo a più utenti del tenant e per toglierlo |
 
 **Adattamenti.**
 - Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4).
 - `RuntimePermission` e `ActionPermission` lasciano passare il superuser, come in bottaro-pesatura; in data-lab guardano solo `all_permissions` (domanda 2).
-- `ManageUserPrivilegesPermission`, da bottaro-pesatura: chi crea o modifica un utente e gli assegna ruoli o permessi deve avere anche `SCRITTURA_RUOLI`. In data-lab bastava `SCRITTURA_UTENTI`, e un utente poteva assegnarsi privilegi da solo. È nelle action `create`, `update` e `partial_update` degli utenti, con i test portati da bottaro-pesatura.
+- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia ruoli o permessi diretti deve avere anche `SCRITTURA_RUOLI`. In data-lab bastava `SCRITTURA_UTENTI`, e un utente poteva assegnarsi privilegi da solo.
+  - Il controllo sta in `UserSerializer` e confronta i valori nuovi con quelli attuali: chi ha solo `SCRITTURA_UTENTI` può modificare o disattivare un utente anche se la richiesta ripete ruoli e permessi invariati.
+  - bottaro-pesatura usa `ManageUserPrivilegesPermission`, che guarda solo la presenza dei campi nella richiesta. Qui non c'è.
+- **Utenti visti da un tenant** (revisione della PR dello scaffold): `UserSerializer` riceve il tenant della richiesta.
+  - Mostra e accetta solo i ruoli di quel tenant; una modifica conserva i ruoli degli altri tenant.
+  - Calcola `all_permissions` sui ruoli di quel tenant; mostra le altre appartenenze solo allo staff.
+  - `grant_to` e `revoke_from` accettano solo utenti del tenant.
+- **Utenti condivisi** con altri tenant: solo lo staff li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché `is_active` e l'utente valgono per tutti i tenant. Il comportamento definitivo si decide in T3 (domanda 4).
+- `PermissionManager` costruisce l'elenco dei permessi in una variabile locale e lo assegna alla fine. In data-lab due prime richieste simultanee lo riempivano due volte, con permessi duplicati nell'interfaccia. Lo stesso vale per l'elenco dei job schedulabili di `jobs_core`.
 - `Role` ha l'ordinamento di default per nome; il viewset dei ruoli lo ripete nel queryset, perché `annotate(Count(...))` ignora `Meta.ordering`.
 - I codici dei permessi restano quelli di data-lab (`LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`): li usa il modulo `users` del frontend, condiviso tra i progetti.
 
@@ -159,7 +168,7 @@ In GreenManager il tenant è l'**organizzazione** che usa il sistema, l'entità 
 
 **Endpoint** sotto `api/core/`:
 - `tenants/`: lettura per i membri, scrittura solo per lo staff. Un tenant con dati collegati non si elimina (errore `tenant_has_related_data` con l'elenco dei dati). Action `users`, `add-users` e `remove-user` per gestire i membri;
-- `tenant-memberships/`.
+- `tenant-memberships/`: lettura per i membri con `LETTURA_UTENTI`, scrittura solo per lo staff, come per i tenant. In data-lab bastava `SCRITTURA_UTENTI`, e un amministratore poteva aggiungere al proprio tenant qualunque utente del sistema. Cancellazioni e modifiche passano da `services.py`, che mantiene un tenant di default.
 
 Le modifiche ai membri passano da `services.py`, che blocca con `select_for_update` utenti e tenant coinvolti e mantiene un tenant di default per ogni utente.
 
@@ -178,7 +187,7 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 
 **Funzionamento.**
 - Ogni app dichiara le funzioni schedulabili in `fm_scheduling.py`: `schedulable_jobs = [{"name": "...", "func": "app.jobs.funzione"}]`. Solo queste si possono usare nelle definizioni.
-- Al salvataggio di una definizione, un receiver la registra nello scheduler. Lo scheduler esegue sempre `job_runner`, che chiama la funzione vera e aggiorna il `JobRun`.
+- Al salvataggio di una definizione, un receiver la registra nello scheduler. Lo scheduler esegue sempre `job_runner`, che chiama la funzione vera e aggiorna il `JobRun`. Se la funzione fallisce, `job_runner` registra l'errore e rilancia l'eccezione, così RQ segna il job come fallito; in data-lab l'eccezione si perdeva.
 - Una `ScheduledJobDefinition` crea subito il suo `JobRun`. Per avviare un job da un'API e restituirne subito l'identificativo si crea una `ScheduledJobDefinition` con `start_at` adesso. La guida `how-to.md` dell'app spiega questo e gli altri casi, e si copia così com'è.
 - Il comando `schedule_auto_tasks` allinea allo scheduler i job di `SCHEDULED_TASKS`. Lo lancia `scripts/scheduler` all'avvio.
 - Processi: il worker (`python manage.py rqworker default`) e lo scheduler (`scripts/scheduler`), oltre al server.
@@ -192,7 +201,7 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 | Modulo | Contenuto |
 |---|---|
 | `pagination.py` | `StandardPagination` (20 per pagina; risposta con `count`, `full_count`, `page_size`, `next`, `previous`, `results`), `HugePagination` (10.000), `StandardPaginationMixin` e `HugePaginationMixin` per i viewset |
-| `mixins.py` | `BulkDeleteActionMixin`: action `POST bulk-delete/` con `{"ids": [...]}`, limitata al queryset visibile, in una transazione |
+| `mixins.py` | `BulkDeleteActionMixin`: action `POST bulk-delete/` con `{"ids": [...]}`, limitata al queryset visibile, in una transazione. Cancella con `perform_destroy`, quindi con le stesse regole della cancellazione singola (in data-lab chiamava `delete()` direttamente) |
 | `structural_filters.py` | `StructuralFilterSet` e `StructuralFilterMixin` (sotto) |
 | `nested_multi_parser.py` | `NestedMultiPartParser`: interpreta chiavi multipart come `items[0].name` e `items[0].file` in dati annidati, per i form con file |
 | `audit_log/` | `standard_auditlog_manager()`: manager che annota `created_at`, `updated_at`, `created_by_email`, `updated_by_email` dalle voci di django-auditlog; `AuditLogFields`, i campi corrispondenti per i serializer; `AuditlogActorMixin` (sotto) |
@@ -389,6 +398,10 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
 1. **Test.** Runner di Django con `tests.py` per app, come data-lab, o pytest con pytest-django, come prevede bottaro-pesatura? → **chiusa** alla revisione: runner di Django (`python manage.py test`), con `tests.py` o `tests/` per app, come data-lab.
 2. **Superuser e permessi.** Il frontend lascia passare il superuser in ogni controllo (`hasPermission`), il backend no: `ActionPermission` guarda solo `all_permissions`. → **chiusa** alla revisione: il superuser passa anche nel backend, in `RuntimePermission` e `ActionPermission`, come in bottaro-pesatura (§3.1).
 3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
-4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
+4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. Due punti collegati, emersi dalla revisione della PR dello scaffold:
+   - i permessi diretti dell'utente (`permissions`) valgono in tutti i tenant;
+   - `is_active` e la cancellazione dell'utente valgono per tutti i tenant. Per ora solo lo staff li cambia per gli utenti condivisi (§3.1).
+
+   → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
 5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
 6. **Archiviazione di foto e allegati.** data-lab salva i file su disco (`MEDIA_ROOT`). Le foto sono il cuore del registro dello stato e crescono molto. Proposta: disco nell'MVP, con `STORAGES` pronto per un object storage compatibile S3. → rinviata a T3

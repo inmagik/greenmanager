@@ -128,3 +128,52 @@ class TenantUsersApiTests(APITestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assertEqual(response.data["code"], "user_not_associated_with_tenant")
         self.assertEqual(response.data["params"], {"name": user.full_name})
+
+
+class TenantMembershipApiTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.tenant = Tenant.objects.create(name="Tenant A", slug="tenant-a")
+        self.other_tenant = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+        self.user = User.objects.create_user(email="user@example.com")
+        self.default_membership = TenantMembership.objects.create(
+            tenant=self.tenant, user=self.user, is_default=True
+        )
+        self.other_membership = TenantMembership.objects.create(
+            tenant=self.other_tenant, user=self.user
+        )
+
+    def test_non_staff_cannot_create_memberships(self):
+        admin = get_user_model().objects.create_user(email="admin@example.com")
+        admin.permissions = ["auth_core.SCRITTURA_UTENTI"]
+        admin.save(update_fields=["permissions"])
+        TenantMembership.objects.create(tenant=self.tenant, user=admin, is_default=True)
+        outsider = get_user_model().objects.create_user(email="out@example.com")
+        self.client.force_authenticate(admin)
+
+        response = self.client.post(
+            "/api/core/tenant-memberships/",
+            {"user": outsider.pk},
+            format="json",
+            HTTP_X_TENANT_ID=str(self.tenant.pk),
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertFalse(TenantMembership.objects.filter(user=outsider).exists())
+
+    def test_deleting_default_membership_keeps_a_default(self):
+        staff = get_user_model().objects.create_user(email="staff@example.com")
+        staff.is_staff = True
+        staff.save(update_fields=["is_staff"])
+        self.client.force_authenticate(staff)
+
+        response = self.client.post(
+            "/api/core/tenant-memberships/bulk-delete/",
+            {"ids": [self.default_membership.pk]},
+            format="json",
+            HTTP_X_TENANT_ID=str(self.tenant.pk),
+        )
+
+        self.assertEqual(response.status_code, 204, response.content)
+        self.other_membership.refresh_from_db()
+        self.assertTrue(self.other_membership.is_default)

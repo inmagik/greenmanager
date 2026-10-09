@@ -13,25 +13,6 @@ class RuntimePermission(BasePermission):
         return self.permission_code in getattr(user, "all_permissions", [])
 
 
-class ManageUserPrivilegesPermission(BasePermission):
-    """Require role-management permission when changing user privileges."""
-
-    protected_fields = {"roles", "permissions"}
-    permission_code = "auth_core.SCRITTURA_RUOLI"
-
-    def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-        if request.user.is_superuser:
-            return True
-        submitted_fields = {
-            key.split("[", 1)[0] for key in request.data if isinstance(key, str)
-        }
-        if not self.protected_fields.intersection(submitted_fields):
-            return True
-        return self.permission_code in getattr(request.user, "all_permissions", [])
-
-
 class ActionPermission(BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:

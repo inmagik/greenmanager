@@ -67,6 +67,7 @@ const roles = {
     assign: "Assegna a un nuovo utente",
     removeSelected: "Rimuovi il ruolo dagli utenti selezionati",
     removeSelectedPrompt: "Stai per rimuovere il ruolo dagli utenti selezionati:",
+    removeSelectedWarning: "Gli utenti perdono i permessi del ruolo. Potrai assegnarglielo di nuovo.",
   },
   actions: {
     label: "Azioni",
