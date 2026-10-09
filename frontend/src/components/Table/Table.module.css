@@ -1,0 +1,159 @@
+.table {
+  --text-fz: var(--mantine-font-size-sm);
+  --text-color: var(--mantine-color-gray-7);
+  overflow: auto;
+}
+
+.table input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.tableBody {
+  background-color: var(--mantine-color-body);
+}
+
+.tableRow, .tableHeader {
+  .tableCell:first-child {
+    padding-left: var(--mantine-spacing-sm);
+  }
+  .tableCell:last-child {
+    padding-right: var(--mantine-spacing-sm);
+  }
+}
+
+.tableRowContext:hover {
+  background-color: var(--mantine-primary-color-light-hover);
+}
+
+.tableCell {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-xs);
+}
+
+.tableHeader {
+  background-color: var(--mantine-color-body);
+}
+
+.tableHeader .tableCell {
+  --text-color: var(--mantine-primary-color-filled);
+  border-top: 1px solid var(--mantine-color-gray-3);
+  border-bottom: 1px solid var(--mantine-primary-color-filled);
+  background-color: var(--mantine-primary-color-light);
+}
+
+.tableBody .tableRow:not(.withExpansion) .tableCell {
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+.tableExpansion.last {
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+.tableSortIcon {
+  cursor: pointer;
+  margin-left: var(--mantine-spacing-sm);
+  color: var(--mantine-primary-color-filled);
+}
+
+.tableFooter {
+  background-color: var(--mantine-color-white);
+  border-top: 1px solid var(--mantine-color-gray-3);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  --text-color: var(--mantine-color-gray-7);
+}
+
+.footerLeft {
+  justify-self: start;
+}
+
+.footerCenter {
+  justify-self: center;
+}
+
+.footerRight {
+  justify-self: end;
+}
+
+.tableRow:hover .tableCell a {
+  --text-color: var(--mantine-primary-color-filled);
+}
+
+@media (max-width: 47.99em) {
+  .table {
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .tableCell {
+    min-height: 44px;
+    padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .tableCell > * {
+    max-width: min(18rem, 65vw);
+  }
+
+  .tableCell[data-column="_selection"] {
+    left: 0 !important;
+    z-index: 4 !important;
+    background-color: var(--mantine-color-body);
+    box-shadow: 1px 0 0 var(--mantine-color-gray-3);
+  }
+
+  .tableCell[data-column="_actions"] {
+    position: sticky !important;
+    right: 0 !important;
+    z-index: 4 !important;
+    background-color: var(--mantine-color-body);
+    box-shadow: -1px 0 0 var(--mantine-color-gray-3);
+  }
+
+  .tableHeader .tableCell[data-column="_selection"],
+  .tableHeader .tableCell[data-column="_actions"] {
+    z-index: 12 !important;
+    background-color: var(--mantine-primary-color-light);
+  }
+
+  .tableExpansion {
+    overflow-x: auto;
+  }
+
+  .tableFooter {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center !important;
+    gap: var(--mantine-spacing-xxs);
+    padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
+  }
+
+  .tableFooter > div {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  .footerLeft {
+    display: flex;
+    justify-content: center;
+    order: 2;
+  }
+
+  .footerCenter {
+    order: 1;
+  }
+
+  .footerRight {
+    order: 0;
+  }
+
+  .footerRight :global(.mantine-Text-root) {
+    text-align: center;
+  }
+
+  .tableFooter :global(.mantine-Pagination-root) {
+    width: max-content;
+    max-width: 100%;
+  }
+}

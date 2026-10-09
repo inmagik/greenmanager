@@ -1,0 +1,11 @@
+.page {
+  height: 100dvh;
+  min-width: 0;
+  background: var(--mantine-color-gray-0);
+}
+
+.content {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
