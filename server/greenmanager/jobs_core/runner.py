@@ -3,7 +3,7 @@ from django.utils.module_loading import import_string
 from django_rq import job
 from rq import get_current_job
 
-from .models import JobRun
+from .models import CronJobDefinition, JobRun
 
 
 @job
@@ -14,6 +14,11 @@ def job_runner(*args, **kwargs):
     if func_path:
         job_func = import_string(func_path)
         run_id = scheduler_meta.get("run_id")
+        # Each run of a model-backed cron gets a new JobRun, linked to its
+        # definition (if it still exists).
+        cron_job_definition = CronJobDefinition.objects.filter(
+            pk=scheduler_meta.get("cron_job_definition_id")
+        ).first()
         job_run = JobRun.objects.get_or_create(
             id=run_id,
             defaults={
@@ -21,6 +26,7 @@ def job_runner(*args, **kwargs):
                 "args": args,
                 "kwargs": kwargs,
                 "status": "running",
+                "cron_job_definition": cron_job_definition,
             },
         )[0]
         job_run.status = "running"

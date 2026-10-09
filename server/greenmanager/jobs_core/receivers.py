@@ -39,7 +39,11 @@ def schedule_job_on_save(sender, instance, created, **kwargs):
             meta={
                 **instance.meta,
                 "__inmagik_auto_scheduler": False,
-                "__inmagik_scheduler": {"func": instance.func, "run_id": None},
+                "__inmagik_scheduler": {
+                    "func": instance.func,
+                    "run_id": None,
+                    "cron_job_definition_id": instance.id,
+                },
             },
             use_local_timezone=instance.use_local_timezone,
             queue_name=instance.queue_name,

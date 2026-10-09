@@ -53,6 +53,7 @@ export function TableHeader<T>({
         }
         const title =
           typeof header.title === "string" && header.title.includes(".") ? t(header.title) : header.title
+        const columnLabel = typeof title === "string" && title ? title : (header.name ?? "")
         let node: React.ReactNode = <Text size="sm">{title}</Text>
         if (header.renderHeader) {
           node = header.renderHeader()
@@ -75,7 +76,11 @@ export function TableHeader<T>({
                 justifyContent="center"
                 alignItems="center"
               >
-                <Checkbox checked={allSelected ?? false} onChange={onSelectAll ?? (() => {})} />
+                <Checkbox
+                  checked={allSelected ?? false}
+                  onChange={onSelectAll ?? (() => {})}
+                  aria-label={t("table.selectAll")}
+                />
               </Flex>
             )}
             {icon}
@@ -90,6 +95,7 @@ export function TableHeader<T>({
                   }
                 }}
                 direction={isOrdered ? orderDirection : null}
+                columnLabel={columnLabel}
               />
             )}
           </TableCell>

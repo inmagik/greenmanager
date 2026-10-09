@@ -1,4 +1,5 @@
 import { Stack, Text, Tooltip } from "@mantine/core"
+import { useTranslation } from "react-i18next"
 import { TbHelp } from "react-icons/tb"
 import type { Permission } from "../types"
 
@@ -8,6 +9,7 @@ type Props = {
 }
 
 export function PermissionTooltip({ permission, enablingRole }: Props) {
+  const { t } = useTranslation()
   return (
     <Tooltip
       label={
@@ -23,7 +25,7 @@ export function PermissionTooltip({ permission, enablingRole }: Props) {
                 <br />
                 <br />
                 <Text span>
-                  This permission is included in the role{" "}
+                  {t("roles.permissionIncludedIn")}{" "}
                   <Text span fw="bold" c="yellow.9">
                     {enablingRole.name}
                   </Text>

@@ -19,7 +19,13 @@ export function UserContextActions({ user, onDelete, onDeactivate }: Props) {
   return (
     <Menu>
       <Menu.Target>
-        <Button px="xs" variant="subtle" color="gray" c="gray.7">
+        <Button
+          px="xs"
+          variant="subtle"
+          color="gray"
+          c="gray.7"
+          aria-label={t("users.actions.menuFor", { name: user.full_name || user.email })}
+        >
           <TbDots size="1.25rem" />
         </Button>
       </Menu.Target>

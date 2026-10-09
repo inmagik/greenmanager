@@ -50,7 +50,7 @@ export function AlertError({ title, message, action, onAction, actionPermission,
           </Text>
           <Text size="sm">{message}</Text>
         </Stack>
-        {!!action && !!onAction && (
+        {hasActionPermission && !!action && !!onAction && (
           <Button
             variant="subtle"
             color="red"

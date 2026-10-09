@@ -9,6 +9,8 @@ export type TableProps<T, _S extends keyof T = never> = Omit<HTMLProps<HTMLDivEl
   onOrderChange?: (orderBy: string | null, orderDirection: "asc" | "desc") => void
   onRowClick?: (row: T, index: number) => void
   getRowStyle?: (row: T, index: number) => React.CSSProperties
+  /** Key of each row. By default the `id` field of the record, or the index if there is none. */
+  getRowKey?: (row: T, index: number) => React.Key
 }
 
 export type TableColumnProps<T> = {
@@ -43,6 +45,8 @@ export type TableSelectionProps<T, S extends keyof T> = {
   selectionField: S
   selectedRows: T[S][]
   onSelectionChange: (rows: T[S][]) => void
+  /** Accessible name of the row checkbox, e.g. the name of the record. By default the row number. */
+  getRowLabel?: (row: T) => string
 }
 
 export type TableHeaderProps<T> = {

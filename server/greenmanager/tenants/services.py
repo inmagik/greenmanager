@@ -74,6 +74,21 @@ def add_tenant_users(tenant, users):
     return selected_ids
 
 
+@transaction.atomic
+def save_membership(serializer, **extra):
+    """Create or update a membership, keeping a default one for each user involved."""
+    user_ids = set()
+    if serializer.instance is not None:
+        user_ids.add(serializer.instance.user_id)
+    if "user" in serializer.validated_data:
+        user_ids.add(serializer.validated_data["user"].id)
+    _lock_users(user_ids)
+    membership = serializer.save(**extra)
+    for user_id in sorted(user_ids):
+        ensure_default_membership_id(user_id)
+    return membership
+
+
 def ensure_default_membership_id(user_id):
     membership = (
         TenantMembership.objects.filter(user_id=user_id).order_by("created_at").first()

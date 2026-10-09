@@ -25,9 +25,9 @@ from tenants.serializers import (
 )
 from tenants.services import (
     add_tenant_users,
-    ensure_default_membership_id,
     remove_tenant_user,
     replace_tenant_users,
+    save_membership,
 )
 
 
@@ -218,18 +218,15 @@ class TenantMembershipViewSet(
             return qs.filter(user=self.request.user)
         return qs.filter(tenant=tenant)
 
+    # Writes go through the services, which keep a default membership for the
+    # users involved; bulk_delete calls perform_destroy.
     def perform_update(self, serializer):
-        previous_user_id = serializer.instance.user_id
-        membership = serializer.save()
-        ensure_default_membership_id(previous_user_id)
-        ensure_default_membership_id(membership.user_id)
+        save_membership(serializer)
 
     def perform_destroy(self, instance):
-        # The service keeps a default membership for the user.
         remove_tenant_user(instance.tenant, instance.user)
 
     def perform_create(self, serializer):
-
         tenant = self.get_current_tenant()
         if tenant is None:
             raise ValidationError(
@@ -240,4 +237,4 @@ class TenantMembershipViewSet(
                     }
                 }
             )
-        serializer.save(tenant=tenant)
+        save_membership(serializer, tenant=tenant)

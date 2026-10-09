@@ -154,7 +154,12 @@ export function TenantsList() {
           headerAlign="end"
           render={(tenant) => <TenantContextActions tenant={tenant} />}
         />
-        <Table.Selection selectionField="id" selectedRows={selection} onSelectionChange={setSelection} />
+        <Table.Selection
+          selectionField="id"
+          selectedRows={selection}
+          onSelectionChange={setSelection}
+          getRowLabel={(tenant) => tenant.name}
+        />
         <Table.Footer.Left>
           <Pagination value={page} onChange={(value) => { setSelection([]); setQuery({ page: value }) }} total={pages} />
         </Table.Footer.Left>

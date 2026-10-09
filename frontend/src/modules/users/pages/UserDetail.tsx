@@ -54,9 +54,11 @@ export function UserDetail() {
     )
   }
 
-  // Roles and permissions are changed only with the role-write permission.
+  // Roles and permissions are a user update that also needs the role-write permission.
   const editPermission =
-    activeTab === "permissions" ? AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI : AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI
+    activeTab === "permissions"
+      ? { allOf: [AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI, AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI] }
+      : AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI
 
   const mainActions: React.ReactNode = (
     <>

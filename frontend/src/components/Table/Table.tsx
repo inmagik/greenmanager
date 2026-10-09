@@ -1,7 +1,8 @@
 import { Checkbox, Loader, Text } from "@mantine/core"
 import { useMediaQuery } from "@mantine/hooks"
 import classNames from "classnames"
-import { Children } from "react"
+import { Children, type Key } from "react"
+import { useTranslation } from "react-i18next"
 import { Flex } from "../utils/Flex"
 import { Grid } from "../utils/Grid"
 import { TableCell } from "./implementation/TableCell"
@@ -26,6 +27,11 @@ type OwnProps<T> = TableProps<T>
 
 function defaultSelectionHandler() {}
 
+function defaultRowKey<T>(row: T, index: number): Key {
+  const id = (row as { id?: unknown } | null)?.id
+  return typeof id === "string" || typeof id === "number" ? id : index
+}
+
 export function Table<T>({
   data,
   loading,
@@ -36,8 +42,10 @@ export function Table<T>({
   onOrderChange,
   onRowClick,
   getRowStyle,
+  getRowKey = defaultRowKey,
   ...props
 }: OwnProps<T>) {
+  const { t } = useTranslation()
   const isMobile = useMediaQuery("(max-width: 47.99em)")
   const childrenArray = Children.toArray(props.children)
   const headers = childrenArray
@@ -90,9 +98,16 @@ export function Table<T>({
       width: "48px",
       stickyLeft: true,
       renderHeader: () => {
-        return <Checkbox size="xs" checked={allSelected ?? false} onChange={() => selectAll()} />
+        return (
+          <Checkbox
+            size="xs"
+            checked={allSelected ?? false}
+            onChange={() => selectAll()}
+            aria-label={t("table.selectAll")}
+          />
+        )
       },
-      render: (datum) => {
+      render: (datum, index) => {
         const selected = idField ? (selectedRows?.includes(datum[idField]) ?? false) : false
         return (
           <Checkbox
@@ -101,6 +116,11 @@ export function Table<T>({
             key={selected ? "1" : "0"}
             size="xs"
             checked={selected}
+            aria-label={
+              selectionConfig.getRowLabel
+                ? t("table.selectItem", { name: selectionConfig.getRowLabel(datum) })
+                : t("table.selectRow", { index: index + 1 })
+            }
             onChange={() => {
               if (selected) {
                 onSelectionChange?.(selectedRows?.filter((r) => r !== datum[idField!]) ?? [])
@@ -222,7 +242,7 @@ export function Table<T>({
             {bodyLayout.map(([row, renderExpansions, rowSpan, rowStart], index) => {
               return (
                 <Grid
-                  key={index}
+                  key={getRowKey(row, index)}
                   rows={["subgrid"]}
                   columns={["subgrid"]}
                   justifyItems="stretch"

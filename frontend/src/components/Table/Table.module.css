@@ -49,6 +49,8 @@
 }
 
 .tableSortIcon {
+  display: inline-flex;
+  align-items: center;
   cursor: pointer;
   margin-left: var(--mantine-spacing-sm);
   color: var(--mantine-primary-color-filled);

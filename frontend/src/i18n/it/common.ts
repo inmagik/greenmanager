@@ -21,6 +21,15 @@ const translations = {
     exportFailed: "Esportazione non riuscita. Riprova più tardi.",
     back: "Indietro",
     next: "Avanti",
+    proceed: "Procedi",
+  },
+  table: {
+    selectAll: "Seleziona tutte le righe",
+    selectRow: "Seleziona la riga {{index}}",
+    selectItem: "Seleziona {{name}}",
+    sortBy: "Ordina per {{column}}",
+    sortedAsc: "Ordinato per {{column}}, crescente: passa a decrescente",
+    sortedDesc: "Ordinato per {{column}}, decrescente: togli l'ordinamento",
   },
   validation: {
     invalid: "{{field}} non è valido",

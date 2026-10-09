@@ -70,7 +70,12 @@ export default function RolesTable({ selection, setSelection, data, isLoadingRol
         headerAlign="end"
       />
 
-      <Table.Selection selectionField="id" selectedRows={selection} onSelectionChange={setSelection} />
+      <Table.Selection
+        selectionField="id"
+        selectedRows={selection}
+        onSelectionChange={setSelection}
+        getRowLabel={(role) => role.name}
+      />
 
       <Table.Footer.Left>
         <Pagination

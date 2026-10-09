@@ -249,7 +249,12 @@ export function UsersList() {
           headerAlign="end"
         />
 
-        <Table.Selection selectionField="id" selectedRows={selection} onSelectionChange={setSelection} />
+        <Table.Selection
+          selectionField="id"
+          selectedRows={selection}
+          onSelectionChange={setSelection}
+          getRowLabel={(user) => user.full_name || user.email}
+        />
 
         <Table.Footer.Left>
           <Pagination

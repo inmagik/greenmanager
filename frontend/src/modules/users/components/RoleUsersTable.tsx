@@ -66,7 +66,12 @@ export default function RoleUsersTable({ usersWithRole, isLoadingUsers, id, sele
         headerAlign="end"
       />
 
-      <Table.Selection selectionField="id" selectedRows={selection} onSelectionChange={setSelection} />
+      <Table.Selection
+        selectionField="id"
+        selectedRows={selection}
+        onSelectionChange={setSelection}
+        getRowLabel={(user) => user.full_name || user.email}
+      />
 
       <Table.Footer.Left>
         <Pagination

@@ -168,7 +168,7 @@ In GreenManager il tenant è l'**organizzazione** che usa il sistema, l'entità 
 
 **Endpoint** sotto `api/core/`:
 - `tenants/`: lettura per i membri, scrittura solo per lo staff. Un tenant con dati collegati non si elimina (errore `tenant_has_related_data` con l'elenco dei dati). Action `users`, `add-users` e `remove-user` per gestire i membri;
-- `tenant-memberships/`: lettura per i membri con `LETTURA_UTENTI`, scrittura solo per lo staff, come per i tenant. In data-lab bastava `SCRITTURA_UTENTI`, e un amministratore poteva aggiungere al proprio tenant qualunque utente del sistema. Cancellazioni e modifiche passano da `services.py`, che mantiene un tenant di default.
+- `tenant-memberships/`: lettura per i membri con `LETTURA_UTENTI`, scrittura solo per lo staff, come per i tenant. In data-lab bastava `SCRITTURA_UTENTI`, e un amministratore poteva aggiungere al proprio tenant qualunque utente del sistema. Creazioni, modifiche e cancellazioni, anche multiple, passano da `services.py` (`save_membership`, `remove_tenant_user`), che mantiene un tenant di default; in data-lab l'endpoint salvava direttamente il modello.
 
 Le modifiche ai membri passano da `services.py`, che blocca con `select_for_update` utenti e tenant coinvolti e mantiene un tenant di default per ogni utente.
 
@@ -189,6 +189,7 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 - Ogni app dichiara le funzioni schedulabili in `fm_scheduling.py`: `schedulable_jobs = [{"name": "...", "func": "app.jobs.funzione"}]`. Solo queste si possono usare nelle definizioni.
 - Al salvataggio di una definizione, un receiver la registra nello scheduler. Lo scheduler esegue sempre `job_runner`, che chiama la funzione vera e aggiorna il `JobRun`. Se la funzione fallisce, `job_runner` registra l'errore e rilancia l'eccezione, così RQ segna il job come fallito; in data-lab l'eccezione si perdeva.
 - Una `ScheduledJobDefinition` crea subito il suo `JobRun`. Per avviare un job da un'API e restituirne subito l'identificativo si crea una `ScheduledJobDefinition` con `start_at` adesso. La guida `how-to.md` dell'app spiega questo e gli altri casi, e si copia così com'è.
+- Ogni esecuzione di una `CronJobDefinition` crea un `JobRun` collegato alla definizione (`cron_job_definition`), che passa nei metadati del job. In data-lab il collegamento restava vuoto.
 - Il comando `schedule_auto_tasks` allinea allo scheduler i job di `SCHEDULED_TASKS`. Lo lancia `scripts/scheduler` all'avvio.
 - Processi: il worker (`python manage.py rqworker default`) e lo scheduler (`scripts/scheduler`), oltre al server.
 
@@ -349,6 +350,8 @@ Si parte da quello di data-lab, con queste correzioni:
   | `start` | `collectstatic`, `migrate` (ripetuto finché il database risponde), gunicorn `greenmanager.wsgi:application` con 4 worker |
   | `worker` | `python manage.py rqworker default`. Nuovo: data-lab lo lancia senza script |
   | `scheduler` | `schedule_auto_tasks`, poi `rqscheduler` |
+
+- Gli script si fermano al primo errore (`set -e`). In data-lab un `collectstatic` o uno `schedule_auto_tasks` non riuscito non fermava l'avvio. Il `migrate` ripetuto resta: un comando nella condizione di `until` non interrompe lo script.
 
 - `build_image.sh` costruisce per `linux/amd64` e pubblica `docker.inmagik.com/greenmanager/server:latest`, come data-lab.
 

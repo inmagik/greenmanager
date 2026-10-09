@@ -34,6 +34,7 @@ const users = {
     tenants: "Tenant ({{count}})",
   },
   actions: {
+    menuFor: "Azioni per {{name}}",
     dangerZone: "Zona pericolosa",
     deactivate: "Disattiva utente",
     deactivatePrompt: "Stai per disattivare questo utente",
@@ -71,6 +72,8 @@ const roles = {
   },
   actions: {
     label: "Azioni",
+    menuFor: "Azioni per il ruolo {{name}}",
+    userMenuFor: "Azioni per {{name}} nel ruolo",
     edit: "Modifica ruolo",
     delete: "Elimina ruolo",
     deletePrompt: "Stai per eliminare questo ruolo",
@@ -83,10 +86,12 @@ const roles = {
       "L'utente perderà i permessi associati al ruolo finché non verrà assegnato di nuovo. Vuoi continuare?",
   },
   fields: { permissions: "Permessi", userCount: "Numero di utenti" },
+  permissionIncludedIn: "Questo permesso è incluso nel ruolo",
 } as const
 const profile = {
   breadcrumb: "Profilo utente",
   dangerZone: "Zona riservata",
+  actions: "Azioni del profilo",
   changePassword: "Cambia password",
   unsavedTitle: "Modifiche non salvate",
   unsavedMessage: "Sono presenti modifiche non salvate. Vuoi davvero uscire senza salvarle?",

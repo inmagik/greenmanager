@@ -46,11 +46,12 @@ export async function login(credentials: Credentials) {
     return tokens as Tokens
   }
 
+  // The message is a code, translated by the login page (auth.loginErrors).
   if (res.status === 401 || res.status === 400) {
-    throw new Error("Incorrect email or password. Please check your credentials and try again.")
+    throw new Error("invalid_credentials")
   }
 
-  throw new Error("Unable to log in right now. Please try again later.")
+  throw new Error("login_unavailable")
 }
 
 function base64UrlDecode(input: string): string {

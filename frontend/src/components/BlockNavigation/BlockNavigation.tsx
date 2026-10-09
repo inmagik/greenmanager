@@ -1,5 +1,6 @@
 import { Button, Group, Modal, Text } from "@mantine/core"
 import { useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { useBlocker } from "react-router-dom"
 
 type Props = {
@@ -10,7 +11,8 @@ type Props = {
   proceedText?: string
 }
 
-export function BlockNavigation({ when, title, message, cancelText = "Cancel", proceedText = "Proceed" }: Props) {
+export function BlockNavigation({ when, title, message, cancelText, proceedText }: Props) {
+  const { t } = useTranslation()
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) => currentLocation.pathname !== nextLocation.pathname && when
   )
@@ -38,10 +40,10 @@ export function BlockNavigation({ when, title, message, cancelText = "Cancel", p
           <Text size="sm">{message}</Text>
           <Group justify="flex-end">
             <Button variant="subtle" color="gray.7" onClick={() => blocker.reset()}>
-              {cancelText}
+              {cancelText ?? t("common.cancel")}
             </Button>
             <Button color="red" onClick={() => blocker.proceed()}>
-              {proceedText}
+              {proceedText ?? t("common.proceed")}
             </Button>
           </Group>
         </Modal>

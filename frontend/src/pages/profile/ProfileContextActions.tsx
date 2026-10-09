@@ -19,7 +19,7 @@ export function ProfileContextActions({ user, onChangePassword, onLogout }: Prop
   return (
     <Menu>
       <Menu.Target>
-        <Button px="xs" variant="subtle" color="gray" c="gray.7">
+        <Button px="xs" variant="subtle" color="gray" c="gray.7" aria-label={t("profile.actions")}>
           <TbDots size="1.25rem" />
         </Button>
       </Menu.Target>

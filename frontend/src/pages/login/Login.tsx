@@ -4,20 +4,19 @@ import { yupResolver } from "mantine-form-yup-resolver"
 import * as yup from "yup"
 import { useAuth } from "../../auth/auth"
 import { useTranslation } from "react-i18next"
+import type { TFunction } from "i18next"
 
 const schema = yup.object().shape({
   email: yup.string().email().required().label("Email"),
   password: yup.string().required().label("Password"),
 })
 
-function getLoginErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message && error.message !== "[object Object]") {
-    return error.message
-  }
-  if (typeof error === "string" && error !== "[object Object]") {
-    return error
-  }
-  return fallback
+const LOGIN_ERROR_CODES = ["invalid_credentials", "login_unavailable"] as const
+
+function getLoginErrorMessage(error: unknown, t: TFunction) {
+  const code = error instanceof Error ? error.message : error
+  const knownCode = LOGIN_ERROR_CODES.find((c) => c === code)
+  return knownCode ? t(`auth.loginErrors.${knownCode}`) : t("auth.loginError")
 }
 
 export function Login() {
@@ -85,7 +84,7 @@ export function Login() {
 
             {!!loginError && (
               <Alert variant="light" color="red" mt="md" title={t("auth.loginFailed")}>
-                {getLoginErrorMessage(loginError, t("auth.loginError"))}
+                {getLoginErrorMessage(loginError, t)}
               </Alert>
             )}
           </Box>

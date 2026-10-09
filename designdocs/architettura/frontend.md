@@ -128,10 +128,10 @@ Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pes
 - Filtri, pagina e ordinamento stanno nei parametri dell'URL (`useSearchParams` o `useUrlParams`): la lista si può ricaricare e condividere. La ricerca passa da `useDebouncedValue` (300 ms); ogni cambio di filtro riporta a pagina 1.
 - Tabella con `createTable<T>()` del componente `Table`:
   - `Table.Column` con `title` (chiave di traduzione), `name`, `render`, `sortable`;
-  - `Table.Selection` per la selezione multipla;
+  - `Table.Selection` per la selezione multipla, con `getRowLabel` per il nome accessibile delle caselle (di solito il nome del record);
   - `Table.Footer.Left` con la `Pagination` di Mantine, `Table.Footer.Right` con il riepilogo dei risultati;
   - `TableEmptyState` quando `full_count` è 0, con le azioni di creazione.
-  - Il nome della risorsa nella prima colonna è un link al dettaglio; l'ultima colonna ha il menu contestuale.
+  - Il nome della risorsa nella prima colonna è un link al dettaglio; l'ultima colonna ha il menu contestuale, il cui pulsante ha un `aria-label` tradotto con il nome del record.
 - Con righe selezionate, le azioni dell'header diventano *Annulla* ed *Elimina*. L'eliminazione chiede conferma con `modals.openConfirmModal` ed elenca i record.
 
 ### 5.3 Azioni e modali
@@ -233,14 +233,18 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 - Non si copiano le librerie di data-lab legate a editor di documenti, diagrammi e simulazioni: lexical, reactflow, dagre, dnd-kit, swiper, d3-scale, chroma-js, html-to-image, xlsx. `flag-icons` serve solo al selettore della lingua, se le lingue sono più di una.
 - **Verifica di T4**: i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilano con Mantine 9.7 e TypeScript 6 senza modifiche. Le correzioni fatte nello scaffold sono altre:
   - `yarn.lock` parte da quello di bottaro-pesatura. Con un lockfile nuovo yarn non trova `hashery` 1.x, una dipendenza indiretta di ESLint;
-  - `Table` dà una `key` a ogni riga, per l'avviso di React sulle liste;
+  - `Table` dà a ogni riga come `key` l'`id` del record, o quella di `getRowKey`, così lo stato dei componenti non passa da una riga all'altra quando cambiano ordinamento o pagina;
   - `DataProvider` chiama `setState` in un effetto per svuotare la cache al cambio di organizzazione. È voluto: la regola `react-hooks/set-state-in-effect` è disattivata su quella riga, con il motivo;
   - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio.
 - **Revisione della PR dello scaffold**, correzioni al modulo `users`:
   - disattivazione e riattivazione mandano solo `is_active`, il salvataggio di ruoli e permessi solo quei campi;
-  - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `SCRITTURA_RUOLI`, come l'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`);
-  - la rimozione del ruolo dagli utenti selezionati chiama `revoke_from`: in data-lab scriveva solo in console;
+  - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `SCRITTURA_UTENTI` e `SCRITTURA_RUOLI`: il salvataggio è una modifica dell'utente, che il server accetta solo con entrambi. L'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`) richiede solo `SCRITTURA_RUOLI`;
+  - la rimozione del ruolo, dagli utenti selezionati o da un utente col menu della riga, chiama `revoke_from`. In data-lab la prima scriveva solo in console, la seconda mandava l'intero utente;
   - `RoleMultiSelect` e `UserMultiSelect` tengono tra le opzioni gli elementi selezionati anche quando la ricerca non li restituisce.
+- **Revisione della PR dello scaffold**, correzioni ai componenti condivisi:
+  - testi in italiano dove erano scritti nel codice in inglese: errori del login (`login()` lancia un codice, `auth.loginErrors` lo traduce), pulsanti di `BlockNavigation`, `PermissionTooltip`;
+  - `AlertError` mostra l'azione solo con `actionPermission` anche nella variante di errore (es. lo sblocco dell'utente);
+  - accessibilità: `aria-label` sui pulsanti dei menu contestuali e sulle caselle di selezione di `Table`; l'ordinamento delle colonne è un pulsante, usabile da tastiera, con l'etichetta che dice la direzione corrente.
 
 ## Domande aperte
 
