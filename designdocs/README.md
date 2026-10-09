@@ -27,7 +27,7 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager e,
 | T1. Stack e scaffold di riferimento | [architettura/README.md](architettura/README.md), [backend.md](architettura/backend.md), [frontend.md](architettura/frontend.md) | completato |
 | T2. Pattern dell'interfaccia | `architettura/frontend-pattern.md` | da iniziare, con la prima fetta verticale |
 | T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | da iniziare, con la prima fetta verticale |
-| T4. Scaffold | codice in `server/` e `frontend/` | da iniziare: è il prossimo passo |
+| T4. Scaffold | codice in `server/` e `frontend/` | completato |
 
 ## I passi della specifica del dominio
 

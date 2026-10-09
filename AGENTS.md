@@ -14,10 +14,10 @@ Il sistema si regge su tre pilastri:
 
 ## Fase attuale
 
-Il progetto è nella fase di **specifica del dominio applicativo**. Non c'è ancora codice. In parallelo, il **binario tecnico** fissa stack, struttura e pattern di backend e frontend, fino allo scaffold del codice.
+La **specifica del dominio applicativo** è quasi completa: manca il consolidamento (Step 5). Il **binario tecnico** ha prodotto lo scaffold del codice in `server/` e `frontend/`, senza app di dominio, che si aggiungono a partire dalla prima fetta verticale (D-040).
 La metodologia, i passi di entrambi i binari e lo stato di avanzamento sono in [designdocs/README.md](designdocs/README.md).
 
-**Stato**: Step 1 (analisi della specifica esistente), Step 2 (benchmark), Step 3 (feature del prodotto) e Step 4 (modello dati) completati. Lo Step 3 ha prodotto attori, posizionamento, catalogo di 102 feature (66 MVP, 29 v2, 7 futuro) e scenari; lo Step 4 schede di cataloghi e dati operativi, corrispondenza con il modello dati CAM v2.1 e note Django, con le decisioni D-027–D-035 confermate alla revisione (D-035 con la modifica sulle geometrie multiparte). Binario tecnico: T1 (stack e scaffold di riferimento) completato, con i documenti in [designdocs/architettura/](designdocs/architettura/README.md) e le decisioni D-036–D-039 confermate. La revisione ha rivisto la sequenza dei passi (D-040). Prossimo passo: T4 (scaffold); poi T2 e T3 insieme a una prima fetta verticale (cataloghi, committente, zone e aree, elementi su mappa); lo Step 5 (consolidamento) in parallelo.
+**Stato**: Step 1 (analisi della specifica esistente), Step 2 (benchmark), Step 3 (feature del prodotto) e Step 4 (modello dati) completati. Lo Step 3 ha prodotto attori, posizionamento, catalogo di 102 feature (66 MVP, 29 v2, 7 futuro) e scenari; lo Step 4 schede di cataloghi e dati operativi, corrispondenza con il modello dati CAM v2.1 e note Django, con le decisioni D-027–D-035 confermate alla revisione (D-035 con la modifica sulle geometrie multiparte). Binario tecnico: T1 (stack e scaffold di riferimento) completato, con i documenti in [designdocs/architettura/](designdocs/architettura/README.md) e le decisioni D-036–D-039 confermate; T4 (scaffold) completato, con il codice in `server/` e `frontend/`. La revisione dello Step 4 e di T1 ha rivisto la sequenza dei passi (D-040). Prossimo passo: T2 e T3 insieme a una prima fetta verticale (cataloghi, committente, zone e aree, elementi su mappa); lo Step 5 (consolidamento) in parallelo.
 
 ## Stack (vincolo, non oggetto della specifica del dominio)
 
@@ -52,6 +52,12 @@ Il registro completo, con le motivazioni, è in [designdocs/decisioni.md](design
 - **Dal binario tecnico, T1**: scaffold dai progetti di riferimento (D-036); organizzazione come tenant, con i dati del patrimonio filtrati tramite l'organizzazione di gestione del committente (D-037); frontend come SPA React a moduli (D-038); job asincroni e pianificati con `jobs_core` (D-039).
 - **Dalla revisione dello Step 4 e di T1**: sequenza dei passi rivista, con lo scaffold subito, T2 e T3 insieme a una prima fetta verticale e lo Step 5 in parallelo (D-040).
 
+## Comandi
+
+Comandi, struttura e regole di ogni componente sono nel suo `AGENTS.md`: [server/AGENTS.md](server/AGENTS.md) e [frontend/AGENTS.md](frontend/AGENTS.md). In breve:
+- **server**, da `server/`: `docker compose up -d db redis`, poi da `server/greenmanager/` `python manage.py runserver` e `python manage.py test`;
+- **frontend**, da `frontend/`: `yarn dev`, `yarn lint`, `yarn build`.
+
 ## Convenzioni
 
 - Documentazione **in italiano**.
@@ -63,4 +69,4 @@ Il registro completo, con le motivazioni, è in [designdocs/decisioni.md](design
 - **Codice**:
   - identificatori in inglese (D-001), a differenza di bottaro-pesatura; i testi dell'interfaccia stanno nelle traduzioni, in italiano;
   - Python formattato con black e isort, controllato con flake8; TypeScript con ESLint e Prettier. Configurazioni in §6 di [backend.md](designdocs/architettura/backend.md) e §7 di [frontend.md](designdocs/architettura/frontend.md);
-  - ogni componente (`server/`, `frontend/`) avrà un proprio `AGENTS.md`, con accanto un `CLAUDE.md` che contiene solo `@AGENTS.md`. Nascono con lo scaffold (passo T4).
+  - ogni componente (`server/`, `frontend/`) ha un proprio `AGENTS.md`, con accanto un `CLAUDE.md` che contiene solo `@AGENTS.md`.

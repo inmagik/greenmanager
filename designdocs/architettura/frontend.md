@@ -179,6 +179,7 @@ Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pes
 ## 7. Strumenti, build e immagine
 
 - **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000`), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
+- **Vite**: `vite.config.ts` importa i plugin con l'estensione (`./plugins/menu.ts`), come chiede il caricamento nativo della configurazione.
 - **TypeScript** in modalità `strict`, con `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` (import di soli tipi con `import type`).
 - **ESLint**: configurazione piatta con le regole raccomandate di JavaScript, typescript-eslint, react-hooks e react-refresh.
 - **Prettier**: senza punto e virgola, virgolette doppie, virgola finale `es5`, riga di 120 caratteri, indentazione di 2 spazi. È la stessa configurazione in data-lab e bottaro-pesatura.
@@ -230,7 +231,11 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 
 - Le librerie della mappa e del disegno delle geometrie si scelgono in T2 (domanda 2). Quelle dei grafici, quando servono, si allineano a `@mantine/charts` ^9.7.0.
 - Non si copiano le librerie di data-lab legate a editor di documenti, diagrammi e simulazioni: lexical, reactflow, dagre, dnd-kit, swiper, d3-scale, chroma-js, html-to-image, xlsx. `flag-icons` serve solo al selettore della lingua, se le lingue sono più di una.
-- In T4 si verifica che i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilino con Mantine 9.7 e TypeScript 6.
+- **Verifica di T4**: i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilano con Mantine 9.7 e TypeScript 6 senza modifiche. Le correzioni fatte nello scaffold sono altre:
+  - `yarn.lock` parte da quello di bottaro-pesatura. Con un lockfile nuovo yarn non trova `hashery` 1.x, una dipendenza indiretta di ESLint;
+  - `Table` dà una `key` a ogni riga, per l'avviso di React sulle liste;
+  - `DataProvider` chiama `setState` in un effetto per svuotare la cache al cambio di organizzazione. È voluto: la regola `react-hooks/set-state-in-effect` è disattivata su quella riga, con il motivo;
+  - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio.
 
 ## Domande aperte
 

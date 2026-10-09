@@ -66,6 +66,8 @@ Alla revisione di T1 (2026-10-09) i repository erano andati avanti:
 
 Lo scaffold parte dai commit più recenti al momento della copia: in T4 si riverificano le tabelle di §3 e le versioni di [backend.md](backend.md) e [frontend.md](frontend.md).
 
+**Commit copiati in T4** (2026-10-09): data-lab `f323e088ea`, bottaro-pesatura `4ab7927398`. Sono gli stessi della revisione di T1; le tabelle di §3 valevano ancora.
+
 Regole (D-036):
 - data-lab dice *cosa* si copia e *come* si scrive; bottaro-pesatura dice *quale versione* e fornisce i pezzi indicati in tabella. Le librerie che bottaro-pesatura non usa prendono la versione di data-lab.
 - Le convenzioni proprie di bottaro-pesatura non valgono qui:
@@ -86,10 +88,10 @@ Origine: `server/` di data-lab.
 | Elemento | Esito | Note |
 |---|---|---|
 | package di progetto `datalab/` (`settings.py`, `urls.py`, `schema.py`, `wsgi.py`, `asgi.py`) | si adatta | diventa `greenmanager/`; vedi §2 di [backend.md](backend.md) |
-| `auth_core` | si adatta | utenti, ruoli, permessi; il superuser passa ogni controllo dei permessi (§3.1 di [backend.md](backend.md)) |
+| `auth_core` | si adatta | utenti, ruoli, permessi; `utils.py` da bottaro-pesatura, con il superuser che passa ogni controllo e il controllo sull'assegnazione di ruoli e permessi (§3.1 di [backend.md](backend.md)) |
 | `tenants` | si copia | organizzazioni (D-037) |
 | `jobs_core` | si adatta | senza i job di esempio |
-| `inmagik_utils` | si adatta | riceve paginazione e validazione da `datasets/commons.py` e `audit_log/audit_log_mixins.py` da bottaro-pesatura |
+| `inmagik_utils` | si adatta | riceve paginazione e validazione da `datasets/commons.py`; da bottaro-pesatura `audit_log/`, `nested_multi_parser.py` e i test (§3.4 di [backend.md](backend.md)) |
 | `datasets` | si scarta | resta il modello dei pattern delle app di dominio |
 | `docs_core` | si scarta | editor di documenti, non serve |
 | `simulations`, `simulation_*` | si scarta | dominio di data-lab |
@@ -107,6 +109,8 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 | Elemento | Esito | Note |
 |---|---|---|
 | `package.json` | si adatta | versioni di §8 di [frontend.md](frontend.md) |
+| `yarn.lock` | si scarta | si rigenera partendo da quello di bottaro-pesatura (§8 di [frontend.md](frontend.md)) |
+| `public/` | si scarta | marchio di data-lab; al suo posto un logo provvisorio in `public/logo.svg` e `public/favicon.svg` |
 | `vite.config.ts`, `plugins/`, `tsconfig.*`, `eslint.config.js`, `.prettierrc`, `postcss.config.cjs`, `index.html`, `Dockerfile`, `nginx.conf`, `build_image.sh` | si copia | |
 | `src/main.tsx`, `src/App.tsx`, `src/Navigation.tsx`, `src/declarations.d.ts`, `src/mantine_customization.css` | si adatta | senza gli stili dei pacchetti non usati |
 | `src/auth/`, `src/general/`, `src/context/`, `src/utils.tsx`, `src/utils/` | si copia | |

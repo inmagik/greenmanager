@@ -82,6 +82,7 @@ Un solo `settings.py`, come in data-lab:
 - Import di `localsettings.py` con `except ImportError`, come in bottaro-pesatura: un errore nel file locale non deve passare inosservato (data-lab usa `except Exception`).
 - Si tolgono `solo`, `docs_core`, le app di simulazione, `AVAILABLE_SIMULATORS` e `SIMULATIONS_WORKDIR`.
 - `urls.py` monta l'admin su `settings.DJANGO_ADMIN_PATH`; data-lab definisce la variabile ma usa `"admin/"` fisso.
+- `AXES_USERNAME_CALLABLE` punta a una funzione invece che a una lambda, come chiede flake8.
 
 ### 2.3 Variabili d'ambiente
 
@@ -138,6 +139,8 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 **Adattamenti.**
 - Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4).
 - `RuntimePermission` e `ActionPermission` lasciano passare il superuser, come in bottaro-pesatura; in data-lab guardano solo `all_permissions` (domanda 2).
+- `ManageUserPrivilegesPermission`, da bottaro-pesatura: chi crea o modifica un utente e gli assegna ruoli o permessi deve avere anche `SCRITTURA_RUOLI`. In data-lab bastava `SCRITTURA_UTENTI`, e un utente poteva assegnarsi privilegi da solo. È nelle action `create`, `update` e `partial_update` degli utenti, con i test portati da bottaro-pesatura.
+- `Role` ha l'ordinamento di default per nome; il viewset dei ruoli lo ripete nel queryset, perché `annotate(Count(...))` ignora `Meta.ordering`.
 - I codici dei permessi restano quelli di data-lab (`LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`): li usa il modulo `users` del frontend, condiviso tra i progetti.
 
 ### 3.2 `tenants` — organizzazioni
@@ -205,7 +208,9 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 **Adattamenti.**
 - `pagination.py` prende posto e nome da bottaro-pesatura e contenuto da `datasets/commons.py` di data-lab, che ha in più lo schema OpenAPI della risposta e `HugePagination`.
 - `FullCleanValidatorSerializerMixin` arriva da `datasets/commons.py`.
-- `audit_log/audit_log_mixins.py` arriva da bottaro-pesatura.
+- `audit_log/` arriva tutta da bottaro-pesatura: in più di data-lab ha `AuditlogActorMixin` e `AuditLogEntrySerializer`, per l'action `history` (§4.4).
+- `nested_multi_parser.py` arriva da bottaro-pesatura: limita le liste nei dati annidati (1.000 elementi per lista, 10.000 in tutto) e lascia chiudere a Django i file caricati.
+- `FullCleanValidatorSerializerMixin` valida l'istanza esistente anche con `PUT`. In data-lab ne creava una nuova, e i vincoli di unicità segnalavano il record stesso come doppione.
 - Si copiano anche i test di `inmagik_utils` di bottaro-pesatura.
 
 ## 4. Pattern delle app di dominio
@@ -265,6 +270,7 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 - Queryset con `select_related` e `prefetch_related` per i dati annidati, annotazioni per i valori calcolati, ordinamento di default.
 - La view valida l'input, chiama il servizio di dominio e serializza il risultato. La logica sta nei servizi.
 - **Action aggiunte**: `@action(detail=…, methods=[…], url_path="kebab-case")` con `@extend_schema` per richiesta, risposta e parametri.
+  - Storico del record: action `history` (dettaglio, `GET`), che restituisce `LogEntry.objects.get_for_object(...)` con `AuditLogEntrySerializer`. La usa `AuditHistoryModal` nel frontend; il modello è `anagrafica` di bottaro-pesatura.
   - Upload con `parser_classes=[NestedMultiPartParser, FormParser]`.
   - Operazioni lunghe: avvio di un job (§3.3), con risposta che contiene l'identificativo del `JobRun`.
 - **Export di file**: `HttpResponse` con `Content-Disposition: attachment; filename="…"`. Excel con openpyxl.
@@ -375,8 +381,8 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
 
 - Si escludono `docker`, `numpy` e `qrcode`, che in data-lab servono ai simulatori e ai codici QR.
 - `django-solo` (impostazioni come singleton) e `jsonschema` (validazione degli attributi JSON rispetto alle definizioni della classe, §5.3 di [04-modello-dati.md](../04-modello-dati.md)) si valutano in T3.
-- In T4 si verifica che le librerie prese da data-lab, scritte per Django 6.0, funzionino con Django 6.1.
-- Strumenti di sviluppo (black, isort, flake8) in un `requirements-dev.txt`, con le versioni correnti al momento dello scaffold. I test usano il runner di Django, senza dipendenze aggiuntive.
+- Strumenti di sviluppo in `requirements-dev.txt`, alle versioni correnti allo scaffold: black 26.10.0, isort 9.0.2, flake8 7.4.1. I test usano il runner di Django, senza dipendenze aggiuntive.
+- **Verifica di T4**: con Django 6.1.1 e Python 3.14.2 le librerie prese da data-lab funzionano senza cambi di versione. Migrazioni, test, server, worker e scheduler partono.
 
 ## Domande aperte
 
