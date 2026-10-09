@@ -1,0 +1,39 @@
+from django.utils import timezone
+from django.utils.module_loading import import_string
+from django_rq import job
+from rq import get_current_job
+
+from .models import JobRun
+
+
+@job
+def job_runner(*args, **kwargs):
+    job = get_current_job()
+    scheduler_meta = job.meta.get("__inmagik_scheduler", {})
+    func_path = scheduler_meta.get("func")
+    if func_path:
+        job_func = import_string(func_path)
+        run_id = scheduler_meta.get("run_id")
+        job_run = JobRun.objects.get_or_create(
+            id=run_id,
+            defaults={
+                "func": func_path,
+                "args": args,
+                "kwargs": kwargs,
+                "status": "running",
+            },
+        )[0]
+        job_run.status = "running"
+        job_run.started_at = timezone.now()
+        job_run.save()
+        try:
+            result = job_func(*args, **kwargs)
+            job_run.status = "completed"
+            job_run.completed_at = timezone.now()
+            job_run.save()
+            return result
+        except Exception as e:
+            job_run.status = "failed"
+            job_run.error_details = str(e)
+            job_run.completed_at = timezone.now()
+            job_run.save()

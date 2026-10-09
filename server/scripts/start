@@ -1,0 +1,8 @@
+#!/bin/bash
+cd /code
+python manage.py collectstatic --no-input
+until python manage.py migrate; do
+  echo "Waiting for db"
+  sleep .5
+done
+exec gunicorn greenmanager.wsgi:application -w 4 -b 0.0.0.0:8000 --max-requests 500 --max-requests-jitter 50

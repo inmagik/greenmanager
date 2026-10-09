@@ -1,0 +1,9 @@
+Gentile {{ user.full_name }},
+Ti chiediamo di attivare il tuo account accedendo al seguente link:
+
+{{ link }}
+
+In alternativa, puoi copiare e incollare il link nel tuo browser.
+
+Cordialmente,
+Il supporto di GreenManager
