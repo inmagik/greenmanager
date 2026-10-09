@@ -1,5 +1,6 @@
+import { useAuth } from "@/auth/auth"
 import type { User } from "@/auth/types"
-import { requestConfirmation } from "@/utils"
+import { notifyApiError, requestConfirmation } from "@/utils"
 import { Button, Menu } from "@mantine/core"
 import { TbDots, TbPower, TbTrash } from "react-icons/tb"
 import { useDeleteUser, useUpdateUser } from "../api/users"
@@ -15,6 +16,9 @@ export function UserContextActions({ user, onDelete, onDeactivate }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: updateUser } = useUpdateUser()
   const { mutateAsync: deleteUser } = useDeleteUser()
+  // The server refuses to deactivate or delete one's own account.
+  const { user: currentUser } = useAuth()
+  const isCurrentUser = currentUser?.id === user.id
 
   return (
     <Menu>
@@ -42,13 +46,13 @@ export function UserContextActions({ user, onDelete, onDeactivate }: Props) {
               t("users.actions.deactivateWarning")
             ).then((confirmed) => {
               if (confirmed) {
-                updateUser({ id: user.id, is_active: false }).then(() => {
-                  onDeactivate?.()
-                })
+                updateUser({ id: user.id, is_active: false })
+                  .then(() => onDeactivate?.())
+                  .catch((error) => notifyApiError(error))
               }
             })
           }}
-          disabled={!user.is_active}
+          disabled={!user.is_active || isCurrentUser}
         >
           {t("users.actions.deactivate")}
         </Menu.Item>
@@ -62,12 +66,13 @@ export function UserContextActions({ user, onDelete, onDeactivate }: Props) {
               t("users.actions.deleteWarning")
             ).then((confirmed) => {
               if (confirmed) {
-                deleteUser(user.id).then(() => {
-                  onDelete?.()
-                })
+                deleteUser(user.id)
+                  .then(() => onDelete?.())
+                  .catch((error) => notifyApiError(error))
               }
             })
           }}
+          disabled={isCurrentUser}
         >
           {t("users.actions.delete")}
         </Menu.Item>

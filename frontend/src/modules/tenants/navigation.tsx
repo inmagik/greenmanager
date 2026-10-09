@@ -1,5 +1,6 @@
 import { AuthLayout } from "@/auth/AuthLayout"
 import { CheckStaff } from "@/components/CheckStaff"
+import { Forbidden } from "@/components/StatusPage"
 import { ScreenWidthGuard } from "@/components/ScreenWidthGuard"
 import type { RouteObject } from "react-router-dom"
 import { TenantsList } from "./pages/TenantsList"
@@ -16,15 +17,15 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <CheckStaff><TenantsList /></CheckStaff>,
+        element: <CheckStaff fallback={<Forbidden />}><TenantsList /></CheckStaff>,
       },
       {
         path: ":id",
-        element: <CheckStaff><TenantDetail /></CheckStaff>,
+        element: <CheckStaff fallback={<Forbidden />}><TenantDetail /></CheckStaff>,
       },
       {
         path: ":id/:tab",
-        element: <CheckStaff><TenantDetail /></CheckStaff>,
+        element: <CheckStaff fallback={<Forbidden />}><TenantDetail /></CheckStaff>,
       },
     ],
   },

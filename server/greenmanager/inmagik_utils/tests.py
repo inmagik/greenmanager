@@ -20,7 +20,7 @@ class NestedMultiPartParserExpansionTests(SimpleTestCase):
     def test_rejects_an_excessive_list_index_without_growing_the_list(self):
         root = {}
 
-        with self.assertRaisesRegex(ValueError, "oltre il limite"):
+        with self.assertRaisesRegex(ValueError, "above the limit"):
             _assign(
                 root,
                 ["items", "1000000000", "name"],
@@ -56,7 +56,7 @@ class NestedMultiPartParserExpansionTests(SimpleTestCase):
                 budget,
             )
 
-        with self.assertRaisesRegex(ValueError, "limite complessivo"):
+        with self.assertRaisesRegex(ValueError, "list items in total"):
             _assign(root, ["one_more", "0"], "value", budget)
 
         self.assertEqual(root["one_more"], [])
@@ -68,7 +68,7 @@ class NestedMultiPartParserExpansionTests(SimpleTestCase):
         for _ in range(MAX_LIST_ITEMS):
             _assign(root, ["items", ""], "value", budget)
 
-        with self.assertRaisesRegex(ValueError, "elementi lista superato"):
+        with self.assertRaisesRegex(ValueError, "more than 1000 list items"):
             _assign(root, ["items", ""], "value", budget)
 
 

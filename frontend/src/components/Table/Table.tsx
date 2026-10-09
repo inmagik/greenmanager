@@ -170,6 +170,8 @@ export function Table<T>({
         columns={headers.map((h) => h.width ?? "minmax(max-content, 1fr)")}
         className={classNames(S.table, className)}
         style={{ minWidth: "100%", ...style }}
+        role="table"
+        aria-busy={loading || undefined}
         {...props}
       >
         <TableHeader<T>
@@ -186,6 +188,7 @@ export function Table<T>({
             justifyContent="center"
             alignItems="center"
             className={classNames(S.tableBody, bodyClassName)}
+            role="presentation"
             style={{
               minWidth: "100%",
               height: "100%",
@@ -206,6 +209,7 @@ export function Table<T>({
             justifyItems="stretch"
             alignItems="stretch"
             className={classNames(S.tableBody, bodyClassName)}
+            role="rowgroup"
             style={{
               minWidth: "100%",
               gridColumn: `1 / span ${headers.length + 1}`,
@@ -234,7 +238,13 @@ export function Table<T>({
                       )
                     })}
                   {!extra.alignToGrid && (
-                    <div style={{ gridColumn: `1 / span ${headers.length + 1}` }}>{extra.children}</div>
+                    <div
+                      role="cell"
+                      aria-colspan={headers.length}
+                      style={{ gridColumn: `1 / span ${headers.length + 1}` }}
+                    >
+                      {extra.children}
+                    </div>
                   )}
                 </TableRow>
               )
@@ -248,6 +258,7 @@ export function Table<T>({
                   justifyItems="stretch"
                   alignItems="stretch"
                   className={classNames(S.tableRowContext)}
+                  role="presentation"
                   style={{
                     minWidth: "100%",
                     gridColumn: `1 / span ${headers.length + 1}`,
@@ -290,8 +301,11 @@ export function Table<T>({
                         className={classNames(S.tableExpansion, { [S.last]: expIndex === renderExpansions.length - 1 })}
                         style={{ gridColumn: `1 / span ${headers.length + 1}` }}
                         key={expIndex}
+                        role="row"
                       >
-                        {expansion.render(row, index)}
+                        <div role="cell" aria-colspan={headers.length}>
+                          {expansion.render(row, index)}
+                        </div>
                       </div>
                     )
                   })}
@@ -323,7 +337,13 @@ export function Table<T>({
                       )
                     })}
                   {!extra.alignToGrid && (
-                    <div style={{ gridColumn: `1 / span ${headers.length + 1}` }}>{extra.children}</div>
+                    <div
+                      role="cell"
+                      aria-colspan={headers.length}
+                      style={{ gridColumn: `1 / span ${headers.length + 1}` }}
+                    >
+                      {extra.children}
+                    </div>
                   )}
                 </TableRow>
               )

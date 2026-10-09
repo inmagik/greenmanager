@@ -7,6 +7,7 @@ import { yupResolver } from "mantine-form-yup-resolver"
 import { useState } from "react"
 import * as yup from "yup"
 import { useTranslation } from "react-i18next"
+import { splitApiErrors } from "@/utils"
 
 type ChangePasswordModalProps = {
   onChangePassword?: () => void
@@ -57,15 +58,12 @@ export function ChangePasswordModal({ onChangePassword }: ChangePasswordModalPro
                     Authorization: `Bearer ${tokens?.access}`,
                   },
                 })
-                console.log("Password change successful")
                 onChangePassword?.()
               } catch (error) {
-                console.error("Error while changing password:", error)
-                setError(error instanceof Error ? error.message : "Unknown error")
+                const { fieldErrors, message } = splitApiErrors(error, ["old_password", "password"])
+                form.setErrors(fieldErrors)
+                setError(message)
               }
-            },
-            (errors) => {
-              console.log("Validation errors:", errors)
             }
           )}
         >

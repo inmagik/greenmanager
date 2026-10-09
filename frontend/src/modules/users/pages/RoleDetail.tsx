@@ -16,6 +16,8 @@ import { modals } from "@mantine/modals"
 import { CheckPermission } from "@/components/CheckPermission"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { useTranslation } from "react-i18next"
+import { QueryErrorPage } from "@/components/StatusPage"
+import { notifyApiError } from "@/utils"
 
 export function RoleDetail() {
   const { t } = useTranslation()
@@ -40,7 +42,7 @@ export function RoleDetail() {
   )
 
   // React query
-  const { data: role } = useRole(id)
+  const { data: role, error: roleError } = useRole(id)
   const { mutateAsync: updateRole } = useUpdateRole()
   const { mutateAsync: revokeRoleFromUsers } = useRevokeRoleFromUsers(id)
   const { data: usersWithRole, isLoading: isLoadingUsers, refetch: refetchUsers } = useUsers(filters)
@@ -73,6 +75,10 @@ export function RoleDetail() {
       setEditable(false)
     }
   }, [activeTab, previousTab, editable])
+
+  if (roleError) {
+    return <QueryErrorPage error={roleError} />
+  }
 
   if (!role) {
     return (
@@ -140,10 +146,12 @@ export function RoleDetail() {
                 confirmProps: { color: "red.9" },
                 cancelProps: { color: "gray", variant: "subtle" },
                 onConfirm: () => {
-                  revokeRoleFromUsers({ user_ids: selection }).then(() => {
-                    setSelection([])
-                    refetchUsers()
-                  })
+                  revokeRoleFromUsers({ user_ids: selection })
+                    .then(() => {
+                      setSelection([])
+                      refetchUsers()
+                    })
+                    .catch((error) => notifyApiError(error))
                 },
               })
             }}
@@ -195,7 +203,7 @@ export function RoleDetail() {
               initialValues={role}
               readonly={!editable}
               onSubmit={async (values) => {
-                await updateRole(values)
+                await updateRole({ id: role.id, name: values.name, permissions: values.permissions })
                 setEditable(false)
               }}
               onCancel={() => {
@@ -214,6 +222,7 @@ export function RoleDetail() {
                   leftSectionPointerEvents="none"
                   leftSection={<TbSearch />}
                   placeholder={t("common.search")}
+                  aria-label={t("common.searchLabel")}
                   value={search}
                   onChange={(e) =>
                     setParams({ ...Object.fromEntries(params), search: e.currentTarget.value, page: "1" })

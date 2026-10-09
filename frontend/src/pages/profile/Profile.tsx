@@ -10,7 +10,7 @@ import { UpdateProfileForm } from "./UpdateProfileForm"
 import { useTranslation } from "react-i18next"
 
 export function Profile() {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const { mutateAsync: updateMe } = useUpdateMe()
@@ -51,7 +51,9 @@ export function Profile() {
           initialValues={user}
           readonly={!isEditing}
           onSubmit={async (values) => {
-            await updateMe({ full_name: values.full_name })
+            // The header and the navigation read the user of AuthProvider.
+            const updatedUser = await updateMe({ full_name: values.full_name })
+            setUser(updatedUser)
             setIsEditing(false)
           }}
           onCancel={() => {

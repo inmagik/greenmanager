@@ -15,7 +15,7 @@ urlpatterns = [
     # django admin
     path(settings.DJANGO_ADMIN_PATH, admin.site.urls),
     # core apps
-    path("api/userbase/", include("userbase.urls")),
+    path("api/userbase/", include("auth_core.account_urls")),
     path("api/core/auth/", include("auth_core.urls")),
     path("api/core/", include("tenants.urls")),
     # domain apps

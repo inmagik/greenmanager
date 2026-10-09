@@ -27,6 +27,7 @@ export function PickUsersForm({ onSubmit, roleId }: Props) {
       <Group justify="flex-end" pt="sm">
         <Button
           type="submit"
+          disabled={users.length === 0}
           onClick={() => {
             onSubmit(users)
           }}

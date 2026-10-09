@@ -1,9 +1,12 @@
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest import mock
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.utils import timezone
 
-from .models import CronJobDefinition, JobRun
+from .models import CronJobDefinition, JobRun, ScheduledJobDefinition
 from .runner import job_runner
 
 
@@ -51,3 +54,60 @@ class JobRunnerTests(TestCase):
         job_run = JobRun.objects.get()
         self.assertEqual(job_run.status, "completed")
         self.assertEqual(job_run.cron_job_definition, cron)
+
+    def test_rerun_clears_the_previous_outcome(self):
+        job_run = JobRun.objects.create(
+            func="jobs_core.tests.succeeding_job",
+            status="failed",
+            error_details="boom",
+            completed_at=timezone.now(),
+        )
+        fake_job = SimpleNamespace(
+            meta={
+                "__inmagik_scheduler": {
+                    "func": "jobs_core.tests.succeeding_job",
+                    "run_id": job_run.id,
+                }
+            }
+        )
+
+        with mock.patch("jobs_core.runner.get_current_job", return_value=fake_job):
+            job_runner()
+
+        job_run.refresh_from_db()
+        self.assertEqual(job_run.status, "completed")
+        self.assertEqual(job_run.error_details, "")
+
+
+class JobDefinitionTests(TestCase):
+    def test_unschedulable_function_is_a_validation_error(self):
+        definition = CronJobDefinition(id="bad", cron="* * * * *", func="os.remove")
+
+        with self.assertRaises(ValidationError) as context:
+            definition.full_clean()
+
+        self.assertIn("func", context.exception.message_dict)
+
+    @mock.patch("jobs_core.receivers.get_scheduler")
+    @mock.patch(
+        "jobs_core.receivers.dynamic_scheduling_manager.is_schedulable",
+        return_value=True,
+    )
+    def test_rescheduling_resets_the_job_run(self, _is_schedulable, _scheduler):
+        definition = ScheduledJobDefinition.objects.create(
+            id="once",
+            start_at=timezone.now() + timedelta(hours=1),
+            func="jobs_core.tests.succeeding_job",
+        )
+        JobRun.objects.filter(scheduled_job_definition=definition).update(
+            status="failed", error_details="boom", completed_at=timezone.now()
+        )
+
+        definition.start_at = timezone.now() + timedelta(hours=2)
+        definition.save()
+
+        job_run = definition.job_run
+        job_run.refresh_from_db()
+        self.assertEqual(job_run.status, "pending")
+        self.assertEqual(job_run.error_details, "")
+        self.assertIsNone(job_run.completed_at)

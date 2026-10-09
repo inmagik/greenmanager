@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Divider, Grid, Stack, Text, TextInput } from "@mantine/core"
+import { Alert, Anchor, Box, Button, Divider, Grid, Stack, Text, TextInput } from "@mantine/core"
 import { useForm } from "@mantine/form"
 import { yupResolver } from "mantine-form-yup-resolver"
 import * as yup from "yup"
@@ -7,9 +7,11 @@ import { API_URL } from "@/constants"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { splitApiErrors } from "@/utils"
 
 export function ForgotPassword() {
   const [confirm, setConfirm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { t } = useTranslation()
 
   const schema = yup.object().shape({
@@ -70,13 +72,13 @@ export function ForgotPassword() {
                           "Content-Type": "application/json",
                         },
                       })
+                      setError(null)
                       setConfirm(true)
                     } catch (error) {
-                      console.error("Error while recovering password:", error)
+                      const { fieldErrors, message } = splitApiErrors(error, ["email"])
+                      form.setErrors(fieldErrors)
+                      setError(message && t("auth.recoverPasswordError"))
                     }
-                  },
-                  (errors) => {
-                    console.log("Validation errors:", errors)
                   }
                 )}
               >
@@ -94,6 +96,11 @@ export function ForgotPassword() {
                   </Button>
                 </Stack>
               </form>
+            )}
+            {error && (
+              <Alert variant="light" color="red" mt="md">
+                {error}
+              </Alert>
             )}
             <Divider my="xl" />
             {!confirm ? (

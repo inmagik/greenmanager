@@ -95,6 +95,7 @@ export function TenantsList() {
             leftSection={<TbSearch />}
             leftSectionPointerEvents="none"
             placeholder={t("tenants.searchPlaceholder")}
+            aria-label={t("common.searchLabel")}
             value={search}
             onChange={(event) => {
               setSelection([])

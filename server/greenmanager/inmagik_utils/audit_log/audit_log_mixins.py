@@ -3,7 +3,7 @@ from auditlog.middleware import AuditlogMiddleware
 
 
 class AuditlogActorMixin:
-    """Imposta l'utente DRF autenticato come attore delle modifiche registrate."""
+    """Set the authenticated DRF user as the actor of the logged changes."""
 
     _auditlog_actor_context = None
 

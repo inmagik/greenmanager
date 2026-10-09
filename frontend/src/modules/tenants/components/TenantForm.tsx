@@ -87,7 +87,7 @@ export function TenantForm({ initialValues, onSubmit, readonly = false, layout =
           withAsterisk
           label={t("tenants.fields.slug")}
           description={t("tenants.fields.slugDescription")}
-          placeholder="tenant-name"
+          placeholder={t("tenants.fields.slugPlaceholder")}
           readOnly
           variant={readonly ? "unstyled" : "filled"}
           {...form.getInputProps("slug")}

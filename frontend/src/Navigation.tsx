@@ -9,6 +9,7 @@ import { Welcome } from "./pages/welcome"
 import { Profile } from "./pages/profile"
 import { Home } from "./pages/home"
 import { ScreenWidthGuard } from "./components/ScreenWidthGuard"
+import { NotFound } from "./components/StatusPage"
 
 const router = createBrowserRouter([
   {
@@ -96,6 +97,16 @@ const router = createBrowserRouter([
     ],
   },
   ...MODULES_ROUTES,
+  {
+    // Unknown paths, inside the authenticated layout (or redirected to login).
+    path: "*",
+    element: (
+      <ScreenWidthGuard>
+        <AuthLayout redirect_to="/login" />
+      </ScreenWidthGuard>
+    ),
+    children: [{ path: "*", element: <NotFound /> }],
+  },
 ])
 
 export function Navigation() {

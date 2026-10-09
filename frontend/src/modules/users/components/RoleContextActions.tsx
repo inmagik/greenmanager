@@ -1,4 +1,4 @@
-import { requestConfirmation } from "@/utils"
+import { notifyApiError, requestConfirmation } from "@/utils"
 import { Button, Menu } from "@mantine/core"
 import { TbDots, TbPencil, TbTrash } from "react-icons/tb"
 import type { Role } from "../types"
@@ -46,9 +46,9 @@ export function RoleContextActions({ role, onDelete }: Props) {
               t("roles.actions.deleteWarning")
             ).then((confirmed) => {
               if (confirmed) {
-                deleteRole(role.id).then(() => {
-                  onDelete?.()
-                })
+                deleteRole(role.id)
+                  .then(() => onDelete?.())
+                  .catch((error) => notifyApiError(error))
               }
             })
           }}

@@ -4,7 +4,7 @@ from django.utils.datastructures import MultiValueDict
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import DataAndFiles, MultiPartParser
 
-# Un segmento di chiave: nome iniziale, .chiave, oppure [indice] / []
+# A key segment: leading name, .key, or [index] / []
 KEY_RE = re.compile(r"^(\w+)|\.(\w+)|\[(\w*)\]")
 
 MAX_LIST_ITEMS = 1_000
@@ -33,20 +33,20 @@ def _tokenize(key):
     while pos < len(key):
         m = KEY_RE.match(key, pos)
         if not m:
-            raise ValueError(f"carattere inatteso a pos {pos}: {key!r}")
+            raise ValueError(f"unexpected character at position {pos}: {key!r}")
         g1, g2, g3 = m.groups()
-        if g1 is not None:  # nome iniziale
+        if g1 is not None:  # leading name
             tokens.append(g1)
-        elif g2 is not None:  # .chiave
+        elif g2 is not None:  # .key
             tokens.append(g2)
-        else:  # [indice] o [] -> g3 può essere ''
+        else:  # [index] or [] -> g3 can be ''
             tokens.append(g3)
         pos = m.end()
     return tokens
 
 
 def _is_index(tok):
-    """Un token rappresenta una posizione di lista se è vuoto (append) o numerico."""
+    """A token is a list position if it is empty (append) or numeric."""
     return tok == "" or tok.isdigit()
 
 
@@ -56,16 +56,14 @@ class _ExpansionBudget:
 
     def reserve(self, amount):
         if self.list_items + amount > MAX_TOTAL_LIST_ITEMS:
-            raise ValueError(
-                f"limite complessivo di {MAX_TOTAL_LIST_ITEMS} elementi lista superato"
-            )
+            raise ValueError(f"more than {MAX_TOTAL_LIST_ITEMS} list items in total")
         self.list_items += amount
 
 
 def _grow(lst, idx, budget):
     target_length = idx + 1
     if target_length > MAX_LIST_ITEMS:
-        raise ValueError(f"indice {idx} oltre il limite di {MAX_LIST_ITEMS - 1}")
+        raise ValueError(f"index {idx} above the limit of {MAX_LIST_ITEMS - 1}")
 
     missing = target_length - len(lst)
     if missing > 0:
@@ -75,7 +73,7 @@ def _grow(lst, idx, budget):
 
 def _append(lst, value, budget):
     if len(lst) >= MAX_LIST_ITEMS:
-        raise ValueError(f"limite di {MAX_LIST_ITEMS} elementi lista superato")
+        raise ValueError(f"more than {MAX_LIST_ITEMS} list items")
     budget.reserve(1)
     lst.append(value)
 
@@ -101,13 +99,13 @@ def _list_get_or_create(lst, tok, default, budget):
 
 
 def _assign(container, tokens, value, budget):
-    """Inserisce value dentro container (dict) seguendo il percorso tokens."""
+    """Put value into container (a dict) following the path in tokens."""
     for i, tok in enumerate(tokens):
         last = i == len(tokens) - 1
         cur_is_index = _is_index(tok)
         expected_type = list if cur_is_index else dict
         if not isinstance(container, expected_type):
-            raise ValueError(f"contenitore incompatibile per {tok!r}")
+            raise ValueError(f"incompatible container for {tok!r}")
 
         if last:
             if cur_is_index:
@@ -116,8 +114,8 @@ def _assign(container, tokens, value, budget):
                 container[tok] = value
             return
 
-        # Non è l'ultimo: garantisci l'esistenza del contenitore figlio,
-        # scegliendo lista o dict in base al token successivo.
+        # Not the last token: make sure the child container exists, a list or
+        # a dict depending on the next token.
         nxt = tokens[i + 1]
         child = [] if _is_index(nxt) else {}
 
@@ -131,27 +129,27 @@ def _assign(container, tokens, value, budget):
 
 class NestedMultiPartParser(MultiPartParser):
     """
-    MultiPartParser che interpreta la sintassi bracket + dot:
+    MultiPartParser that reads the bracket + dot key syntax:
 
-        title=ordine 1
+        title=order 1
         items[0].name=foo
         items[0].qty=3
         items[0].file=<file>
         items[1].name=bar
         items[1].file=<file>
 
-    produce in request.data:
+    gives, in request.data:
 
         {
-            'title': 'ordine 1',
+            'title': 'order 1',
             'items': [
                 {'name': 'foo', 'qty': '3', 'file': <UploadedFile>},
                 {'name': 'bar', 'file': <UploadedFile>},
             ],
         }
 
-    I file seguono la stessa convenzione di chiavi dei campi scalari e
-    vengono fusi nella struttura; result.files resta comunque popolato.
+    Files use the same key syntax as scalar fields and are merged into the
+    structure; result.files is still populated.
     """
 
     def parse(self, stream, media_type=None, parser_context=None):
@@ -159,18 +157,18 @@ class NestedMultiPartParser(MultiPartParser):
 
         root = {}
         budget = _ExpansionBudget()
-        # data e files insieme: le chiavi dei file usano la stessa sintassi.
+        # data and files together: file keys use the same syntax.
         for source in (result.data, result.files):
             for key in source:
                 values = source.getlist(key)
                 try:
                     tokens = _tokenize(key)
                 except ValueError as e:
-                    raise ParseError(f"Chiave malformata: {key!r} ({e})")
+                    raise ParseError(f"Malformed key: {key!r} ({e})")
 
                 if len(tokens) == 1:
-                    # Chiave semplice: preserva il comportamento del QueryDict
-                    # (valore singolo, o lista se ripetuta).
+                    # Plain key: keep the QueryDict behaviour (a single value,
+                    # or a list if repeated).
                     root[key] = values if len(values) > 1 else values[0]
                     continue
 
@@ -178,6 +176,6 @@ class NestedMultiPartParser(MultiPartParser):
                     try:
                         _assign(root, tokens, v, budget)
                     except (ValueError, IndexError) as e:
-                        raise ParseError(f"Chiave malformata: {key!r} ({e})")
+                        raise ParseError(f"Malformed key: {key!r} ({e})")
 
         return DataAndFiles(root, _FilesForCleanup(result.files))

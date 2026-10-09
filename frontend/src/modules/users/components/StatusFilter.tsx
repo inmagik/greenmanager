@@ -26,6 +26,7 @@ export function StatusFilter({ value, onChange, ...props }: Props) {
       autoSelectOnBlur={false}
       size="sm"
       placeholder={t("users.filters.status")}
+      aria-label={t("users.filters.status")}
       {...props}
     />
   )

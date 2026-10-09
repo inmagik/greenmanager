@@ -48,6 +48,8 @@ black greenmanager && isort greenmanager && flake8 greenmanager
 - le migrazioni di dati sono separate da quelle di schema;
 - `python manage.py makemigrations --check --dry-run` deve dire *No changes detected*.
 
+**Schema OpenAPI**: `python manage.py spectacular --file /dev/null` non deve dare errori né avvisi. Le action aggiunte descrivono richiesta e risposta con `@extend_schema` (§4.4 di `backend.md`).
+
 ## Struttura
 
 ```

@@ -1,5 +1,7 @@
+import { ApiError } from "@inmagik/react-crud/dist/crud/utils"
 import { Alert, Text } from "@mantine/core"
 import { modals } from "@mantine/modals"
+import { notifications } from "@mantine/notifications"
 import i18n from "@/i18n"
 
 export function uniqBy<T>(array: T[], keyFn: (item: T) => unknown): T[] {
@@ -71,9 +73,6 @@ const legacyServerErrorTranslations: Record<string, string> = {
   "A tenant is required.": "serverErrors.tenant_required",
   "Tenant not found.": "serverErrors.tenant_not_found",
   "User already has a default tenant.": "serverErrors.user_already_has_default_tenant",
-  "Selected time series does not belong to current tenant.":
-    "serverErrors.selected_time_series_not_belong_to_current_tenant",
-  "Feature not found in this dataset.": "serverErrors.feature_not_found_in_dataset",
   "User is not associated with this tenant.": "serverErrors.user_not_associated_with_tenant",
 }
 
@@ -170,4 +169,42 @@ export function transformErrorsForForm(errors: unknown): Record<string, string> 
     addErrors(errors, "")
   }
   return formErrors
+}
+
+/**
+ * Message of an error of the API, translated: the payload can be a code at the
+ * top level or errors of the fields, as in forms.
+ */
+export function apiErrorMessage(error: unknown, fallback = i18n.t("common.unexpectedError")): string {
+  if (!(error instanceof ApiError)) return fallback
+  const messages = Object.values(transformErrorsForForm(error.data)).filter(Boolean)
+  return messages.length ? messages.join(" ") : fallback
+}
+
+/** Show a failed action of the API, for actions outside forms (menus, confirmations). */
+export function notifyApiError(error: unknown, title = i18n.t("common.actionFailed")) {
+  notifications.show({ title, message: apiErrorMessage(error), color: "red" })
+}
+
+/**
+ * Errors of the API for a form: the errors of its fields, and one message for the
+ * rest (errors of other fields or of the whole request, or a generic error).
+ */
+export function splitApiErrors(
+  error: unknown,
+  fields: string[]
+): { fieldErrors: Record<string, string>; message: string | null; errors: Record<string, string> } {
+  if (!(error instanceof ApiError)) {
+    return { fieldErrors: {}, message: i18n.t("common.unexpectedError"), errors: {} }
+  }
+  const errors = transformErrorsForForm(error.data)
+  const fieldErrors: Record<string, string> = {}
+  const other: string[] = []
+  for (const [key, value] of Object.entries(errors)) {
+    if (fields.includes(key)) fieldErrors[key] = value
+    else other.push(value)
+  }
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0
+  const message = other.length ? other.join(" ") : hasFieldErrors ? null : i18n.t("common.unexpectedError")
+  return { fieldErrors, message, errors }
 }

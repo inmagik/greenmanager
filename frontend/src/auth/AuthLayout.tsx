@@ -1,4 +1,4 @@
-import { Anchor, AppShell, Burger, Group, Image, Loader, Text } from "@mantine/core"
+import { Anchor, AppShell, Burger, Center, Group, Image, Loader, Text } from "@mantine/core"
 import { useDisclosure } from "@mantine/hooks"
 import { Suspense, useEffect } from "react"
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom"
@@ -59,9 +59,9 @@ export function AuthLayout({ redirect_to }: AuthLayoutProps) {
       <AppShell.Main>
         <Suspense
           fallback={
-            <div className="page d-flex justify-content-center align-items-center">
+            <Center h="100%" p="xl">
               <Loader />
-            </div>
+            </Center>
           }
         >
           <Outlet />

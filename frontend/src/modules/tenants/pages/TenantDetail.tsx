@@ -1,4 +1,5 @@
 import { BlockNavigation } from "@/components/BlockNavigation"
+import { QueryErrorPage } from "@/components/StatusPage"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
 import { Button, Center, Group, Loader, ScrollArea, Tabs, Text } from "@mantine/core"
@@ -21,7 +22,7 @@ export function TenantDetail() {
   const activeTab = tabParam === "users" ? "users" : "info"
   const previousTab = usePrevious(activeTab)
   const [editable, setEditable] = useState(false)
-  const { data: tenant, isLoading } = useTenantDetail(id)
+  const { data: tenant, isLoading, error: tenantError } = useTenantDetail(id)
   const { mutateAsync: updateTenant } = useUpdateTenant()
   const { refreshTenants } = useTenant()
 
@@ -31,6 +32,7 @@ export function TenantDetail() {
     if (previousTab && previousTab !== activeTab) setEditable(false)
   }, [activeTab, previousTab])
 
+  if (tenantError) return <QueryErrorPage error={tenantError} />
   if (isLoading || !tenant) return <Page><Center p="xl"><Loader /></Center></Page>
 
   return (

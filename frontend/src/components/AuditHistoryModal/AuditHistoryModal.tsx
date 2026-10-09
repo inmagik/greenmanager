@@ -3,12 +3,14 @@ import { translateApiError } from "@/utils"
 import { usePlainList } from "@inmagik/react-crud"
 import { Accordion, Badge, Box, Divider, Group, Loader, ScrollArea, Stack, Text } from "@mantine/core"
 import dayjs from "dayjs"
+import { useTranslation } from "react-i18next"
 import { TbHistory } from "react-icons/tb"
 
 type AuditLogEntry = {
   id: number
-  action: string
-  actor: string
+  action: "create" | "update" | "delete" | "access"
+  // null for changes made by the system
+  actor: string | null
   timestamp: string
   changes: {
     field: string
@@ -21,14 +23,8 @@ type Props = {
   endpoint: string
 }
 
-const actionLabels: Record<string, string> = {
-  create: "Creazione",
-  update: "Modifica",
-  delete: "Eliminazione",
-  access: "Accesso",
-}
-
 export function AuditHistoryModal({ endpoint }: Props) {
+  const { t } = useTranslation()
   const { data: entries, isLoading, error } = usePlainList<AuditLogEntry>(endpoint)
 
   if (isLoading) {
@@ -41,10 +37,7 @@ export function AuditHistoryModal({ endpoint }: Props) {
 
   if (error) {
     return (
-      <AlertError
-        title="Impossibile caricare la cronologia"
-        message={translateApiError(error, "Si è verificato un errore durante il caricamento.")}
-      />
+      <AlertError title={t("history.loadError")} message={translateApiError(error, t("history.loadErrorMessage"))} />
     )
   }
 
@@ -52,9 +45,9 @@ export function AuditHistoryModal({ endpoint }: Props) {
     return (
       <Stack align="center" gap="xs" py="xl">
         <TbHistory size={32} />
-        <Text fw={600}>Nessuna modifica registrata</Text>
+        <Text fw={600}>{t("history.empty")}</Text>
         <Text size="sm" c="dimmed">
-          La cronologia comparirà dopo la prima operazione.
+          {t("history.emptyDescription")}
         </Text>
       </Stack>
     )
@@ -79,14 +72,14 @@ export function AuditHistoryModal({ endpoint }: Props) {
               <Group justify="space-between" wrap="nowrap" gap="xs">
                 <Group gap="xs" wrap="nowrap">
                   <Badge variant="light" size="sm">
-                    {actionLabels[entry.action.toLowerCase()] ?? entry.action}
+                    {t(`history.actions.${entry.action}`, { defaultValue: entry.action })}
                   </Badge>
                   <Box>
                     <Text size="sm" fw={600} lineClamp={1}>
-                      {entry.actor}
+                      {entry.actor ?? t("history.system")}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {entry.changes.length} {entry.changes.length === 1 ? "campo" : "campi"}
+                      {t("history.changedFields", { count: entry.changes.length })}
                     </Text>
                   </Box>
                 </Group>
@@ -98,7 +91,7 @@ export function AuditHistoryModal({ endpoint }: Props) {
             <Accordion.Panel>
               {entry.changes.length === 0 && (
                 <Text size="xs" c="dimmed">
-                  Nessun dettaglio disponibile.
+                  {t("history.noDetails")}
                 </Text>
               )}
               {entry.changes.map((change, index) => (

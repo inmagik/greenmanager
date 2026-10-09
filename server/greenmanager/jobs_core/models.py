@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -7,7 +8,11 @@ def validate_is_schedulable(func_name):
     from .scheduling import dynamic_scheduling_manager
 
     if not dynamic_scheduling_manager.is_schedulable(func_name):
-        raise ValueError(f"The function '{func_name}' is not schedulable.")
+        raise ValidationError(
+            "The function '%(func)s' is not schedulable.",
+            code="not_schedulable",
+            params={"func": func_name},
+        )
 
 
 class CronJobDefinition(models.Model):
@@ -45,18 +50,9 @@ class ScheduledJobDefinition(models.Model):
         return self.id
 
 
-# TODO Validare che esattamente uno tra cron e start_at sia valorizzato
-# Serve
-# - aggiungere un cron da admin
-# - aggiungere un job ad una certa data/ora da admin
-# - aggiungere un job adesso da admin
-# - aggiungere un job adesso da API
-# - aggiungere un job ad una certa data/ora da API
-
-# Serve che l'ID della JobRun sia disponibile subito
-# (al momento in cui il job viene richiesto)
-
-
+# A JobRun records one execution. For a ScheduledJobDefinition it is created when
+# the definition is saved, so that its id is known as soon as the job is requested
+# (see how-to.md); for a cron, each firing creates its own JobRun.
 class JobRun(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4)
     func = models.CharField(max_length=255)

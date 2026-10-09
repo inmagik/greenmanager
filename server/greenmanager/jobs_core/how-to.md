@@ -23,7 +23,7 @@ Questo documento descrive come soddisfare i requisiti usando le primitive gia' p
 	- registra un nuovo cron con `scheduler.cron(...)` verso `job_runner`.
 - `post_save` su `ScheduledJobDefinition`:
 	- cancella eventuale job scheduler esistente con stesso `id`;
-	- crea subito (o recupera) il relativo `JobRun` in stato `pending`;
+	- crea subito il relativo `JobRun` in stato `pending`; se la definizione esiste già (ripianificata), lo riporta a `pending` con funzione e argomenti nuovi, senza l'esito precedente;
 	- enqueue a `start_at` (o immediato se `start_at <= now`).
 
 ### Runner unico
@@ -50,7 +50,7 @@ Configurare un job ricorrente da Django Admin.
 ### Nota importante su JobRun per cron
 - Per i cron, il modulo registra `run_id=None` in `meta` quando crea la definizione.
 - Quindi non esiste un `JobRun.id` "noto subito" al momento della sola creazione del cron.
-- Il `JobRun` viene determinato quando il singolo firing viene realmente eseguito dal runner.
+- Il `JobRun` viene determinato quando il singolo firing viene realmente eseguito dal runner, ed è collegato alla definizione (`cron_job_definition`).
 
 ## 3) Requisito: aggiungere un job a data/ora da Admin
 

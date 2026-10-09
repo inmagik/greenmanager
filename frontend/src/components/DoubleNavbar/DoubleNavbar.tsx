@@ -41,6 +41,12 @@ export function DoubleNavbar() {
   }, [user])
 
   const labelFor = (item: MenuItem) => t(`navigation.${item.id}`, { defaultValue: item.label })
+  const displayName = user?.full_name || user?.email || ""
+  const initials = displayName
+    .split(" ")
+    .map((name) => name.charAt(0))
+    .join("")
+    .toUpperCase()
 
   const activeLandmark = menuConfig.landmarks.find((link) => {
     const toPathname = link.path
@@ -79,19 +85,14 @@ export function DoubleNavbar() {
     <nav className={classes.navbar}>
       <div className={`${classes.wrapper} ${classes.desktopNavigation}`}>
         <div className={classes.aside}>
-          <Link to="/" className={classes.logo} aria-label="GreenManager home">
+          <Link to="/" className={classes.logo} aria-label={t("navigation.home")}>
             <img src="/logo.svg" alt="" />
           </Link>
           {mainLinks}
           <div style={{ flex: 1 }} />
           <Tooltip label={t("navigation.profile")} position="right" withArrow transitionProps={{ duration: 0 }} key={user?.full_name}>
-            <Link to={"/profile"} className={classes.profileLink} aria-label={user?.full_name}>
-              <Title order={5}>
-                {user?.full_name
-                  .split(" ")
-                  .map((name) => name.charAt(0))
-                  .join("")}
-              </Title>
+            <Link to={"/profile"} className={classes.profileLink} aria-label={displayName}>
+              <Title order={5}>{initials}</Title>
             </Link>
           </Tooltip>
         </div>
@@ -143,14 +144,9 @@ export function DoubleNavbar() {
           })}
         </div>
         <Link to="/profile" className={classes.mobileProfileLink}>
-          <span className={classes.mobileAvatar}>
-            {user?.full_name
-              .split(" ")
-              .map((name) => name.charAt(0))
-              .join("")}
-          </span>
+          <span className={classes.mobileAvatar}>{initials}</span>
           <span>
-            <Text size="sm" fw={700}>{user?.full_name}</Text>
+            <Text size="sm" fw={700}>{displayName}</Text>
             <Text size="xs" c="dimmed">{t("navigation.profileSettings")}</Text>
           </span>
         </Link>

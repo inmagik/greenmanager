@@ -15,7 +15,10 @@ const auth = {
   loginErrors: {
     invalid_credentials: "Email o password non corrette. Controlla le credenziali e riprova.",
     login_unavailable: "Al momento non è possibile accedere. Riprova più tardi.",
+    account_locked:
+      "Troppi tentativi di accesso non riusciti: l'account è bloccato. Riprova più tardi o rivolgiti a un amministratore.",
   },
+  recoverPasswordError: "Non è stato possibile inviare l'email. Riprova più tardi.",
   logoutConfirmTitle: "Esci",
   logoutConfirmHeading: "Vuoi davvero uscire?",
   logoutConfirmMessage: "Per accedere nuovamente a GreenManager dovrai reinserire le credenziali.",

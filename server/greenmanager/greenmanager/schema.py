@@ -1,15 +1,20 @@
-def add_tenant_security_requirement(result, generator, request, public):
-    for path_item in result.get("paths", {}).values():
-        for operation in path_item.values():
-            if not isinstance(operation, dict):
-                continue
+from drf_spectacular.openapi import AutoSchema
+from tenants.mixins import TenantContextMixin
 
-            security_requirements = operation.get("security")
-            if not security_requirements:
-                continue
 
-            for requirement in security_requirements:
-                if requirement and "TenantId" not in requirement:
-                    requirement["TenantId"] = []
+class TenantAwareAutoSchema(AutoSchema):
+    """Require the X-Tenant-ID header (TenantId) only on tenant-scoped views.
 
-    return result
+    Bootstrap endpoints, such as `auth/me/` and `tenants/`, stay without it:
+    a client calls them before it knows a tenant.
+    """
+
+    def get_auth(self):
+        auth = super().get_auth()
+        if not isinstance(self.view, TenantContextMixin):
+            return auth
+        # An empty requirement means anonymous access: it stays as it is.
+        return [
+            {**requirement, "TenantId": []} if requirement else requirement
+            for requirement in auth
+        ]

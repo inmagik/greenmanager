@@ -17,13 +17,28 @@ def update_user_permissions(sender, instance, raw, **kwargs):
 
 
 @receiver(m2m_changed, sender=User.roles.through)
-def update_user_permissions_when_roles_change(sender, instance, action, **kwargs):
-    # This signal is never skipped, it is handled as part of the "save" process of
-    # the User model, and so the recursion guard is not needed here. The post_save
-    # signal will handle
-    # the permissions update after the roles are changed.
-    if action in ("post_add", "post_remove", "post_clear"):
-        instance.update_permissions()
+def update_user_permissions_when_roles_change(
+    sender, instance, action, reverse, model, pk_set, **kwargs
+):
+    # update_permissions() saves only all_permissions, so no recursion guard is
+    # needed here.
+    if not reverse:
+        # user.roles.add(...) and similar: the instance is the user.
+        if action in ("post_add", "post_remove", "post_clear"):
+            instance.update_permissions()
+        return
+
+    # role.user_set.add(...) and similar: the instance is the role, the users
+    # are in pk_set. On clear pk_set is empty: the users are read before.
+    if action == "pre_clear":
+        instance._users_before_clear = list(instance.user_set.all())
+    elif action in ("post_add", "post_remove"):
+        for user in model.objects.filter(pk__in=pk_set or []):
+            user.update_permissions()
+    elif action == "post_clear":
+        for user in getattr(instance, "_users_before_clear", []):
+            user.update_permissions()
+        instance._users_before_clear = []
 
 
 @receiver(post_save, sender=Role)

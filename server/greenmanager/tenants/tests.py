@@ -1,38 +1,25 @@
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase
+from drf_spectacular.generators import SchemaGenerator
 from rest_framework.test import APITestCase
 from tenants.models import Tenant, TenantMembership
 from tenants.serializers import TenantMembershipSerializer
 
-from greenmanager.schema import add_tenant_security_requirement
-
 
 class TenantOpenApiSchemaTests(SimpleTestCase):
-    def test_tenant_security_is_added_to_authenticated_operations(self):
-        schema = {
-            "paths": {
-                "/api/example/": {
-                    "get": {
-                        "security": [
-                            {"jwtAuth": []},
-                            {"cookieAuth": []},
-                        ],
-                    },
-                    "post": {"security": [{}]},
-                },
-            },
-        }
+    def test_tenant_header_only_on_tenant_scoped_operations(self):
+        schema = SchemaGenerator().get_schema(request=None, public=True)
 
-        result = add_tenant_security_requirement(schema, None, None, False)
+        def requires_tenant(path, method):
+            security = schema["paths"][path][method].get("security", [])
+            return any("TenantId" in requirement for requirement in security)
 
-        self.assertEqual(
-            result["paths"]["/api/example/"]["get"]["security"],
-            [
-                {"jwtAuth": [], "TenantId": []},
-                {"cookieAuth": [], "TenantId": []},
-            ],
-        )
-        self.assertEqual(result["paths"]["/api/example/"]["post"]["security"], [{}])
+        self.assertTrue(requires_tenant("/api/core/auth/users/", "get"))
+        self.assertTrue(requires_tenant("/api/core/auth/roles/", "get"))
+        self.assertTrue(requires_tenant("/api/core/tenant-memberships/", "get"))
+        # Bootstrap endpoints: the client calls them before it knows a tenant.
+        self.assertFalse(requires_tenant("/api/core/auth/me/", "get"))
+        self.assertFalse(requires_tenant("/api/core/tenants/", "get"))
 
 
 class TenantUsersApiTests(APITestCase):

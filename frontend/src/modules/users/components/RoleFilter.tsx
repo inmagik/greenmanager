@@ -38,6 +38,7 @@ export function RoleFilter({ value, onChange }: Props) {
       options={options}
       defaultCaption={selectedRole?.name}
       placeholder={t("users.filters.role")}
+      ariaLabel={t("users.filters.role")}
     />
   )
 }

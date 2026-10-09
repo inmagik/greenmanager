@@ -98,7 +98,7 @@ export function UpdateRoleForm({ initialValues, readonly, onCancel, onSubmit }: 
                       <TbId size="1.5rem" />
                     </Box>
                     <Text size="md" fw="600" flex={1}>
-                      {module}
+                      {t(`roles.modules.${module}`, { defaultValue: module })}
                     </Text>
                   </Group>
                   <Stack gap={0}>
@@ -113,6 +113,7 @@ export function UpdateRoleForm({ initialValues, readonly, onCancel, onSubmit }: 
                         >
                           <Checkbox
                             size="xs"
+                            aria-label={permission.name}
                             checked={isActive}
                             disabled={readonly}
                             onChange={() => {

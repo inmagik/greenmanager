@@ -6,6 +6,7 @@ import { UserDetail } from "./pages/UserDetail"
 import { UsersList } from "./pages/UsersList"
 import { RoleDetail } from "./pages/RoleDetail"
 import { CheckPermission } from "@/components/CheckPermission"
+import { Forbidden } from "@/components/StatusPage"
 import { AUTH_CORE_PERMISSIONS } from "./permissions"
 import { ScreenWidthGuard } from "@/components/ScreenWidthGuard"
 
@@ -25,7 +26,7 @@ export const routes: RouteObject[] = [
       {
         path: "utenti",
         element: (
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_UTENTI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_UTENTI} fallback={<Forbidden />}>
             <Outlet />
           </CheckPermission>
         ),
@@ -47,7 +48,7 @@ export const routes: RouteObject[] = [
       {
         path: "ruoli",
         element: (
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_RUOLI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_RUOLI} fallback={<Forbidden />}>
             <Outlet />
           </CheckPermission>
         ),

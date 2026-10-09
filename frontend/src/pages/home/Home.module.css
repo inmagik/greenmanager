@@ -4,6 +4,13 @@
   background: var(--mantine-color-gray-0);
 }
 
+/* Below sm the AppShell shows a 60px header, as in Page.module.css. */
+@media (max-width: 47.99em) {
+  .page {
+    height: calc(100dvh - 60px);
+  }
+}
+
 .content {
   width: min(1180px, 100%);
   margin: 0 auto;

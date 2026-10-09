@@ -1,5 +1,7 @@
+import { AlertError } from "@/components/AlertError"
 import { FormFooter } from "@/components/FormFooter"
-import { uniqBy } from "@/utils"
+import { transformErrorsForForm, uniqBy } from "@/utils"
+import { ApiError } from "@inmagik/react-crud/dist/crud/utils"
 import { Box, Button, Checkbox, Group, Pill, SimpleGrid, Stack, Text } from "@mantine/core"
 import { useForm } from "@mantine/form"
 import { modals } from "@mantine/modals"
@@ -54,6 +56,11 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
         setIsLoading(true)
         try {
           await onSubmit?.(form.values)
+        } catch (err) {
+          // Errors of roles and permissions (e.g. missing role-write permission) go above the form.
+          const errors = err instanceof ApiError ? transformErrorsForForm(err.data) : {}
+          const message = Object.values(errors).join(" ") || t("common.unexpectedError")
+          form.setErrors({ non_field_errors: message })
         } finally {
           setIsLoading(false)
         }
@@ -61,6 +68,14 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
     >
       <Stack justify="space-between" h="100%">
         <div>
+          {form.errors.non_field_errors && (
+            <AlertError
+              title={t("common.errorTitle")}
+              message={form.errors.non_field_errors.toString()}
+              mt="lg"
+              mx="lg"
+            />
+          )}
           <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_RUOLI}>
             <Stack p="lg" className="standard-border-bottom" gap="sm">
               <Group justify="space-between">
@@ -71,7 +86,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                   disabled={readonly}
                   onClick={() => {
                     const modalId = modals.open({
-                      title: t("roles.detail.assignUsers"),
+                      title: t("users.detail.assignRoles"),
                       children: (
                         <PickRolesForm
                           onSubmit={(roles) => {
@@ -86,14 +101,14 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                     })
                   }}
                 >
-                  {t("roles.detail.assign")}
+                  {t("users.detail.addRole")}
                 </Button>
               </Group>
               <Group gap="xxs">
-                {form.values.roles.map((role, index) => {
+                {form.values.roles.map((role) => {
                   return (
                     <Pill
-                      key={index}
+                      key={role.id}
                       size="sm"
                       withRemoveButton={!readonly}
                       removeButtonProps={{
@@ -124,7 +139,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                       <TbId size="1.5rem" />
                     </Box>
                     <Text size="md" fw="600" flex={1}>
-                      {module}
+                      {t(`roles.modules.${module}`, { defaultValue: module })}
                     </Text>
                   </Group>
                   <Stack gap={0}>
@@ -142,6 +157,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                         >
                           <Checkbox
                             size="xs"
+                            aria-label={permission.name}
                             checked={isActive}
                             disabled={readonly || !!itComesFromRole}
                             onChange={() => {

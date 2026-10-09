@@ -1,6 +1,7 @@
-import { Combobox, InputBase, useCombobox } from "@mantine/core"
+import { CloseButton, Combobox, InputBase, useCombobox } from "@mantine/core"
 import { useState } from "react"
-import { TbChevronDown, TbX } from "react-icons/tb"
+import { useTranslation } from "react-i18next"
+import { TbChevronDown } from "react-icons/tb"
 
 export type AsyncSelectProps = {
   value: string
@@ -10,6 +11,8 @@ export type AsyncSelectProps = {
   onChange: (value: string | null, option: { value: string; label: string } | null) => void
   options: { value: string; label: string }[]
   placeholder?: string
+  /** Accessible name of the input, when there is no visible label. By default the placeholder. */
+  ariaLabel?: string
   error?: React.ReactNode
   disabled?: boolean
 }
@@ -22,9 +25,11 @@ export function AsyncSelect({
   options,
   defaultCaption,
   placeholder,
+  ariaLabel,
   error,
   disabled,
 }: AsyncSelectProps) {
+  const { t } = useTranslation()
   const [lastValue, setLastValue] = useState<{ value: string; label: string } | null>(null)
 
   const combobox = useCombobox({
@@ -71,8 +76,8 @@ export function AsyncSelect({
           rightSection={
             <>
               {!!value && (
-                <TbX
-                  size="14px"
+                <CloseButton
+                  size="sm"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={(event) => {
                     event.stopPropagation()
@@ -81,8 +86,7 @@ export function AsyncSelect({
                     onSearchChange(null)
                     combobox.closeDropdown()
                   }}
-                  aria-label="Cancella"
-                  style={{ color: "var(--mantine-color-gray-7)" }}
+                  aria-label={t("common.clear")}
                 />
               )}
               <TbChevronDown
@@ -95,10 +99,12 @@ export function AsyncSelect({
           }
           onClick={() => combobox.toggleDropdown()}
           onChange={(e) => {
+            combobox.openDropdown()
             onSearchChange(e.target.value)
           }}
           value={inputCaption}
           placeholder={placeholder}
+          aria-label={ariaLabel ?? placeholder}
           error={error}
           disabled={disabled}
         ></InputBase>
@@ -106,7 +112,7 @@ export function AsyncSelect({
 
       <Combobox.Dropdown>
         <Combobox.Options>
-          {optNodes.length > 0 ? optNodes : <Combobox.Empty>Nessun risultato</Combobox.Empty>}
+          {optNodes.length > 0 ? optNodes : <Combobox.Empty>{t("common.noResults")}</Combobox.Empty>}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>

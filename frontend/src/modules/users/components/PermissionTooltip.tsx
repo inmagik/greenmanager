@@ -1,4 +1,4 @@
-import { Stack, Text, Tooltip } from "@mantine/core"
+import { ActionIcon, Stack, Text, Tooltip } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { TbHelp } from "react-icons/tb"
 import type { Permission } from "../types"
@@ -36,8 +36,17 @@ export function PermissionTooltip({ permission, enablingRole }: Props) {
         </Stack>
       }
       withArrow
+      events={{ hover: true, focus: true, touch: true }}
     >
-      <TbHelp color="var(--mantine-color-gray-6)" />
+      {/* A button, so that the tooltip opens from the keyboard too. */}
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="sm"
+        aria-label={t("roles.permissionInfo", { name: permission.name })}
+      >
+        <TbHelp />
+      </ActionIcon>
     </Tooltip>
   )
 }

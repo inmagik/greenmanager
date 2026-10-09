@@ -36,7 +36,8 @@ export function useUnlockUser() {
 
   return useMutation({
     mutationFn: (userId: User["id"]) => {
-      const apiUrl = `${API_URL}/api/core/auth/users/${userId}/unlock`
+      // With the trailing slash: Django cannot redirect a POST to the URL with it.
+      const apiUrl = `${API_URL}/api/core/auth/users/${userId}/unlock/`
       return fetchApi(apiUrl, {
         method: "POST",
         headers: authHeaders,

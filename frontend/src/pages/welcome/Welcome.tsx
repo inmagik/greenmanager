@@ -7,6 +7,7 @@ import { API_URL } from "@/constants"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { splitApiErrors } from "@/utils"
 
 export function Welcome() {
   const [confirm, setConfirm] = useState(false)
@@ -64,10 +65,7 @@ export function Welcome() {
             h="100%"
             w="100%"
             style={{
-              backgroundImage: "url('/placeholder.png')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
+              backgroundColor: "var(--mantine-color-default-filled)",
             }}
           />
         </Grid.Col>
@@ -124,15 +122,13 @@ export function Welcome() {
                           "Content-Type": "application/json",
                         },
                       })
-                      console.log("Password reset successful")
                       setConfirm(true)
                     } catch (error) {
-                      console.error("Error while resetting password:", error)
-                      setError(error instanceof Error ? error.message : "Unknown error")
+                      const { fieldErrors, message, errors } = splitApiErrors(error, ["password"])
+                      form.setErrors(fieldErrors)
+                      // The token comes from the link of the email: an error there is not the user's input.
+                      setError(errors.token ? t("serverErrors.invalid_token") : message)
                     }
-                  },
-                  (errors) => {
-                    console.log("Validation errors:", errors)
                   }
                 )}
               >

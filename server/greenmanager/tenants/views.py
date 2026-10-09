@@ -4,6 +4,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from inmagik_utils.mixins import BulkDeleteActionMixin
 from inmagik_utils.pagination import StandardPaginationMixin
 from inmagik_utils.structural_filters import StructuralFilterMixin
@@ -101,6 +103,7 @@ class TenantViewSet(
         self.validate_can_delete(instance)
         super().perform_destroy(instance)
 
+    @extend_schema(request=BulkDeleteTenantsSerializer, responses={204: None})
     @action(detail=False, methods=["POST"], url_path="bulk-delete")
     @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
@@ -115,6 +118,32 @@ class TenantViewSet(
             tenant.delete()
         return Response(status=204)
 
+    @extend_schema(
+        methods=["GET"],
+        parameters=[
+            OpenApiParameter(
+                "members_only",
+                OpenApiTypes.STR,
+                enum=["1"],
+                description="Only the members of the tenant.",
+            ),
+            OpenApiParameter(
+                "available_only",
+                OpenApiTypes.STR,
+                enum=["1"],
+                description="Only the users who are not members of the tenant.",
+            ),
+            OpenApiParameter("search", OpenApiTypes.STR),
+            OpenApiParameter("page", OpenApiTypes.INT),
+        ],
+        responses={200: TenantUserSerializer(many=True)},
+    )
+    @extend_schema(
+        methods=["POST"],
+        request=TenantUsersSerializer,
+        responses={200: TenantUsersSerializer},
+        description="Replace the members of the tenant.",
+    )
     @action(detail=True, methods=["GET", "POST"], url_path="users")
     @transaction.atomic
     def users(self, request, *args, **kwargs):
@@ -164,6 +193,9 @@ class TenantViewSet(
         selected_ids = replace_tenant_users(tenant, selected_users)
         return Response({"user_ids": sorted(selected_ids)})
 
+    @extend_schema(
+        request=TenantUsersSerializer, responses={200: TenantUsersSerializer}
+    )
     @action(detail=True, methods=["POST"], url_path="add-users")
     @transaction.atomic
     def add_users(self, request, *args, **kwargs):
@@ -174,6 +206,7 @@ class TenantViewSet(
         selected_ids = add_tenant_users(tenant, selected_users)
         return Response({"user_ids": sorted(selected_ids)})
 
+    @extend_schema(request=RemoveTenantUserSerializer, responses={204: None})
     @action(detail=True, methods=["POST"], url_path="remove-user")
     @transaction.atomic
     def remove_user(self, request, *args, **kwargs):

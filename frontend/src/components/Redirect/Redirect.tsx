@@ -9,7 +9,8 @@ export function Redirect({ to }: Props) {
   const navigate = useNavigate()
 
   useEffect(() => {
-    navigate(to)
+    // Replace: going back must not land on the redirect again.
+    navigate(to, { replace: true })
   }, [navigate, to])
 
   return null

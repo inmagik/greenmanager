@@ -33,7 +33,10 @@ export function UserMultiSelect({ value, onChange, roleId, ...props }: Props) {
   }, [users?.results, value])
 
   // Selected users stay among the options, so that their labels are shown.
-  const options = Array.from(usersById.values(), (user) => ({ value: user.id.toString(), label: user.full_name }))
+  const options = Array.from(usersById.values(), (user) => ({
+    value: user.id.toString(),
+    label: user.full_name || user.email,
+  }))
 
   return (
     <MultiSelect

@@ -237,7 +237,9 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
   - `DataProvider` chiama `setState` in un effetto per svuotare la cache al cambio di organizzazione. È voluto: la regola `react-hooks/set-state-in-effect` è disattivata su quella riga, con il motivo;
   - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio.
 - **Revisione della PR dello scaffold**, correzioni al modulo `users`:
-  - disattivazione e riattivazione mandano solo `is_active`, il salvataggio di ruoli e permessi solo quei campi;
+  - disattivazione e riattivazione mandano solo `is_active`; il salvataggio dei dati solo nome ed email, quello di ruoli e permessi solo quei campi, quello di un ruolo solo nome e permessi. In data-lab si mandava l'intero record, che poteva riscrivere valori cambiati nel frattempo;
+  - gli errori delle azioni fuori dai form (menu, conferme, eliminazioni multiple, sblocco) si mostrano in una notifica con `notifyApiError` di `utils.tsx`: in data-lab si perdevano. Disattiva ed Elimina sono disabilitati sul proprio account;
+  - il form di ruoli e permessi mostra gli errori del server; i gruppi di permessi hanno un nome tradotto (`roles.modules.<app>`), le caselle un nome accessibile;
   - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `SCRITTURA_UTENTI` e `SCRITTURA_RUOLI`: il salvataggio è una modifica dell'utente, che il server accetta solo con entrambi. L'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`) richiede solo `SCRITTURA_RUOLI`;
   - la rimozione del ruolo, dagli utenti selezionati o da un utente col menu della riga, chiama `revoke_from`. In data-lab la prima scriveva solo in console, la seconda mandava l'intero utente;
   - `RoleMultiSelect` e `UserMultiSelect` tengono tra le opzioni gli elementi selezionati anche quando la ricerca non li restituisce.
@@ -245,6 +247,14 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
   - testi in italiano dove erano scritti nel codice in inglese: errori del login (`login()` lancia un codice, `auth.loginErrors` lo traduce), pulsanti di `BlockNavigation`, `PermissionTooltip`;
   - `AlertError` mostra l'azione solo con `actionPermission` anche nella variante di errore (es. lo sblocco dell'utente);
   - accessibilità: `aria-label` sui pulsanti dei menu contestuali e sulle caselle di selezione di `Table`; l'ordinamento delle colonne è un pulsante, usabile da tastiera, con l'etichetta che dice la direzione corrente.
+- **Seconda revisione della PR dello scaffold**:
+  - `Table` ha i ruoli ARIA di una tabella (`table`, `rowgroup`, `row`, `columnheader` con `aria-sort`, `cell`); una riga intercetta il clic solo se ha `onRowClick`, e lascia ai link, ai pulsanti e alle caselle il loro comportamento;
+  - testi nelle traduzioni: `AuditHistoryModal` (con i codici delle azioni del server), `AsyncSelect`, i placeholder; errori di attivazione, reset e cambio della password sui campi, con il token non valido tradotto; tolti i testi dei dataset e delle simulazioni di data-lab;
+  - `TenantSelector` usa `Menu` di Mantine, accessibile da tastiera; `AsyncSelect` ha un pulsante per svuotarlo e un nome accessibile; le ricerche e i filtri hanno un `aria-label`; i tooltip di `PermissionTooltip` e `Header` si aprono anche dal focus;
+  - pagine "Pagina non trovata" e "Accesso non consentito" (`components/StatusPage`): per i percorsi sconosciuti, per i dettagli di un record che non esiste (prima il caricamento non finiva) e per le rotte senza permesso (prima la pagina restava vuota);
+  - profilo: `useUpdateMe` chiamava `me//` (`useAction` aggiunge la `/` finale) e il salvataggio falliva; ora aggiorna anche l'utente di `AuthProvider`. `TenantProvider` ricarica le organizzazioni solo quando cambia l'utente, non i suoi dati;
+  - lo sblocco dell'utente chiama `unlock/` con la `/` finale; il login distingue l'account bloccato (`account_locked`);
+  - la home toglie l'header mobile dall'altezza, come `Page`; `Redirect` sostituisce la voce della cronologia.
 
 ## Domande aperte
 

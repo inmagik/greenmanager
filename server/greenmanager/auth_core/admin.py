@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group as DefaultAuthGroup
 from django.contrib.postgres.fields import ArrayField
 from django.forms.widgets import CheckboxSelectMultiple
+from tenants.admin import MembershipInlineAdminMixin
 from tenants.models import TenantMembership
 from userbase.admin import UserAdmin as BaseUserAdmin
 
@@ -50,7 +51,7 @@ class TenantMembershipInline(admin.TabularInline):
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(MembershipInlineAdminMixin, BaseUserAdmin):
     fieldsets = (
         (
             None,

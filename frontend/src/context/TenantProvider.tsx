@@ -52,6 +52,8 @@ function getStoredTenantId() {
 
 export function TenantProvider({ children }: Props) {
   const { tokens, user } = useAuth()
+  // The tenants depend on who the user is, not on their data (e.g. after a profile update).
+  const userId = user?.id
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [tenant, setTenantState] = useState<Tenant | null>(null)
   const [tenantId, setTenantId] = useState<number | null>(getStoredTenantId)
@@ -64,7 +66,7 @@ export function TenantProvider({ children }: Props) {
     const controller = new AbortController()
 
     async function loadTenants() {
-      if (!tokens?.access || !user) {
+      if (!tokens?.access || !userId) {
         setTenants([])
         setTenantState(null)
         setTenantId(null)
@@ -120,7 +122,7 @@ export function TenantProvider({ children }: Props) {
       cancelled = true
       controller.abort()
     }
-  }, [tokens?.access, user, refreshVersion])
+  }, [tokens?.access, userId, refreshVersion])
 
   const refreshTenants = useCallback(() => setRefreshVersion((version) => version + 1), [])
 

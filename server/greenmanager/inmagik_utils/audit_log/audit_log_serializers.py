@@ -1,4 +1,15 @@
+from auditlog.models import LogEntry
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+
+# Stable codes of the actions: the frontend translates them. The labels of
+# LogEntry.Action follow the language of the request.
+ACTION_CODES = {
+    LogEntry.Action.CREATE: "create",
+    LogEntry.Action.UPDATE: "update",
+    LogEntry.Action.DELETE: "delete",
+    LogEntry.Action.ACCESS: "access",
+}
 
 
 class AuditLogChangeSerializer(serializers.Serializer):
@@ -14,14 +25,18 @@ class AuditLogEntrySerializer(serializers.Serializer):
     timestamp = serializers.DateTimeField(read_only=True)
     changes = serializers.SerializerMethodField()
 
+    @extend_schema_field(serializers.ChoiceField(choices=list(ACTION_CODES.values())))
     def get_action(self, obj):
-        return obj.get_action_display()
+        return ACTION_CODES.get(obj.action, str(obj.action))
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_actor(self, obj):
+        """Name or email of the author; null for changes made by the system."""
         if obj.actor is not None:
             return getattr(obj.actor, "full_name", "") or obj.actor.get_username()
-        return obj.actor_email or "Sistema"
+        return obj.actor_email or None
 
+    @extend_schema_field(AuditLogChangeSerializer(many=True))
     def get_changes(self, obj):
         changes = []
         for field, values in obj.changes_display_dict.items():

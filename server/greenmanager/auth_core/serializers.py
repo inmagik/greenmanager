@@ -1,10 +1,19 @@
 from django.conf import settings
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
 from .models import Role, User
+from .permission_manager import permission_manager
 
 ROLE_WRITE_PERMISSION = "auth_core.SCRITTURA_RUOLI"
+
+# Fields of the account that hold for every tenant of the user: only staff users
+# change them for users shared with other tenants. The email matters most: who
+# changes it can recover the password and use the account in the other tenants.
+SHARED_ACCOUNT_FIELDS = ("email", "is_active")
+
+USER_STATUSES = ("active", "inactive", "locked")
 
 
 def is_shared_with_other_tenants(user, tenant):
@@ -12,18 +21,56 @@ def is_shared_with_other_tenants(user, tenant):
     return user.tenant_memberships.exclude(tenant=tenant).exists()
 
 
-def shared_user_error(user):
-    return serializers.ValidationError(
+def api_error(payload, field=None):
+    """ValidationError with a ``{"code", "params", "detail"}`` payload.
+
+    In ``Serializer.validate()`` the payload goes under a field: DRF would turn
+    the values of a top-level payload into lists, and the frontend would no
+    longer recognise the code.
+    """
+    return serializers.ValidationError({field: payload} if field else payload)
+
+
+def shared_user_error(user, field=None):
+    return api_error(
         {
             "code": "user_shared_with_other_tenants",
             "params": {"name": user.full_name or user.email},
             "detail": "The user is also a member of other tenants.",
-        }
+        },
+        field,
     )
+
+
+def own_account_error(field=None):
+    return api_error(
+        {
+            "code": "cannot_change_own_account",
+            "detail": "Users cannot deactivate or delete their own account.",
+        },
+        field,
+    )
+
+
+def validate_permission_codes(codes):
+    known = {permission["code"] for permission in permission_manager.permissions}
+    unknown = sorted(set(codes) - known)
+    if unknown:
+        raise serializers.ValidationError(
+            {
+                "code": "unknown_permission",
+                "params": {"permissions": ", ".join(unknown)},
+                "detail": f"Unknown permissions: {', '.join(unknown)}.",
+            }
+        )
+    return codes
 
 
 class RoleSerializer(serializers.ModelSerializer):
     user_count = serializers.IntegerField(read_only=True)
+
+    def validate_permissions(self, value):
+        return validate_permission_codes(value)
 
     class Meta:
         model = Role
@@ -69,6 +116,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
 
+    def validate_permissions(self, value):
+        return validate_permission_codes(value)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         tenant = self.tenant
@@ -81,11 +131,12 @@ class UserSerializer(serializers.ModelSerializer):
     def tenant(self):
         return self.context.get("tenant")
 
-    def get_is_locked(self, obj):
+    def get_is_locked(self, obj) -> bool:
         if getattr(obj, "failed_login_attempts", 0) >= settings.AXES_FAILURE_LIMIT:
             return True
         return False
 
+    @extend_schema_field(serializers.ChoiceField(choices=USER_STATUSES))
     def get_status(self, obj):
         if not obj.is_active:
             return "inactive"
@@ -145,7 +196,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-        self.validate_activation(attrs)
+        self.validate_shared_account(attrs)
         if self.privileges_change(attrs) and not self.can_manage_privileges():
             raise PermissionDenied(
                 {
@@ -156,24 +207,33 @@ class UserSerializer(serializers.ModelSerializer):
             )
         return attrs
 
-    def validate_activation(self, attrs):
+    def validate_shared_account(self, attrs):
         """
-        ``is_active`` holds for every tenant of the user: only staff users change
-        it for users shared with other tenants.
+        Email and activation hold for every tenant of the user (see
+        ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users shared
+        with other tenants. Nobody deactivates their own account.
         """
         instance = self.instance
-        if (
-            instance is None
-            or self.tenant is None
-            or "is_active" not in attrs
-            or attrs["is_active"] == instance.is_active
-        ):
+        if instance is None:
+            return
+        changed = [
+            field
+            for field in SHARED_ACCOUNT_FIELDS
+            if field in attrs and attrs[field] != getattr(instance, field)
+        ]
+        if not changed:
             return
         request = self.context.get("request")
-        if request and request.user.is_staff:
+        if (
+            "is_active" in changed
+            and request is not None
+            and request.user.pk == instance.pk
+        ):
+            raise own_account_error(field="is_active")
+        if self.tenant is None or (request and request.user.is_staff):
             return
         if is_shared_with_other_tenants(instance, self.tenant):
-            raise shared_user_error(instance)
+            raise shared_user_error(instance, field=changed[0])
 
     def update(self, instance, validated_data):
         roles = validated_data.pop("roles", None)

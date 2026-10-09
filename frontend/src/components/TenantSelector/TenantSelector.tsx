@@ -1,98 +1,62 @@
 import { useTenant } from "@/hooks/useTenant"
-import { Box, Group, ScrollArea, Skeleton, Text } from "@mantine/core"
-import { useEffect, useState } from "react"
-import { TbBriefcase, TbCheck } from "react-icons/tb"
+import { Group, Menu, ScrollArea, Skeleton, Text, UnstyledButton } from "@mantine/core"
+import { useTranslation } from "react-i18next"
+import { TbBriefcase, TbCheck, TbSelector } from "react-icons/tb"
 import { useNavigate } from "react-router-dom"
 
+// Mantine Menu: keyboard navigation, Escape and ARIA attributes come with it.
 export function TenantSelector() {
   const { tenant, tenants, isLoading, setTenant } = useTenant()
-  const [displayTenantSelector, setDisplayTenantSelector] = useState(false)
   const navigate = useNavigate()
-
-  useEffect(() => {
-    if (!displayTenantSelector) {
-      return
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      if (!target.closest(".tenant-selector")) {
-        setDisplayTenantSelector(false)
-      }
-    }
-
-    document.addEventListener("click", handleClickOutside)
-
-    return () => {
-      document.removeEventListener("click", handleClickOutside)
-    }
-  }, [displayTenantSelector])
+  const { t } = useTranslation()
 
   if (isLoading) {
     return <Skeleton height={36} radius="sm" />
   }
 
-  const selector = tenants.length > 1 ? (
-    <Box
-      style={{ borderTop: "1px solid var(--mantine-color-gray-3)", cursor: "pointer" }}
-      pos="relative"
-      className="tenant-selector"
-    >
-      <Group
-        p="xs"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            setDisplayTenantSelector((open) => !open)
-          }
-        }}
-        onClick={() => setDisplayTenantSelector((open) => !open)}
-      >
-        <Group bdrs="50%" bg="gray.0" w={40} h={40} justify="center" align="center">
-          <TbBriefcase size={16} />
-        </Group>
-        <Text>{tenant?.name}</Text>
-      </Group>
-      {displayTenantSelector && (
-        <ScrollArea
-          h={Math.min(tenants.length, 3) * 64}
-          style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 1000 }}
-          bg="gray.1"
+  if (tenants.length < 2) {
+    return null
+  }
+
+  return (
+    <Menu position="top-start" width="target" withinPortal={false}>
+      <Menu.Target>
+        <UnstyledButton
+          p="xs"
+          w="100%"
+          style={{ borderTop: "1px solid var(--mantine-color-gray-3)" }}
+          aria-label={`${t("tenants.switchTenant")}. ${t("tenants.currentTenant", { name: tenant?.name ?? "" })}`}
         >
+          <Group wrap="nowrap">
+            <Group bdrs="50%" bg="gray.0" w={40} h={40} justify="center" align="center" style={{ flexShrink: 0 }}>
+              <TbBriefcase size={16} />
+            </Group>
+            <Text flex={1} truncate>
+              {tenant?.name}
+            </Text>
+            <TbSelector size={16} />
+          </Group>
+        </UnstyledButton>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>{t("tenants.switchTenant")}</Menu.Label>
+        <ScrollArea.Autosize mah={3 * 48}>
           {tenants.map((item) => (
-            <Group
+            <Menu.Item
               key={item.id}
-              p="xs"
-              style={{ cursor: "pointer" }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault()
-                  setTenant(item)
-                  setDisplayTenantSelector(false)
-                  navigate("/")
-                }
-              }}
+              leftSection={<TbBriefcase size={16} />}
+              rightSection={item.id === tenant?.id ? <TbCheck size={16} /> : null}
+              aria-current={item.id === tenant?.id ? "true" : undefined}
               onClick={() => {
                 setTenant(item)
-                setDisplayTenantSelector(false)
                 navigate("/")
               }}
             >
-              <Group bdrs="50%" bg="gray.2" w={40} h={40} justify="center" align="center">
-                <TbBriefcase size={16} />
-              </Group>
               {item.name}
-              {item.id === tenant?.id && <TbCheck color="default.6" />}
-            </Group>
+            </Menu.Item>
           ))}
-        </ScrollArea>
-      )}
-    </Box>
-  ) : null
-
-  return selector
+        </ScrollArea.Autosize>
+      </Menu.Dropdown>
+    </Menu>
+  )
 }

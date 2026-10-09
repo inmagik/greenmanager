@@ -19,6 +19,7 @@ import { UserStatus } from "../components/UserStatus"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { CheckPermission } from "@/components/CheckPermission"
 import { useTranslation } from "react-i18next"
+import { notifyApiError } from "@/utils"
 
 const Table = createTable<User>()
 
@@ -116,8 +117,12 @@ export function UsersList() {
                 cancelProps: { color: "gray", variant: "subtle" },
                 onCancel: () => {},
                 onConfirm: async () => {
-                  await bulkDeleteUsers({ ids: selectedUsers.map((u) => u.id) })
-                  setSelection([])
+                  try {
+                    await bulkDeleteUsers({ ids: selectedUsers.map((u) => u.id) })
+                    setSelection([])
+                  } catch (error) {
+                    notifyApiError(error)
+                  }
                 },
               })
             }}
@@ -144,6 +149,7 @@ export function UsersList() {
             leftSectionPointerEvents="none"
             leftSection={<TbSearch />}
             placeholder={t("common.search")}
+            aria-label={t("common.searchLabel")}
             value={search}
             onChange={(e) => {
               setSelection([])

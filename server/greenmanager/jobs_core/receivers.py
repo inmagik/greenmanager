@@ -83,14 +83,18 @@ def schedule_scheduled_job_on_save(sender, instance, created, **kwargs):
 
     # Schedule the new or updated job
     if dynamic_scheduling_manager.is_schedulable(instance.func):
-        # Ensure that the job run record exists
-        job_run, _created = JobRun.objects.get_or_create(
+        # The definition keeps one JobRun: when it is saved again (rescheduled),
+        # the run goes back to pending with the new function and arguments.
+        job_run, _created = JobRun.objects.update_or_create(
             scheduled_job_definition=instance,
             defaults={
                 "func": instance.func,
                 "args": instance.args,
                 "kwargs": instance.kwargs,
                 "status": "pending",
+                "started_at": None,
+                "completed_at": None,
+                "error_details": "",
             },
         )
 

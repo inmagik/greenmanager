@@ -5,10 +5,7 @@ from jobs_core.utils import get_scheduler
 
 
 class Command(BaseCommand):
-    help = (
-        "Allinea lo scheduling dei task automatici con la configurazione "
-        "definita in settings.SCHEDULED_TASKS."
-    )
+    help = "Align the scheduler with the automatic tasks in settings.SCHEDULED_TASKS."
 
     def handle(self, *args, **options):
         jobs_list = getattr(settings, "SCHEDULED_TASKS", [])
@@ -38,10 +35,9 @@ class Command(BaseCommand):
                 f"and schedule: {cron_expr}"
             )
 
-            # Aggiungi il nuovo job
             scheduler.cron(cron_expr, **job_def, func=job_runner, meta=meta)
             self.stdout.write(
                 f"Scheduled job: {job_func_path} with ID: {job_id} "
                 f"and schedule: {cron_expr}"
             )
-        self.stdout.write(self.style.SUCCESS("Task programmati con successo."))
+        self.stdout.write(self.style.SUCCESS("Automatic tasks scheduled."))

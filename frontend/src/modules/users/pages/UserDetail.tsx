@@ -16,6 +16,8 @@ import { UserContextActions } from "../components/UserContextActions"
 import { CheckPermission } from "@/components/CheckPermission"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { useTranslation } from "react-i18next"
+import { QueryErrorPage } from "@/components/StatusPage"
+import { notifyApiError } from "@/utils"
 
 export function UserDetail() {
   const { t } = useTranslation()
@@ -30,7 +32,7 @@ export function UserDetail() {
   const [editable, setEditable] = useState(false)
 
   // React query
-  const { data: user } = useUser(id)
+  const { data: user, error: userError } = useUser(id)
   const { tenants, isLoading: tenantsLoading } = useTenant()
   const { mutateAsync: updateUser } = useUpdateUser()
   const { mutateAsync: unlockUser } = useUnlockUser()
@@ -45,6 +47,10 @@ export function UserDetail() {
       setEditable(false)
     }
   }, [activeTab, previousTab, editable])
+
+  if (userError) {
+    return <QueryErrorPage error={userError} />
+  }
 
   if (!user) {
     return (
@@ -79,7 +85,15 @@ export function UserDetail() {
     </>
   )
   const tenantById = new Map(tenants.map((tenant) => [tenant.id, tenant]))
-  const userTenants = user.tenants.map((tenantId) => tenantById.get(tenantId) ?? { id: tenantId, name: `Tenant #${tenantId}`, slug: "", is_active: undefined })
+  const userTenants = user.tenants.map(
+    (tenantId) =>
+      tenantById.get(tenantId) ?? {
+        id: tenantId,
+        name: t("users.detail.unknownTenant", { id: tenantId }),
+        slug: "",
+        is_active: undefined,
+      }
+  )
 
   return (
     <Page>
@@ -130,7 +144,7 @@ export function UserDetail() {
                   title={t("users.detail.disabledTitle")}
                   message={t("users.detail.disabledMessage")}
                   action={t("users.detail.reactivate")}
-                  onAction={() => updateUser({ id: user.id, is_active: true })}
+                  onAction={() => updateUser({ id: user.id, is_active: true }).catch((error) => notifyApiError(error))}
                   actionPermission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}
                 />
               </Box>
@@ -142,7 +156,7 @@ export function UserDetail() {
                   message={t("users.detail.lockedMessage")}
                   action={t("users.detail.unlock")}
                   onAction={() => {
-                    unlockUser(user.id)
+                    unlockUser(user.id).catch((error) => notifyApiError(error))
                   }}
                   actionPermission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}
                 />
@@ -152,7 +166,8 @@ export function UserDetail() {
               initialValues={user}
               readonly={!editable}
               onSubmit={async (values) => {
-                await updateUser(values)
+                // Only the fields of this tab: roles and permissions have their own tab.
+                await updateUser({ id: user.id, full_name: values.full_name, email: values.email })
                 setEditable(false)
               }}
               onCancel={() => {

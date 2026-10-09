@@ -39,7 +39,7 @@ export function TableHeader<T>({
       alignItems="stretch"
       rows={["auto"]}
       columns={["subgrid"]}
-      data-role="row"
+      role="row"
       className={classNames(S.tableHeader)}
       style={st}
       {...props}
@@ -54,6 +54,7 @@ export function TableHeader<T>({
         const title =
           typeof header.title === "string" && header.title.includes(".") ? t(header.title) : header.title
         const columnLabel = typeof title === "string" && title ? title : (header.name ?? "")
+        const sortState = isOrdered ? (orderDirection === "desc" ? "descending" : "ascending") : "none"
         let node: React.ReactNode = <Text size="sm">{title}</Text>
         if (header.renderHeader) {
           node = header.renderHeader()
@@ -61,6 +62,8 @@ export function TableHeader<T>({
         return (
           <TableCell
             key={index}
+            role="columnheader"
+            aria-sort={isSortable ? sortState : undefined}
             data-column={header.name ?? ""}
             style={header.headerStyle}
             stickyLeft={header.stickyLeft ? stickyLeftStack[index] : false}

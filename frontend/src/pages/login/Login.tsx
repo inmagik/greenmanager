@@ -2,6 +2,7 @@ import { Alert, Anchor, Box, Button, Grid, PasswordInput, Stack, Text, TextInput
 import { useForm } from "@mantine/form"
 import { yupResolver } from "mantine-form-yup-resolver"
 import * as yup from "yup"
+import { Link } from "react-router-dom"
 import { useAuth } from "../../auth/auth"
 import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
@@ -11,7 +12,7 @@ const schema = yup.object().shape({
   password: yup.string().required().label("Password"),
 })
 
-const LOGIN_ERROR_CODES = ["invalid_credentials", "login_unavailable"] as const
+const LOGIN_ERROR_CODES = ["invalid_credentials", "account_locked", "login_unavailable"] as const
 
 function getLoginErrorMessage(error: unknown, t: TFunction) {
   const code = error instanceof Error ? error.message : error
@@ -72,7 +73,7 @@ export function Login() {
                   {...form.getInputProps("password")}
                 />
 
-                <Anchor href="/forgot-password" size="sm" fw={"700"}>
+                <Anchor component={Link} to="/forgot-password" size="sm" fw={"700"}>
                   {t("auth.forgotPassword")}
                 </Anchor>
 

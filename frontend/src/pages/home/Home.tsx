@@ -9,7 +9,7 @@ export function Home() {
   const { user } = useAuth()
   const { tenant } = useTenant()
   const { t } = useTranslation()
-  const firstName = user?.full_name.split(" ")[0]
+  const firstName = user?.full_name?.split(" ")[0]
 
   return (
     <Box className={classes.page}>

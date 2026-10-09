@@ -1,7 +1,7 @@
 import type { User } from "@/auth/types"
 import { CheckPermission } from "@/components/CheckPermission"
 import { API_URL } from "@/constants"
-import { requestConfirmation } from "@/utils"
+import { notifyApiError, requestConfirmation } from "@/utils"
 import { Button, Menu } from "@mantine/core"
 import { useQueryClient } from "@tanstack/react-query"
 import { TbDots, TbPower } from "react-icons/tb"
@@ -47,10 +47,12 @@ export function RoleUserContextActions({ user, roleId }: Props) {
                 t("roles.actions.removeWarning")
               ).then((confirmed) => {
                 if (confirmed) {
-                  revokeRoleFromUsers({ user_ids: [user.id] }).then(() => {
-                    queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/users`] })
-                    queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/roles`] })
-                  })
+                  revokeRoleFromUsers({ user_ids: [user.id] })
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/users`] })
+                      queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/roles`] })
+                    })
+                    .catch((error) => notifyApiError(error))
                 }
               })
             }}

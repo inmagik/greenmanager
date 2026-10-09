@@ -4,6 +4,7 @@ import { TbPlus } from "react-icons/tb"
 import { PickUsersForm } from "./PickUsersForm"
 import { useGrantRoleToUsers } from "../api/roles"
 import { useTranslation } from "react-i18next"
+import { notifyApiError } from "@/utils"
 
 type Props = {
   id: number
@@ -23,11 +24,13 @@ export default function GrantRoleToUsersAction({ id, refetchUsers, setSelection 
           children: (
             <PickUsersForm
               onSubmit={(users) => {
-                grantRoleToUsers({ user_ids: users.map((u) => u.id) }).then(() => {
-                  modals.close(modalId)
-                  setSelection([])
-                  refetchUsers()
-                })
+                return grantRoleToUsers({ user_ids: users.map((u) => u.id) })
+                  .then(() => {
+                    modals.close(modalId)
+                    setSelection([])
+                    refetchUsers()
+                  })
+                  .catch((error) => notifyApiError(error))
               }}
               roleId={id}
             />

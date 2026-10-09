@@ -29,8 +29,11 @@ def job_runner(*args, **kwargs):
                 "cron_job_definition": cron_job_definition,
             },
         )[0]
+        # A rescheduled definition reuses its JobRun: clear the previous outcome.
         job_run.status = "running"
         job_run.started_at = timezone.now()
+        job_run.completed_at = None
+        job_run.error_details = ""
         job_run.save()
         try:
             result = job_func(*args, **kwargs)

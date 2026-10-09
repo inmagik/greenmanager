@@ -1,4 +1,5 @@
-import { Anchor, Breadcrumbs, Group, Text, Title, Tooltip, useMantineTheme } from "@mantine/core"
+import { ActionIcon, Anchor, Breadcrumbs, Group, Text, Title, Tooltip } from "@mantine/core"
+import { useTranslation } from "react-i18next"
 import { TbHelp, TbSlash } from "react-icons/tb"
 import { Link } from "react-router-dom"
 import classes from "./Header.module.css"
@@ -13,7 +14,7 @@ type Props = {
 }
 
 export function Header({ icon, title, extraItems, breadcrumbs, actions, lastEditDetails }: Props) {
-  const theme = useMantineTheme()
+  const { t } = useTranslation()
   return (
     <header className={classes.header}>
       <div className={classes.headerInner}>
@@ -42,8 +43,10 @@ export function Header({ icon, title, extraItems, breadcrumbs, actions, lastEdit
               <Title order={3}>{title}</Title>
               {extraItems}
               {lastEditDetails && (
-                <Tooltip label={lastEditDetails} multiline withArrow>
-                  <TbHelp size={18} color={theme.colors.gray[7]} />
+                <Tooltip label={lastEditDetails} multiline withArrow events={{ hover: true, focus: true, touch: true }}>
+                  <ActionIcon variant="subtle" color="gray.7" aria-label={t("common.lastEdit")}>
+                    <TbHelp size={18} />
+                  </ActionIcon>
                 </Tooltip>
               )}
             </Group>

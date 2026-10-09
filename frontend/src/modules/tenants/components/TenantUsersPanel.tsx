@@ -85,6 +85,7 @@ export function TenantUsersPanel({ tenant }: { tenant: Tenant }) {
             leftSectionPointerEvents="none"
             leftSection={<TbSearch />}
             placeholder={t("common.search")}
+            aria-label={t("common.searchLabel")}
             value={search}
             onChange={(event) => setQuery({ search: event.currentTarget.value, page: 1 })}
           />

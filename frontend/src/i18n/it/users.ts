@@ -29,9 +29,12 @@ const users = {
     lockedMessage:
       "Sono stati rilevati troppi tentativi di accesso non riusciti. L'utente verrà sbloccato automaticamente dopo alcuni minuti.",
     unlock: "Sblocca utente",
-    noTenants: "Nessun tenant associato",
-    noTenantsDescription: "Questo utente non appartiene attualmente ad alcun tenant.",
-    tenants: "Tenant ({{count}})",
+    noTenants: "Nessuna organizzazione associata",
+    noTenantsDescription: "Questo utente non appartiene a nessuna organizzazione.",
+    tenants: "Organizzazioni ({{count}})",
+    unknownTenant: "Organizzazione {{id}}",
+    assignRoles: "Assegna ruoli all'utente",
+    addRole: "Aggiungi ruolo",
   },
   actions: {
     menuFor: "Azioni per {{name}}",
@@ -87,6 +90,9 @@ const roles = {
   },
   fields: { permissions: "Permessi", userCount: "Numero di utenti" },
   permissionIncludedIn: "Questo permesso è incluso nel ruolo",
+  permissionInfo: "Informazioni sul permesso {{name}}",
+  // Groups of permissions, by Django app (fm_permissions.py); without a key, the app name.
+  modules: { auth_core: "Utenti e ruoli" },
 } as const
 const profile = {
   breadcrumb: "Profilo utente",

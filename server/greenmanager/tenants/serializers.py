@@ -6,7 +6,7 @@ from tenants.models import Tenant, TenantMembership
 class TenantSerializer(serializers.ModelSerializer):
     user_count = serializers.SerializerMethodField()
 
-    def get_user_count(self, obj):
+    def get_user_count(self, obj) -> int:
         annotated_count = obj.__dict__.get("user_count")
         if annotated_count is not None:
             return annotated_count

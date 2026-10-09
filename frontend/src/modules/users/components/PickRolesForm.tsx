@@ -23,9 +23,13 @@ export function PickRolesForm({ onSubmit }: Props) {
         />
       </Box>
       <Group justify="flex-end" pt="sm">
-        <Button type="submit" onClick={() => {
-          onSubmit(roles)
-        }}>{t("common.confirm")}</Button>
+        <Button
+          type="submit"
+          disabled={roles.length === 0}
+          onClick={() => {
+            onSubmit(roles)
+          }}
+        >{t("common.confirm")}</Button>
       </Group>
     </Box>
   )

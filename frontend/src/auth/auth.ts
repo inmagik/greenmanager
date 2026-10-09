@@ -51,6 +51,11 @@ export async function login(credentials: Credentials) {
     throw new Error("invalid_credentials")
   }
 
+  // django-axes answers 429 (or 403 through DRF) after too many failed attempts.
+  if (res.status === 429 || res.status === 403) {
+    throw new Error("account_locked")
+  }
+
   throw new Error("login_unavailable")
 }
 
@@ -86,7 +91,8 @@ export function getRefreshExpireDate(tokens: { refresh: string }) {
 }
 
 export function useUpdateMe() {
-  return useAction<User, Partial<Pick<User, "full_name">>>(`${API_URL}/api/core/auth/me/`, { method: "PATCH" })
+  // useAction appends "/" to the path: no trailing slash here.
+  return useAction<User, Partial<Pick<User, "full_name">>>(`${API_URL}/api/core/auth/me`, { method: "PATCH" })
 }
 
 export const [AuthProvider, useAuth] = MakeAuthTools<User, Tokens, Credentials>()

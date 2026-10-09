@@ -160,7 +160,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "greenmanager.schema.TenantAwareAutoSchema",
 }
 
 SPECTACULAR_SETTINGS = {
@@ -177,10 +177,6 @@ SPECTACULAR_SETTINGS = {
             },
         },
     },
-    "POSTPROCESSING_HOOKS": [
-        "drf_spectacular.hooks.postprocess_schema_enums",
-        "greenmanager.schema.add_tenant_security_requirement",
-    ],
 }
 
 # endregion
@@ -206,7 +202,11 @@ if EMAIL_VENDOR == "smtp":
         "yes",
         "1",
     ]
-    EMAIL_TIMEOUT = os.getenv("DJANGO_EMAIL_TIMEOUT", None)
+    EMAIL_TIMEOUT = (
+        int(os.getenv("DJANGO_EMAIL_TIMEOUT"))
+        if os.getenv("DJANGO_EMAIL_TIMEOUT")
+        else None
+    )
     EMAIL_SSL_KEYFILE = os.getenv("DJANGO_EMAIL_SSL_KEYFILE", None)
     EMAIL_SSL_CERTFILE = os.getenv("DJANGO_EMAIL_SSL_CERTFILE", None)
     EMAIL_SSL_CAFILE = os.getenv("DJANGO_EMAIL_SSL_CAFILE", None)
@@ -247,6 +247,8 @@ USERBASE_SETTINGS = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # The login sets last_login, shown in the list of users.
+    "UPDATE_LAST_LOGIN": True,
 }
 
 AUTHENTICATION_BACKENDS = [

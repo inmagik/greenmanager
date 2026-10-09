@@ -11,25 +11,53 @@ from inmagik_utils.mixins import BulkDeleteActionMixin
 from inmagik_utils.pagination import StandardPaginationMixin
 from inmagik_utils.structural_filters import StructuralFilterMixin, StructuralFilterSet
 from rest_framework.decorators import action
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView as BaseTokenObtainPairView,
+)
 from tenants.mixins import TenantContextMixin
 from tenants.models import TenantMembership
 
 from .models import Role, User
 from .permission_manager import permission_manager
 from .serializers import (
+    USER_STATUSES,
     RoleSerializer,
     RoleUsersSerializer,
     UpdateMeSerializer,
     UserSerializer,
     is_shared_with_other_tenants,
+    own_account_error,
     shared_user_error,
 )
+
+
+class TokenObtainPairView(BaseTokenObtainPairView):
+    """Login. Locked out credentials get 429 with the code ``account_locked``.
+
+    django-axes marks the request it receives (here the DRF one) and denies the
+    authentication; simplejwt would answer as for wrong credentials.
+    """
+
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            if getattr(request, "axes_locked_out", False):
+                return Response(
+                    {
+                        "code": "account_locked",
+                        "detail": "Too many failed login attempts.",
+                    },
+                    status=429,
+                )
+            raise
 
 
 class MeView(GenericAPIView):
@@ -40,11 +68,12 @@ class MeView(GenericAPIView):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
+    @extend_schema(request=UpdateMeSerializer, responses={200: UserSerializer})
     def patch(self, request):
         serializer = UpdateMeSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(UserSerializer(request.user).data)
+        return Response(self.get_serializer(request.user).data)
 
 
 class AvailablePermissionsView(APIView):
@@ -55,6 +84,7 @@ class AvailablePermissionsView(APIView):
                 "items": {
                     "type": "object",
                     "properties": {
+                        "code": {"type": "string"},
                         "name": {"type": "string"},
                         "description": {"type": "string"},
                         "module": {"type": "string"},
@@ -68,10 +98,10 @@ class AvailablePermissionsView(APIView):
 
 
 class UserFilter(StructuralFilterSet):
-    status = FS.CharFilter(method="filter_status")
-    without_role = FS.ModelChoiceFilter(
-        method="filter_without_role", queryset=Role.objects.all()
+    status = FS.ChoiceFilter(
+        method="filter_status", choices=[(status, status) for status in USER_STATUSES]
     )
+    without_role = FS.NumberFilter(method="filter_without_role")
 
     def filter_status(self, queryset, name, value):
         if value == "active":
@@ -88,7 +118,7 @@ class UserFilter(StructuralFilterSet):
 
     def filter_without_role(self, queryset, name, value):
         if value:
-            return queryset.exclude(roles__id=value.id)
+            return queryset.exclude(roles__id=value)
         return queryset
 
     class Meta:
@@ -153,6 +183,8 @@ class UsersViewset(
         return context
 
     def perform_destroy(self, instance):
+        if instance.pk == self.request.user.pk:
+            raise own_account_error()
         # A user shared with other tenants would disappear from them too.
         tenant = self.get_current_tenant()
         if not self.request.user.is_staff and is_shared_with_other_tenants(
@@ -187,10 +219,10 @@ class UsersViewset(
     def unlock(self, request, *args, **kwargs):
         instance = self.get_object()
         reset_axes(username=instance.email)
-        instance.refresh_from_db()
-        return Response(
-            UserSerializer(instance, context=self.get_serializer_context()).data
-        )
+        # Read it again: the lock comes from a queryset annotation, which
+        # refresh_from_db() would leave unchanged.
+        instance = self.get_queryset().get(pk=instance.pk)
+        return Response(self.get_serializer(instance).data)
 
 
 class RolesViewset(
@@ -263,6 +295,7 @@ class RolesViewset(
         methods=["post"],
         permission_classes=[ActionPermission],
         action_permissions={"grant_to": ["auth_core.SCRITTURA_RUOLI"]},
+        pagination_class=None,
     )
     def grant_to(self, request, *args, **kwargs):
         role = self.get_object()
@@ -280,6 +313,7 @@ class RolesViewset(
         methods=["post"],
         permission_classes=[ActionPermission],
         action_permissions={"revoke_from": ["auth_core.SCRITTURA_RUOLI"]},
+        pagination_class=None,
     )
     def revoke_from(self, request, *args, **kwargs):
         role = self.get_object()

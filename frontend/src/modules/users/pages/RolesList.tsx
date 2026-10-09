@@ -13,6 +13,7 @@ import RolesTable from "../components/RolesTable"
 import { CheckPermission } from "@/components/CheckPermission"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { useTranslation } from "react-i18next"
+import { notifyApiError } from "@/utils"
 
 export function RolesList() {
   const { t } = useTranslation()
@@ -89,10 +90,13 @@ export function RolesList() {
                 labels: { confirm: t("common.confirm"), cancel: t("common.cancel") },
                 confirmProps: { color: "red.9" },
                 cancelProps: { color: "gray", variant: "subtle" },
-                onCancel: () => console.log("Cancel"),
                 onConfirm: async () => {
-                  await bulkDeleteRoles({ ids: selectedRoles.map((r) => r.id) })
-                  setSelection([])
+                  try {
+                    await bulkDeleteRoles({ ids: selectedRoles.map((r) => r.id) })
+                    setSelection([])
+                  } catch (error) {
+                    notifyApiError(error)
+                  }
                 },
               })
             }}
@@ -119,6 +123,7 @@ export function RolesList() {
             leftSectionPointerEvents="none"
             leftSection={<TbSearch />}
             placeholder={t("common.search")}
+            aria-label={t("common.searchLabel")}
             value={search}
             onChange={(e) => setParams({ ...Object.fromEntries(params), search: e.currentTarget.value, page: "1" })}
           />

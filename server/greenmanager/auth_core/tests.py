@@ -1,7 +1,9 @@
 import threading
 
+from axes.models import AccessAttempt
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APITestCase
 from tenants.models import Tenant, TenantMembership
 
@@ -290,6 +292,187 @@ class TenantScopedUsersTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 403, response.content)
+
+    def test_cannot_change_email_of_user_shared_with_other_tenants(self):
+        response = self.client.patch(
+            self.user_url(self.shared),
+            {"email": "attacker@example.com"},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(
+            response.data["email"]["code"], "user_shared_with_other_tenants"
+        )
+        self.shared.refresh_from_db()
+        self.assertEqual(self.shared.email, "shared@example.com")
+
+    def test_staff_changes_email_of_shared_user(self):
+        self.admin.is_staff = True
+        self.admin.save(update_fields=["is_staff"])
+
+        response = self.client.patch(
+            self.user_url(self.shared),
+            {"email": "renamed@example.com"},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.shared.refresh_from_db()
+        self.assertEqual(self.shared.email, "renamed@example.com")
+
+    def test_cannot_deactivate_or_delete_own_account(self):
+        deactivate = self.client.patch(
+            self.user_url(self.admin),
+            {"is_active": False},
+            format="json",
+            **self.tenant_header,
+        )
+        delete = self.client.delete(self.user_url(self.admin), **self.tenant_header)
+
+        self.assertEqual(deactivate.status_code, 400, deactivate.content)
+        self.assertEqual(
+            deactivate.data["is_active"]["code"], "cannot_change_own_account"
+        )
+        self.assertEqual(delete.data["code"], "cannot_change_own_account")
+        self.assertEqual(delete.status_code, 400, delete.content)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)
+
+    def test_rejects_unknown_permissions(self):
+        self.grant_role_permission()
+
+        user_response = self.client.patch(
+            self.user_url(self.user),
+            {"permissions": ["auth_core.NOT_A_PERMISSION"]},
+            format="json",
+            **self.tenant_header,
+        )
+        role_response = self.client.post(
+            "/api/core/auth/roles/",
+            {"name": "Bogus", "permissions": ["auth_core.NOT_A_PERMISSION"]},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(user_response.status_code, 400, user_response.content)
+        self.assertEqual(role_response.status_code, 400, role_response.content)
+        self.assertFalse(Role.objects.filter(name="Bogus").exists())
+
+    def test_unlock_returns_the_unlocked_user(self):
+        AccessAttempt.objects.create(
+            username=self.user.email,
+            ip_address="127.0.0.1",
+            user_agent="test",
+            failures_since_start=settings.AXES_FAILURE_LIMIT,
+        )
+        locked = self.client.get(self.user_url(self.user), **self.tenant_header)
+        self.assertTrue(locked.data["is_locked"])
+
+        response = self.client.post(
+            f"{self.user_url(self.user)}unlock/", **self.tenant_header
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(response.data["is_locked"])
+        self.assertEqual(response.data["status"], "active")
+
+
+class RolePermissionsReceiverTests(TestCase):
+    def setUp(self):
+        tenant = Tenant.objects.create(name="Tenant A", slug="tenant-a")
+        self.role = Role.objects.create(
+            tenant=tenant, name="Readers", permissions=["auth_core.LETTURA_UTENTI"]
+        )
+        self.user = get_user_model().objects.create_user(email="user@example.com")
+
+    def test_changes_from_the_role_side_update_user_permissions(self):
+        self.role.user_set.add(self.user)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.all_permissions, ["auth_core.LETTURA_UTENTI"])
+
+        self.role.user_set.clear()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.all_permissions, [])
+
+
+class AccountEndpointsTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="user@example.com", full_name="Old Name"
+        )
+
+    def test_locked_out_login_returns_account_locked(self):
+        self.user.set_password("Correct-Pass-2026")
+        self.user.save()
+        AccessAttempt.objects.create(
+            username=self.user.email,
+            ip_address="127.0.0.1",
+            user_agent="",
+            failures_since_start=settings.AXES_FAILURE_LIMIT,
+        )
+
+        response = self.client.post(
+            "/api/core/auth/token/",
+            {"email": self.user.email, "password": "Correct-Pass-2026"},
+            format="json",
+            REMOTE_ADDR="127.0.0.1",
+        )
+
+        self.assertEqual(response.status_code, 429, response.content)
+        self.assertEqual(response.data["code"], "account_locked")
+
+    def test_login_sets_last_login(self):
+        self.user.set_password("Correct-Pass-2026")
+        self.user.save()
+
+        response = self.client.post(
+            "/api/core/auth/token/",
+            {"email": self.user.email, "password": "Correct-Pass-2026"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.last_login)
+
+    def test_change_password_requires_authentication(self):
+        response = self.client.put(
+            "/api/userbase/change-password/",
+            {"old_password": "x", "password": "y"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 401, response.content)
+
+    def test_userbase_me_and_resend_activation_are_not_exposed(self):
+        self.client.force_authenticate(self.user)
+
+        self.assertEqual(self.client.get("/api/userbase/me/").status_code, 404)
+        self.assertEqual(
+            self.client.post(
+                "/api/userbase/resend-activation-email/",
+                {"users": [self.user.pk]},
+                format="json",
+            ).status_code,
+            404,
+        )
+
+    def test_me_patch_changes_only_the_name(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.patch(
+            "/api/core/auth/me/",
+            {"full_name": "New Name", "email": "other@example.com"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.data["full_name"], "New Name")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "user@example.com")
 
 
 class PermissionManagerTests(SimpleTestCase):

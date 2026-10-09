@@ -4,6 +4,9 @@ import S from "../Table.module.css"
 
 export interface OwnProps {
   children: React.ReactNode
+  role?: "cell" | "columnheader"
+  "aria-sort"?: "ascending" | "descending" | "none"
+  "aria-colspan"?: number
   "data-column"?: string
   stickyLeft?: boolean | number
   stickyRight?: boolean | number
@@ -21,6 +24,7 @@ export function TableCell({
   style,
   className,
   justifyContent = "start",
+  role = "cell",
   ...props
 }: TableCellProps) {
   let st = { ...style }
@@ -37,6 +41,7 @@ export function TableCell({
       style={st}
       justifyContent={justifyContent}
       alignItems="center"
+      role={role}
       {...props}
     >
       {children}
