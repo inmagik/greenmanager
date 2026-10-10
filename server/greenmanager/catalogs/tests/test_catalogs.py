@@ -16,6 +16,7 @@ from core.models import system_entry_id
 from core.testing import make_tenant, make_user, tenant_header
 from django.db import connection, transaction
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
@@ -501,6 +502,24 @@ class SpeciesApiTests(APITestCase):
                 services.prepare_entry(entry, user=self.writer)
 
         self.assertEqual(locks, [1])
+
+    def test_parent_is_locked_and_read_again_before_the_hierarchy(self):
+        entry = Species(
+            scientific_name="Tilia tomentosa", organization=self.org, parent=self.genus
+        )
+        # A concurrent request made the genus a species after the parent was read.
+        Species.objects.filter(pk=self.genus.pk).update(rank="species")
+
+        with CaptureQueriesContext(connection) as queries:
+            with self.assertRaises(ValidationError) as raised:
+                services.prepare_entry(entry, user=self.writer)
+
+        self.assertEqual(
+            raised.exception.detail["parent"][0]["code"], "species_parent_rank_invalid"
+        )
+        self.assertTrue(
+            any("FOR UPDATE" in query["sql"] for query in queries.captured_queries)
+        )
 
     def test_save_after_a_concurrent_change_gives_the_error_of_the_rule(self):
         # The checks passed, then a concurrent request took the same code.

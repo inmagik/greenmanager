@@ -118,6 +118,24 @@ def lock_species_name(scientific_name):
         )
 
 
+def lock_parent(entry):
+    """
+    Lock and read again the parent of a species, before its hierarchy is checked
+    (``Species.clean``): a concurrent change of the rank of the parent, which
+    locks it too (``update_entry``), is then committed and seen, or waits.
+    """
+    if entry.parent_id is None:
+        return
+    parent = Species.objects.select_for_update().filter(pk=entry.parent_id).first()
+    if parent is None:
+        raise api_error(
+            "catalog_entry_not_available",
+            "The catalog entry is not available.",
+            field="parent",
+        )
+    entry.parent = parent
+
+
 def validate_references(entry, stored=None):
     """Entries referenced by an entry: a new one must be available to its
     organization; the one already saved (``stored``) stays even if later hidden
@@ -209,8 +227,10 @@ def prepare_entry(entry, *, user, stored=None):
         check_changes(entry, stored)
     normalize(entry)
     if isinstance(entry, Species):
-        # Before any check of the name, the database constraint too: a
-        # concurrent change of the same name is then committed, and seen.
+        # The rows first, then the name. The name before any check of it, the
+        # database constraint too: a concurrent change of the same name is then
+        # committed, and seen.
+        lock_parent(entry)
         lock_species_name(entry.scientific_name)
     validate_model(entry)
     validate_references(entry, stored)

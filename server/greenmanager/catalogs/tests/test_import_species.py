@@ -172,6 +172,27 @@ class ImportSpeciesTests(TestCase):
             self.run_command(self.write_csv(self.rows()[:1]))
         self.assertFalse(Species.objects.filter(code="tilia-cordata").exists())
 
+    def test_parents_not_in_the_file_are_locked(self):
+        self.run_command(self.write_csv(self.rows()[1:]))
+
+        with CaptureQueriesContext(connection) as queries:
+            self.run_command(self.write_csv(self.rows()[:1]))
+
+        locking = [
+            query["sql"]
+            for query in queries.captured_queries
+            if "FOR UPDATE" in query["sql"]
+        ]
+        self.assertEqual(len(locking), 1)
+
+    def test_repeated_code_stops_the_import(self):
+        rows = self.rows()
+        rows.append(dict(rows[0], common_name="tiglio"))
+
+        with self.assertRaises(CommandError):
+            self.run_command(self.write_csv(rows))
+        self.assertFalse(Species.objects.exists())
+
     def test_existing_entries_get_no_parent_without_update(self):
         rows = self.rows()
         rows[0]["parent_code"] = ""

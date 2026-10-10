@@ -8,7 +8,8 @@ external_ref. Only ``code`` and ``scientific_name`` are required.
 The entries are matched by code: new codes are created, existing ones are left
 as they are unless ``--update``. The keys of the new entries are deterministic
 (``core.models.system_entry_id``). The hierarchy (ranks and parents) is checked
-once all the rows are applied, so the order of the rows does not matter.
+once all the rows are applied, so the order of the rows does not matter. A code
+repeated in the file stops the import.
 
     python manage.py import_species catalogs/seeds/species_starter.csv
 """
@@ -19,6 +20,7 @@ import csv
 from catalogs.models import Species
 from catalogs.services import (
     check_available,
+    lock_parent,
     lock_species_name,
     normalize,
     validate_references,
@@ -71,6 +73,9 @@ class Command(BaseCommand):
         with transaction.atomic():
             entries, created, changed = {}, set(), set()
             for line, row in enumerate(rows, start=2):
+                code = (row.get("code") or "").strip()
+                if code in entries:
+                    raise CommandError(f"Line {line}: the code {code} is repeated.")
                 entry, outcome = self.import_row(row, line, update)
                 entries[entry.code] = entry
                 counts[outcome] += 1
@@ -177,11 +182,16 @@ class Command(BaseCommand):
 
     def check_hierarchy(self, entries, codes):
         """The hierarchy of the changed entries, with the final ranks and parents
-        (an error rolls the whole import back)."""
+        (an error rolls the whole import back). The parents are locked and read
+        again, as in the API: also those that are not in the file."""
         for code in sorted(codes):
+            entry = entries[code]
             try:
-                entries[code].clean()
+                lock_parent(entry)
+                entry.clean()
             except ValidationError as exc:
                 raise CommandError(
                     f"{code}: {django_errors_payload(exc, Species)}"
                 ) from exc
+            except APIException as exc:
+                raise CommandError(f"{code}: {exc.detail}") from exc
