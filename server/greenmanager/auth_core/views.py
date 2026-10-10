@@ -140,7 +140,7 @@ class UsersViewset(
         .prefetch_related("roles")
         .annotate(
             failed_login_attempts=Coalesce(
-Subquery(
+                Subquery(
                     AccessAttempt.objects.filter(
                         username=OuterRef("email"),
                     )
@@ -154,16 +154,16 @@ Subquery(
     serializer_class = UserSerializer
     permission_classes = [ActionPermission]
     action_permissions = {
-        "list": ["auth_core.LETTURA_UTENTI"],
-        "retrieve": ["auth_core.LETTURA_UTENTI"],
-        # Changing roles or permissions also requires SCRITTURA_RUOLI: the check is
+        "list": ["auth_core.READ_USERS"],
+        "retrieve": ["auth_core.READ_USERS"],
+        # Changing roles or permissions also requires WRITE_ROLES: the check is
         # in UserSerializer, which knows the current values.
-        "create": ["auth_core.SCRITTURA_UTENTI"],
-        "update": ["auth_core.SCRITTURA_UTENTI"],
-        "partial_update": ["auth_core.SCRITTURA_UTENTI"],
-        "destroy": ["auth_core.SCRITTURA_UTENTI"],
-        "unlock": ["auth_core.SCRITTURA_UTENTI"],
-        "bulk_delete": ["auth_core.SCRITTURA_UTENTI"],
+        "create": ["auth_core.WRITE_USERS"],
+        "update": ["auth_core.WRITE_USERS"],
+        "partial_update": ["auth_core.WRITE_USERS"],
+        "destroy": ["auth_core.WRITE_USERS"],
+        "unlock": ["auth_core.WRITE_USERS"],
+        "bulk_delete": ["auth_core.WRITE_USERS"],
     }
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ["full_name", "email"]
@@ -235,13 +235,13 @@ class RolesViewset(
     search_fields = ["name"]
     ordering_fields = ["name"]
     action_permissions = {
-        "list": ["auth_core.LETTURA_RUOLI"],
-        "retrieve": ["auth_core.LETTURA_RUOLI"],
-        "create": ["auth_core.SCRITTURA_RUOLI"],
-        "update": ["auth_core.SCRITTURA_RUOLI"],
-        "partial_update": ["auth_core.SCRITTURA_RUOLI"],
-        "destroy": ["auth_core.SCRITTURA_RUOLI"],
-        "bulk_delete": ["auth_core.SCRITTURA_RUOLI"],
+        "list": ["auth_core.READ_ROLES"],
+        "retrieve": ["auth_core.READ_ROLES"],
+        "create": ["auth_core.WRITE_ROLES"],
+        "update": ["auth_core.WRITE_ROLES"],
+        "partial_update": ["auth_core.WRITE_ROLES"],
+        "destroy": ["auth_core.WRITE_ROLES"],
+        "bulk_delete": ["auth_core.WRITE_ROLES"],
     }
 
     def get_queryset(self):
@@ -294,7 +294,7 @@ class RolesViewset(
         detail=True,
         methods=["post"],
         permission_classes=[ActionPermission],
-        action_permissions={"grant_to": ["auth_core.SCRITTURA_RUOLI"]},
+        action_permissions={"grant_to": ["auth_core.WRITE_ROLES"]},
         pagination_class=None,
     )
     def grant_to(self, request, *args, **kwargs):
@@ -312,7 +312,7 @@ class RolesViewset(
         detail=True,
         methods=["post"],
         permission_classes=[ActionPermission],
-        action_permissions={"revoke_from": ["auth_core.SCRITTURA_RUOLI"]},
+        action_permissions={"revoke_from": ["auth_core.WRITE_ROLES"]},
         pagination_class=None,
     )
     def revoke_from(self, request, *args, **kwargs):

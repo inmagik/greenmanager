@@ -48,13 +48,13 @@ class TenantViewSet(
     search_fields = ["name", "slug"]
     ordering_fields = ["name", "slug", "created_at"]
     action_permissions = {
-        "list": ["auth_core.LETTURA_UTENTI"],
-        "retrieve": ["auth_core.LETTURA_UTENTI"],
-        "create": ["auth_core.SCRITTURA_UTENTI"],
-        "update": ["auth_core.SCRITTURA_UTENTI"],
-        "partial_update": ["auth_core.SCRITTURA_UTENTI"],
-        "destroy": ["auth_core.SCRITTURA_UTENTI"],
-        "bulk_delete": ["auth_core.SCRITTURA_UTENTI"],
+        "list": ["auth_core.READ_USERS"],
+        "retrieve": ["auth_core.READ_USERS"],
+        "create": ["auth_core.WRITE_USERS"],
+        "update": ["auth_core.WRITE_USERS"],
+        "partial_update": ["auth_core.WRITE_USERS"],
+        "destroy": ["auth_core.WRITE_USERS"],
+        "bulk_delete": ["auth_core.WRITE_USERS"],
     }
 
     def get_permissions(self):

@@ -178,7 +178,7 @@ Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pes
 
 ## 7. Strumenti, build e immagine
 
-- **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000`), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
+- **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000` che conserva l'host del browser: così i link `next` della paginazione restano sul proxy), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
 - **Vite**: `vite.config.ts` importa i plugin con l'estensione (`./plugins/menu.ts`), come chiede il caricamento nativo della configurazione.
 - **TypeScript** in modalità `strict`, con `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` (import di soli tipi con `import type`).
 - **ESLint**: configurazione piatta con le regole raccomandate di JavaScript, typescript-eslint, react-hooks e react-refresh.
@@ -240,7 +240,7 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
   - disattivazione e riattivazione mandano solo `is_active`; il salvataggio dei dati solo nome ed email, quello di ruoli e permessi solo quei campi, quello di un ruolo solo nome e permessi. In data-lab si mandava l'intero record, che poteva riscrivere valori cambiati nel frattempo;
   - gli errori delle azioni fuori dai form (menu, conferme, eliminazioni multiple, sblocco) si mostrano in una notifica con `notifyApiError` di `utils.tsx`: in data-lab si perdevano. Disattiva ed Elimina sono disabilitati sul proprio account;
   - il form di ruoli e permessi mostra gli errori del server; i gruppi di permessi hanno un nome tradotto (`roles.modules.<app>`), le caselle un nome accessibile;
-  - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `SCRITTURA_UTENTI` e `SCRITTURA_RUOLI`: il salvataggio è una modifica dell'utente, che il server accetta solo con entrambi. L'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`) richiede solo `SCRITTURA_RUOLI`;
+  - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `WRITE_USERS` e `WRITE_ROLES`: il salvataggio è una modifica dell'utente, che il server accetta solo con entrambi. L'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`) richiede solo `WRITE_ROLES`;
   - la rimozione del ruolo, dagli utenti selezionati o da un utente col menu della riga, chiama `revoke_from`. In data-lab la prima scriveva solo in console, la seconda mandava l'intero utente;
   - `RoleMultiSelect` e `UserMultiSelect` tengono tra le opzioni gli elementi selezionati anche quando la ricerca non li restituisce.
 - **Revisione della PR dello scaffold**, correzioni ai componenti condivisi:
@@ -255,6 +255,9 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
   - profilo: `useUpdateMe` chiamava `me//` (`useAction` aggiunge la `/` finale) e il salvataggio falliva; ora aggiorna anche l'utente di `AuthProvider`. `TenantProvider` ricarica le organizzazioni solo quando cambia l'utente, non i suoi dati;
   - lo sblocco dell'utente chiama `unlock/` con la `/` finale; il login distingue l'account bloccato (`account_locked`);
   - la home toglie l'header mobile dall'altezza, come `Page`; `Redirect` sostituisce la voce della cronologia.
+- **Quarta revisione della PR dello scaffold**:
+  - i permessi valgono nell'organizzazione corrente, come nel server (§3.1 di [backend.md](backend.md)): `useHasPermission` e il menu usano `useTenantUser()`, con i permessi diretti più quelli dei ruoli dell'organizzazione corrente. `all_permissions` di `me/` unisce i ruoli di tutte le organizzazioni;
+  - codici dei permessi in inglese (`READ_USERS`, `WRITE_USERS`, `READ_ROLES`, `WRITE_ROLES`) e rotte del modulo `users` in inglese (`/users/users`, `/users/roles`; in data-lab `/utenti/utenti`, `/utenti/ruoli`), come gli altri identificatori (D-001).
 
 ## Domande aperte
 

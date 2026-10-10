@@ -32,7 +32,7 @@ export function RoleContextActions({ role, onDelete }: Props) {
 
       <Menu.Dropdown>
         <Menu.Label>{t("roles.actions.label")}</Menu.Label>
-        <Menu.Item leftSection={<TbPencil />} component={Link} to={`/utenti/ruoli/${role.id}`}>
+        <Menu.Item leftSection={<TbPencil />} component={Link} to={`/users/roles/${role.id}`}>
           {t("roles.actions.edit")}
         </Menu.Item>
         <Menu.Label>{t("users.actions.dangerZone")}</Menu.Label>

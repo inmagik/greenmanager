@@ -1,8 +1,12 @@
+from auditlog.models import LogEntry
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from jobs_core.models import JobRun
 from rest_framework.test import APIRequestFactory
 from rest_framework.views import APIView
 
+from .audit_log.audit_log_integration import standard_auditlog_manager
 from .nested_multi_parser import (
     MAX_LIST_ITEMS,
     MAX_TOTAL_LIST_ITEMS,
@@ -99,3 +103,39 @@ class NestedMultiPartParserFileTests(SimpleTestCase):
 
         django_request.close()
         self.assertTrue(parsed_upload.closed)
+
+
+class LastUpdateMixinTests(TestCase):
+    def annotated(self, instance):
+        manager = standard_auditlog_manager()()
+        manager.model = type(instance)
+        return manager.get_queryset().get(pk=instance.pk)
+
+    def log(self, instance, action, email):
+        LogEntry.objects.create(
+            content_type=ContentType.objects.get_for_model(instance),
+            object_pk=str(instance.pk),
+            object_id=instance.pk if isinstance(instance.pk, int) else None,
+            object_repr=str(instance),
+            action=action,
+            actor_email=email,
+        )
+
+    def test_finds_entries_of_uuid_and_integer_keys(self):
+        # JobRun has a UUID key, like the domain entities; Role an integer one.
+        from auth_core.models import Role
+        from tenants.models import Tenant
+
+        tenant = Tenant.objects.create(name="Tenant A", slug="tenant-a")
+        for instance in (
+            JobRun.objects.create(func="x"),
+            Role.objects.create(tenant=tenant, name="Readers"),
+        ):
+            self.log(instance, LogEntry.Action.CREATE, "creator@example.com")
+            self.log(instance, LogEntry.Action.UPDATE, "editor@example.com")
+
+            annotated = self.annotated(instance)
+
+            self.assertEqual(annotated.created_by_email, "creator@example.com")
+            self.assertEqual(annotated.updated_by_email, "editor@example.com")
+            self.assertIsNotNone(annotated.created_at)

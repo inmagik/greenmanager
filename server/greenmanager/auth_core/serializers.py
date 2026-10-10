@@ -5,13 +5,15 @@ from rest_framework.exceptions import PermissionDenied
 
 from .models import Role, User
 from .permission_manager import permission_manager
+from .utils import tenant_permissions
 
-ROLE_WRITE_PERMISSION = "auth_core.SCRITTURA_RUOLI"
+ROLE_WRITE_PERMISSION = "auth_core.WRITE_ROLES"
 
 # Fields of the account that hold for every tenant of the user: only staff users
 # change them for users shared with other tenants. The email matters most: who
 # changes it can recover the password and use the account in the other tenants.
-SHARED_ACCOUNT_FIELDS = ("email", "is_active")
+# The direct permissions too hold in every tenant (see tenant_permissions).
+SHARED_ACCOUNT_FIELDS = ("email", "is_active", "permissions")
 
 USER_STATUSES = ("active", "inactive", "locked")
 
@@ -19,6 +21,13 @@ USER_STATUSES = ("active", "inactive", "locked")
 def is_shared_with_other_tenants(user, tenant):
     """Whether the user is also a member of tenants other than ``tenant``."""
     return user.tenant_memberships.exclude(tenant=tenant).exists()
+
+
+def same_value(new, current):
+    """Equality of field values; lists (the permissions) regardless of order."""
+    if isinstance(new, list) and isinstance(current, list):
+        return set(new) == set(current)
+    return new == current
 
 
 def api_error(payload, field=None):
@@ -173,8 +182,8 @@ class UserSerializer(serializers.ModelSerializer):
         if request is None:
             return False
         user = request.user
-        return user.is_superuser or ROLE_WRITE_PERMISSION in getattr(
-            user, "all_permissions", []
+        return user.is_superuser or ROLE_WRITE_PERMISSION in tenant_permissions(
+            user, self.tenant
         )
 
     def privileges_change(self, attrs):
@@ -209,9 +218,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_shared_account(self, attrs):
         """
-        Email and activation hold for every tenant of the user (see
-        ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users shared
-        with other tenants. Nobody deactivates their own account.
+        Email, activation and direct permissions hold for every tenant of the user
+        (see ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users
+        shared with other tenants. Nobody deactivates their own account.
         """
         instance = self.instance
         if instance is None:
@@ -219,7 +228,7 @@ class UserSerializer(serializers.ModelSerializer):
         changed = [
             field
             for field in SHARED_ACCOUNT_FIELDS
-            if field in attrs and attrs[field] != getattr(instance, field)
+            if field in attrs and not same_value(attrs[field], getattr(instance, field))
         ]
         if not changed:
             return

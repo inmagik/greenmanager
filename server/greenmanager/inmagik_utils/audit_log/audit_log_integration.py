@@ -1,16 +1,18 @@
 from auditlog.models import LogEntry
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Manager, OuterRef, Subquery
-from django.db.models.functions import Coalesce
+from django.db.models import CharField, Manager, OuterRef, Subquery
+from django.db.models.functions import Cast, Coalesce
 from django.db.utils import ProgrammingError
 
 
 class LastUpdateMixin:
     def _get_logentry_qs(self, **kwargs):
         try:
+            # object_pk holds the key as text for every model; object_id only
+            # for integer keys (the domain entities have UUID keys, D-014).
             return LogEntry.objects.filter(
                 content_type_id=ContentType.objects.get_for_model(self.model).id,
-                object_id=OuterRef("id"),
+                object_pk=Cast(OuterRef("pk"), output_field=CharField()),
                 **kwargs,
             ).order_by("-timestamp")
         except ProgrammingError:

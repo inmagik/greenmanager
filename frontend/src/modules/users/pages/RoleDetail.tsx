@@ -58,7 +58,7 @@ export function RoleDetail() {
         title={t("roles.detail.emptyTitle")}
         description={t("roles.detail.emptyDescription")}
         action={
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
             <GrantRoleToUsersAction id={id} refetchUsers={refetchUsers} setSelection={setSelection} />
           </CheckPermission>
         }
@@ -89,7 +89,7 @@ export function RoleDetail() {
   }
 
   let mainActionsRole: React.ReactNode = (
-    <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+    <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
       <Button
         leftSection={<TbPencil />}
         disabled={editable}
@@ -103,7 +103,7 @@ export function RoleDetail() {
   )
   if (activeTab === "users") {
     mainActionsRole = (
-      <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+      <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
         <GrantRoleToUsersAction id={id} refetchUsers={refetchUsers} setSelection={setSelection} />
       </CheckPermission>
     )
@@ -120,7 +120,7 @@ export function RoleDetail() {
         >
           {t("common.cancel")}
         </Button>
-        <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+        <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
           <Button
             leftSection={<TbUserX />}
             color="red.8"
@@ -169,7 +169,7 @@ export function RoleDetail() {
         icon={<TbVectorBezierCircle size="1.5rem" />}
         title={role.name}
         breadcrumbs={[
-          { label: t("roles.list.breadcrumb"), href: "/utenti/ruoli" },
+          { label: t("roles.list.breadcrumb"), href: "/users/roles" },
           { label: role.name, href: "#" },
         ]}
         actions={mainActionsRole}
@@ -177,7 +177,7 @@ export function RoleDetail() {
       <Tabs
         value={activeTab}
         onChange={(newTab) => {
-          navigate(`/utenti/ruoli/${id}/${newTab ?? "data"}`)
+          navigate(`/users/roles/${id}/${newTab ?? "data"}`)
         }}
       >
         <Tabs.List grow>
@@ -187,7 +187,7 @@ export function RoleDetail() {
               <Text size="sm">{t("roles.detail.tab")}</Text>
             </Group>
           </Tabs.Tab>
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_UTENTI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.READ_USERS}>
             <Tabs.Tab value="users">
               <Group gap="xxs" justify="center">
                 <TbUser />
@@ -213,7 +213,7 @@ export function RoleDetail() {
           </ScrollArea>
         </Tabs.Panel>
 
-        <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_UTENTI}>
+        <CheckPermission permission={AUTH_CORE_PERMISSIONS.READ_USERS}>
           <Tabs.Panel className="panel-with-table" value="users">
             <Box py="xs" px="sm">
               <Group justify="flex-start" align="center" gap="xs">

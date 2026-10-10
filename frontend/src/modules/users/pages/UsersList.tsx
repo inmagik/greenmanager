@@ -75,7 +75,7 @@ export function UsersList() {
   }, [data, selection])
 
   let mainActions: React.ReactNode = (
-    <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+    <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_USERS}>
       <CreateUserAction />
     </CheckPermission>
   )
@@ -91,7 +91,7 @@ export function UsersList() {
         >
           {t("common.cancel")}
         </Button>
-        <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+        <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_USERS}>
           <Button
             color="red.8"
             onClick={() => {
@@ -156,7 +156,7 @@ export function UsersList() {
               mergeParams({ search: e.target.value, page: 1 })
             }}
           />
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_RUOLI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.READ_ROLES}>
             <RoleFilter
               value={filterRole ? parseInt(filterRole, 10) : null}
               onChange={(value) => {
@@ -214,7 +214,7 @@ export function UsersList() {
               title={t("users.list.emptyTitle")}
               description={t("users.list.emptyDescription")}
               action={
-                <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+                <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_USERS}>
                   <CreateUserAction />
                 </CheckPermission>
               }
@@ -227,7 +227,7 @@ export function UsersList() {
           name="full_name"
           sortable
           render={(user) => (
-            <Link to={`/utenti/utenti/${user.id}`}>
+            <Link to={`/users/users/${user.id}`}>
               <Text td="underline">{user.full_name}</Text>
             </Link>
           )}
@@ -247,7 +247,7 @@ export function UsersList() {
           width="80px"
           cellStyle={{ paddingRight: 0 }}
           render={(user) => (
-            <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+            <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_USERS}>
               <UserContextActions user={user} />
             </CheckPermission>
           )}

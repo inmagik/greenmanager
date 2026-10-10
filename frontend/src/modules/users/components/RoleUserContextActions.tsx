@@ -21,7 +21,7 @@ export function RoleUserContextActions({ user, roleId }: Props) {
   const { mutateAsync: revokeRoleFromUsers } = useRevokeRoleFromUsers(roleId)
 
   return (
-    <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+    <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
       <Menu>
         <Menu.Target>
           <Button

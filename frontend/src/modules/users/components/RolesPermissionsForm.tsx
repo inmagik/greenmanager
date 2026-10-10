@@ -76,7 +76,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
               mx="lg"
             />
           )}
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_RUOLI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.READ_ROLES}>
             <Stack p="lg" className="standard-border-bottom" gap="sm">
               <Group justify="space-between">
                 <Text size="md">{t("users.fields.roles")}</Text>

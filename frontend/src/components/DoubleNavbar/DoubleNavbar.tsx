@@ -8,6 +8,7 @@ import { useAuth } from "../../auth/auth"
 import classes from "./DoubleNavbar.module.css"
 import { useTranslation } from "react-i18next"
 import { LanguageSelector } from "@/components/LanguageSelector"
+import { useTenantUser } from "@/hooks/useHasPermission"
 import { supportedLanguages } from "@/i18n"
 
 const hasLanguageChoice = supportedLanguages.length > 1
@@ -19,8 +20,11 @@ export function DoubleNavbar() {
 
   const locationPathname = location.pathname
 
+  // The menu shows the sections allowed in the current tenant.
+  const tenantUser = useTenantUser()
+
   const menuConfig = useMemo(() => {
-    const config = getMenuConfig(user)
+    const config = tenantUser ? getMenuConfig(tenantUser) : []
     const landmarks: MenuItem[] = []
     const links: Record<string, MenuItem[]> = {}
     for (const item of config) {
@@ -38,7 +42,7 @@ export function DoubleNavbar() {
       links[parent].sort((a, b) => a.priority - b.priority)
     }
     return { landmarks, links }
-  }, [user])
+  }, [tenantUser])
 
   const labelFor = (item: MenuItem) => t(`navigation.${item.id}`, { defaultValue: item.label })
   const displayName = user?.full_name || user?.email || ""

@@ -7,6 +7,12 @@ class TenantContextMixin:
     tenant_header = "HTTP_X_TENANT_ID"
 
     def get_current_tenant(self):
+        # Read once per request: permissions, queryset and serializer all use it.
+        if not hasattr(self, "_current_tenant"):
+            self._current_tenant = self._find_current_tenant()
+        return self._current_tenant
+
+    def _find_current_tenant(self):
         tenant_id = self.request.META.get(
             self.tenant_header
         ) or self.request.query_params.get("tenant")

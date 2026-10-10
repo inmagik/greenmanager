@@ -43,7 +43,7 @@ export function RolesList() {
         title={t("roles.list.emptyTitle")}
         description={t("roles.list.emptyDescription")}
         action={
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
             <CreateRoleAction />
           </CheckPermission>
         }
@@ -51,7 +51,7 @@ export function RolesList() {
     ) : null
 
   let mainActions: React.ReactNode = (
-    <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+    <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
       <CreateRoleAction />
     </CheckPermission>
   )
@@ -67,7 +67,7 @@ export function RolesList() {
         >
           {t("common.cancel")}
         </Button>
-        <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+        <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
           <Button
             color="red.8"
             onClick={() => {

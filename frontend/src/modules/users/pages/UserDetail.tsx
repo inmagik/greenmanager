@@ -63,8 +63,8 @@ export function UserDetail() {
   // Roles and permissions are a user update that also needs the role-write permission.
   const editPermission =
     activeTab === "permissions"
-      ? { allOf: [AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI, AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI] }
-      : AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI
+      ? { allOf: [AUTH_CORE_PERMISSIONS.WRITE_USERS, AUTH_CORE_PERMISSIONS.WRITE_ROLES] }
+      : AUTH_CORE_PERMISSIONS.WRITE_USERS
 
   const mainActions: React.ReactNode = (
     <>
@@ -79,7 +79,7 @@ export function UserDetail() {
           {t("common.edit")}
         </Button>
       </CheckPermission>
-      <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}>
+      <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_USERS}>
         <UserContextActions user={user} onDelete={() => navigate(-1)} />
       </CheckPermission>
     </>
@@ -101,7 +101,7 @@ export function UserDetail() {
         icon={<TbUser size="1.5rem" />}
         title={user.full_name}
         breadcrumbs={[
-          { label: t("users.list.breadcrumb"), href: "/utenti/utenti" },
+          { label: t("users.list.breadcrumb"), href: "/users/users" },
           { label: user.full_name, href: "#" },
         ]}
         actions={mainActions}
@@ -109,7 +109,7 @@ export function UserDetail() {
       <Tabs
         value={activeTab}
         onChange={(newTab) => {
-          navigate(`/utenti/utenti/${id}/${newTab ?? "data"}`)
+          navigate(`/users/users/${id}/${newTab ?? "data"}`)
         }}
       >
         <Tabs.List grow>
@@ -145,7 +145,7 @@ export function UserDetail() {
                   message={t("users.detail.disabledMessage")}
                   action={t("users.detail.reactivate")}
                   onAction={() => updateUser({ id: user.id, is_active: true }).catch((error) => notifyApiError(error))}
-                  actionPermission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}
+                  actionPermission={AUTH_CORE_PERMISSIONS.WRITE_USERS}
                 />
               </Box>
             )}
@@ -158,7 +158,7 @@ export function UserDetail() {
                   onAction={() => {
                     unlockUser(user.id).catch((error) => notifyApiError(error))
                   }}
-                  actionPermission={AUTH_CORE_PERMISSIONS.SCRITTURA_UTENTI}
+                  actionPermission={AUTH_CORE_PERMISSIONS.WRITE_USERS}
                 />
               </Box>
             )}

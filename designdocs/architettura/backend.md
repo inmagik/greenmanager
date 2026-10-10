@@ -120,9 +120,10 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 - I receiver ricalcolano `all_permissions` quando cambiano l'utente, i suoi ruoli o un ruolo.
 
 **Permessi.**
-- Ogni app dichiara i propri permessi in `fm_permissions.py`: `permissions = [{"name": "...", "description": "..."}]`. Il codice completo è `<app_label>.<name>`, per esempio `auth_core.LETTURA_UTENTI`.
+- Ogni app dichiara i propri permessi in `fm_permissions.py`: `permissions = [{"name": "...", "description": "..."}]`. Il codice completo è `<app_label>.<name>`, per esempio `auth_core.READ_USERS`.
 - `PermissionManager` raccoglie i permessi di tutte le app installate. L'endpoint `permissions/` li restituisce al frontend, che li usa nel form dei ruoli.
 - `ActionPermission` è la classe di permesso dei viewset. Il viewset dichiara `action_permissions = {action: [codici]}`; l'utente deve avere tutti i codici dell'action.
+- **I permessi valgono nel tenant della richiesta**: quelli diretti dell'utente più quelli dei suoi ruoli in quel tenant (`tenant_permissions` e `request_permissions` in `utils.py`). Il tenant viene da `get_current_tenant()` della view; una view senza `TenantContextMixin` conta solo i permessi diretti. `all_permissions` resta come unione di tutti i ruoli, per l'admin, e non decide nulla: in data-lab un ruolo di un tenant dava i suoi permessi anche negli altri.
 - Ogni action deve comparire in `action_permissions`, comprese le action aggiunte e `bulk_delete`. Un'action senza voce solleva `NotImplementedError`: si sbaglia chiudendo, non aprendo. `OPTIONS` è sempre permesso.
 - Il superuser passa ogni controllo, come nel frontend (§5.6 di [frontend.md](frontend.md)).
 
@@ -140,14 +141,14 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 **Adattamenti.**
 - Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4).
 - `RuntimePermission` e `ActionPermission` lasciano passare il superuser, come in bottaro-pesatura; in data-lab guardano solo `all_permissions` (domanda 2).
-- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia ruoli o permessi diretti deve avere anche `SCRITTURA_RUOLI`. In data-lab bastava `SCRITTURA_UTENTI`, e un utente poteva assegnarsi privilegi da solo.
-  - Il controllo sta in `UserSerializer` e confronta i valori nuovi con quelli attuali: chi ha solo `SCRITTURA_UTENTI` può modificare o disattivare un utente anche se la richiesta ripete ruoli e permessi invariati.
+- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia ruoli o permessi diretti deve avere anche `WRITE_ROLES`. In data-lab bastava `WRITE_USERS`, e un utente poteva assegnarsi privilegi da solo.
+  - Il controllo sta in `UserSerializer` e confronta i valori nuovi con quelli attuali: chi ha solo `WRITE_USERS` può modificare o disattivare un utente anche se la richiesta ripete ruoli e permessi invariati.
   - bottaro-pesatura usa `ManageUserPrivilegesPermission`, che guarda solo la presenza dei campi nella richiesta. Qui non c'è.
 - **Utenti visti da un tenant** (revisione della PR dello scaffold): `UserSerializer` riceve il tenant della richiesta.
   - Mostra e accetta solo i ruoli di quel tenant; una modifica conserva i ruoli degli altri tenant.
   - Calcola `all_permissions` sui ruoli di quel tenant; mostra le altre appartenenze solo allo staff.
   - `grant_to` e `revoke_from` accettano solo utenti del tenant.
-- **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant. Il comportamento definitivo si decide in T3 (domanda 4).
+- **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email o i permessi diretti, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, permessi diretti, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant. Il comportamento definitivo si decide in T3 (domanda 4).
 - **Il proprio account**: nessuno lo disattiva o lo elimina (errore `cannot_change_own_account`).
 - **Codici dei permessi**: utenti e ruoli accettano solo i codici raccolti da `PermissionManager` (errore `unknown_permission`).
 - **Errori con codice** sollevati in `Serializer.validate()`: stanno sotto il campo (`{"email": {"code": ...}}`). DRF trasforma in liste i valori di un payload al primo livello, e il frontend non ne riconoscerebbe più il codice.
@@ -156,7 +157,7 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 - **Endpoint di django-userbase**: `auth_core/account_urls.py` monta solo attivazione, recupero, reset e cambio della password, con sottoclassi che ne descrivono lo schema (`account_views.py`). Restano fuori `me/`, un secondo "me" che scrive `last_login` a ogni chiamata, e `resend-activation-email/`, con cui ogni utente autenticato poteva inviare email a qualunque utente e leggerne i dati. `change-password/` richiede l'autenticazione (in userbase non ha permessi, e una richiesta anonima finiva in errore 500); un token valido di un utente cancellato dà `invalid_token`.
 - `PermissionManager` costruisce l'elenco dei permessi in una variabile locale e lo assegna alla fine. In data-lab due prime richieste simultanee lo riempivano due volte, con permessi duplicati nell'interfaccia. Lo stesso vale per l'elenco dei job schedulabili di `jobs_core`.
 - `Role` ha l'ordinamento di default per nome; il viewset dei ruoli lo ripete nel queryset, perché `annotate(Count(...))` ignora `Meta.ordering`.
-- I codici dei permessi restano quelli di data-lab (`LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`): li usa il modulo `users` del frontend, condiviso tra i progetti.
+- I codici dei permessi sono in inglese (`READ_USERS`, `WRITE_USERS`, `READ_ROLES`, `WRITE_ROLES`), come gli altri identificatori (D-001); le descrizioni restano in italiano. In data-lab erano `LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`: la migrazione `0003_rename_permission_codes` converte quelli già salvati in ruoli e utenti. Le app di dominio usano lo stesso schema, `<app>.<VERBO>_<OGGETTO>`.
 
 ### 3.2 `tenants` — organizzazioni
 
@@ -168,13 +169,13 @@ In GreenManager il tenant è l'**organizzazione** che usa il sistema, l'entità 
 - `TenantScopedModel`, astratto: chiave esterna `tenant` (`PROTECT`, indicizzata) e manager `TenantScopedQuerySet` con `for_tenant(tenant)`.
 
 **Mixin per i viewset.**
-- `TenantContextMixin.get_current_tenant()` legge il tenant dall'header `X-Tenant-ID` o dal parametro `?tenant=`. Un utente che non è staff vede solo i tenant di cui è membro; un tenant estraneo dà `404` con codice `tenant_not_found`.
+- `TenantContextMixin.get_current_tenant()` legge il tenant dall'header `X-Tenant-ID` o dal parametro `?tenant=`, una volta per richiesta. Un utente che non è staff vede solo i tenant di cui è membro; un tenant estraneo dà `404` con codice `tenant_not_found`.
 - Senza tenant nella richiesta, `restrict_queryset_without_tenant()` restituisce un queryset vuoto agli utenti che non sono staff.
 - `TenantScopedViewSetMixin` filtra il queryset con `tenant=<tenant corrente>` e, nella creazione, assegna il tenant corrente. Se manca, risponde con l'errore `tenant_required`.
 
 **Endpoint** sotto `api/core/`:
 - `tenants/`: lettura per i membri, scrittura solo per lo staff. Un tenant con dati collegati non si elimina (errore `tenant_has_related_data` con l'elenco dei dati). Action `users`, `add-users` e `remove-user` per gestire i membri;
-- `tenant-memberships/`: lettura per i membri con `LETTURA_UTENTI`, scrittura solo per lo staff, come per i tenant. In data-lab bastava `SCRITTURA_UTENTI`, e un amministratore poteva aggiungere al proprio tenant qualunque utente del sistema. Creazioni, modifiche e cancellazioni, anche multiple, passano da `services.py` (`save_membership`, `remove_tenant_user`), che mantiene un tenant di default; in data-lab l'endpoint salvava direttamente il modello.
+- `tenant-memberships/`: lettura per i membri con `READ_USERS`, scrittura solo per lo staff, come per i tenant. In data-lab bastava `WRITE_USERS`, e un amministratore poteva aggiungere al proprio tenant qualunque utente del sistema. Creazioni, modifiche e cancellazioni, anche multiple, passano da `services.py` (`save_membership`, `remove_tenant_user`), che mantiene un tenant di default; in data-lab l'endpoint salvava direttamente il modello.
 
 Le modifiche ai membri passano da `services.py`, che blocca con `select_for_update` utenti e tenant coinvolti e mantiene un tenant di default per ogni utente. Nell'admin, che salva direttamente i modelli, le pagine di utenti, tenant e appartenenze ripristinano il tenant di default dopo ogni modifica.
 
@@ -352,7 +353,7 @@ Si parte da quello di data-lab, con queste correzioni:
 
 ### 5.3 Immagine del server
 
-- `Dockerfile` su `python:3.14-slim`, con GDAL, GEOS e PROJ; senza la CLI docker, che in data-lab serve ai simulatori.
+- `Dockerfile` su `python:3.14-slim`, con GDAL, GEOS e PROJ; senza la CLI docker, che in data-lab serve ai simulatori. L'immagine imposta `DJANGO_DEBUG=False`; con il debug spento, `settings.py` rifiuta la chiave di sviluppo e chiede `DJANGO_SECRET`.
 - Il codice va in `/code`, gli script in `/scripts`, aggiunti al `PATH`. Il comando di default è `start`.
 - La stessa immagine fa girare tre processi:
 
@@ -416,6 +417,6 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
    - i permessi diretti dell'utente (`permissions`) valgono in tutti i tenant;
    - `is_active` e la cancellazione dell'utente valgono per tutti i tenant. Per ora solo lo staff li cambia per gli utenti condivisi (§3.1).
 
-   → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
+   → **chiusa in parte** alla revisione della PR dello scaffold: server e frontend calcolano i permessi sui ruoli del tenant della richiesta più i permessi diretti (§3.1); email, attivazione, permessi diretti e cancellazione di un utente condiviso li cambia solo lo staff. Resta per T3, nella prima fetta verticale (D-040): se i permessi diretti debbano diventare per tenant, e come si gestiscono gli utenti condivisi (per esempio l'invito di un utente già esistente).
 5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
 6. **Archiviazione di foto e allegati.** data-lab salva i file su disco (`MEDIA_ROOT`). Le foto sono il cuore del registro dello stato e crescono molto. Proposta: disco nell'MVP, con `STORAGES` pronto per un object storage compatibile S3. → rinviata a T3

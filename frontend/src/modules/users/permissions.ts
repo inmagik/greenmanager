@@ -1,6 +1,6 @@
 export const AUTH_CORE_PERMISSIONS = {
-  LETTURA_UTENTI: "auth_core.LETTURA_UTENTI",
-  SCRITTURA_UTENTI: "auth_core.SCRITTURA_UTENTI",
-  LETTURA_RUOLI: "auth_core.LETTURA_RUOLI",
-  SCRITTURA_RUOLI: "auth_core.SCRITTURA_RUOLI",
+  READ_USERS: "auth_core.READ_USERS",
+  WRITE_USERS: "auth_core.WRITE_USERS",
+  READ_ROLES: "auth_core.READ_ROLES",
+  WRITE_ROLES: "auth_core.WRITE_ROLES",
 } as const

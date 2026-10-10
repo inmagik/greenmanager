@@ -1,4 +1,3 @@
-import { Redirect } from "@/components/Redirect"
 import { Outlet, type RouteObject } from "react-router-dom"
 import { AuthLayout } from "../../auth/AuthLayout"
 import { RolesList } from "./pages/RolesList"
@@ -9,10 +8,11 @@ import { CheckPermission } from "@/components/CheckPermission"
 import { Forbidden } from "@/components/StatusPage"
 import { AUTH_CORE_PERMISSIONS } from "./permissions"
 import { ScreenWidthGuard } from "@/components/ScreenWidthGuard"
+import { UsersIndex } from "./components/UsersIndex"
 
 export const routes: RouteObject[] = [
   {
-    path: "utenti",
+    path: "users",
     element: (
       <ScreenWidthGuard>
         <AuthLayout redirect_to="/login" />
@@ -21,12 +21,12 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Redirect to="/utenti/utenti" />,
+        element: <UsersIndex />,
       },
       {
-        path: "utenti",
+        path: "users",
         element: (
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_UTENTI} fallback={<Forbidden />}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.READ_USERS} fallback={<Forbidden />}>
             <Outlet />
           </CheckPermission>
         ),
@@ -46,9 +46,9 @@ export const routes: RouteObject[] = [
         ],
       },
       {
-        path: "ruoli",
+        path: "roles",
         element: (
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.LETTURA_RUOLI} fallback={<Forbidden />}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.READ_ROLES} fallback={<Forbidden />}>
             <Outlet />
           </CheckPermission>
         ),

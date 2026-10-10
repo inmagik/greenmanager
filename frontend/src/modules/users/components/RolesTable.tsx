@@ -50,7 +50,7 @@ export default function RolesTable({ selection, setSelection, data, isLoadingRol
         name="name"
         sortable
         render={(role) => (
-          <Link to={`/utenti/ruoli/${role.id}`}>
+          <Link to={`/users/roles/${role.id}`}>
             <Text td="underline">{role.name}</Text>
           </Link>
         )}
@@ -62,7 +62,7 @@ export default function RolesTable({ selection, setSelection, data, isLoadingRol
         width="80px"
         cellStyle={{ paddingRight: 0 }}
         render={(role) => (
-          <CheckPermission permission={AUTH_CORE_PERMISSIONS.SCRITTURA_RUOLI}>
+          <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
             <RoleContextActions role={role} />
           </CheckPermission>
         )}

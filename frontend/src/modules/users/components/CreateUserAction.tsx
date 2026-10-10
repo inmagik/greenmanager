@@ -22,7 +22,7 @@ export function CreateUserAction() {
               onSubmit={async (values) => {
                 const newUser = await createUser(values)
                 modals.close(modalId)
-                navigate(`/utenti/utenti/${newUser.id}`)
+                navigate(`/users/users/${newUser.id}`)
               }}
             />
           ),

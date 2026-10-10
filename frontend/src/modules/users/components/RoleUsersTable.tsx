@@ -50,7 +50,7 @@ export default function RoleUsersTable({ usersWithRole, isLoadingUsers, id, sele
         name="full_name"
         sortable
         render={(user) => (
-          <Link to={`/utenti/utenti/${user.id}`}>
+          <Link to={`/users/users/${user.id}`}>
             <Text td="underline">{user.full_name}</Text>
           </Link>
         )}

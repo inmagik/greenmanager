@@ -132,7 +132,7 @@ class TenantMembershipApiTests(APITestCase):
 
     def test_non_staff_cannot_create_memberships(self):
         admin = get_user_model().objects.create_user(email="admin@example.com")
-        admin.permissions = ["auth_core.SCRITTURA_UTENTI"]
+        admin.permissions = ["auth_core.WRITE_USERS"]
         admin.save(update_fields=["permissions"])
         TenantMembership.objects.create(tenant=self.tenant, user=admin, is_default=True)
         outsider = get_user_model().objects.create_user(email="out@example.com")

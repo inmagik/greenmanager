@@ -1,5 +1,8 @@
 FROM python:3.14-slim
 
+# The image runs in production: debug off unless DJANGO_DEBUG says otherwise.
+ENV PYTHONUNBUFFERED=1 DJANGO_DEBUG=False
+
 # GDAL, GEOS and PROJ are required by GeoDjango.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

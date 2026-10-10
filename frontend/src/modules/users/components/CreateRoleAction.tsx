@@ -22,7 +22,7 @@ export function CreateRoleAction() {
               onSubmit={async (values) => {
                 const newRole = await createRole(values)
                 modals.close(modalId)
-                navigate(`/utenti/ruoli/${newRole.id}`)
+                navigate(`/users/roles/${newRole.id}`)
               }}
             />
           ),

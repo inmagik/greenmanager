@@ -19,7 +19,7 @@ class UsersApiTests(APITestCase):
             email="admin@example.com",
             password="pw12345!",
         )
-        self.admin.permissions = ["auth_core.SCRITTURA_UTENTI"]
+        self.admin.permissions = ["auth_core.WRITE_USERS"]
         self.admin.save(update_fields=["permissions"])
         TenantMembership.objects.create(
             tenant=self.tenant, user=self.admin, is_default=True
@@ -53,7 +53,7 @@ class UsersApiTests(APITestCase):
             {
                 "full_name": "Privileged User",
                 "email": "privileged@example.com",
-                "permissions": ["auth_core.SCRITTURA_RUOLI"],
+                "permissions": ["auth_core.WRITE_ROLES"],
             },
             format="json",
             **self.tenant_header,
@@ -67,20 +67,20 @@ class UsersApiTests(APITestCase):
     def test_cannot_self_assign_permissions_without_role_permission(self):
         response = self.client.patch(
             f"/api/core/auth/users/{self.admin.pk}/",
-            {"permissions": ["auth_core.SCRITTURA_RUOLI"]},
+            {"permissions": ["auth_core.WRITE_ROLES"]},
             format="json",
             **self.tenant_header,
         )
 
         self.assertEqual(response.status_code, 403, response.content)
         self.admin.refresh_from_db()
-        self.assertNotIn("auth_core.SCRITTURA_RUOLI", self.admin.permissions)
+        self.assertNotIn("auth_core.WRITE_ROLES", self.admin.permissions)
 
     def test_cannot_assign_roles_without_role_permission(self):
         role = Role.objects.create(
             tenant=self.tenant,
             name="Administrators",
-            permissions=["auth_core.SCRITTURA_RUOLI"],
+            permissions=["auth_core.WRITE_ROLES"],
         )
 
         response = self.client.patch(
@@ -94,7 +94,7 @@ class UsersApiTests(APITestCase):
         self.assertFalse(self.admin.roles.filter(pk=role.pk).exists())
 
     def test_role_manager_can_assign_roles_and_permissions(self):
-        self.admin.permissions.append("auth_core.SCRITTURA_RUOLI")
+        self.admin.permissions.append("auth_core.WRITE_ROLES")
         self.admin.save(update_fields=["permissions"])
         role = Role.objects.create(tenant=self.tenant, name="Operators")
         user = get_user_model().objects.create_user(email="user@example.com")
@@ -104,7 +104,7 @@ class UsersApiTests(APITestCase):
             f"/api/core/auth/users/{user.pk}/",
             {
                 "roles": [role.pk],
-                "permissions": ["auth_core.LETTURA_UTENTI"],
+                "permissions": ["auth_core.READ_USERS"],
             },
             format="json",
             **self.tenant_header,
@@ -113,7 +113,7 @@ class UsersApiTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.content)
         user.refresh_from_db()
         self.assertEqual(list(user.roles.values_list("pk", flat=True)), [role.pk])
-        self.assertEqual(user.permissions, ["auth_core.LETTURA_UTENTI"])
+        self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
 
     def test_superuser_manages_users_and_roles_without_permissions(self):
         superuser = get_user_model().objects.create_user(
@@ -148,12 +148,12 @@ class TenantScopedUsersTests(APITestCase):
         self.other_role = Role.objects.create(
             tenant=self.other_tenant,
             name="Administrators",
-            permissions=["auth_core.SCRITTURA_RUOLI"],
+            permissions=["auth_core.WRITE_ROLES"],
         )
         self.admin = User.objects.create_user(email="admin@example.com")
         self.admin.permissions = [
-            "auth_core.LETTURA_UTENTI",
-            "auth_core.SCRITTURA_UTENTI",
+            "auth_core.READ_USERS",
+            "auth_core.WRITE_USERS",
         ]
         self.admin.save(update_fields=["permissions"])
         TenantMembership.objects.create(
@@ -174,7 +174,7 @@ class TenantScopedUsersTests(APITestCase):
         self.tenant_header = {"HTTP_X_TENANT_ID": str(self.tenant.pk)}
 
     def grant_role_permission(self):
-        self.admin.permissions.append("auth_core.SCRITTURA_RUOLI")
+        self.admin.permissions.append("auth_core.WRITE_ROLES")
         self.admin.save(update_fields=["permissions"])
 
     def user_url(self, user):
@@ -202,7 +202,7 @@ class TenantScopedUsersTests(APITestCase):
         self.assertEqual(response.data["roles"], [self.role.pk])
         self.assertEqual([r["id"] for r in response.data["roles_data"]], [self.role.pk])
         self.assertEqual(response.data["tenants"], [self.tenant.pk])
-        self.assertNotIn("auth_core.SCRITTURA_RUOLI", response.data["all_permissions"])
+        self.assertNotIn("auth_core.WRITE_ROLES", response.data["all_permissions"])
 
     def test_cannot_assign_role_of_other_tenant(self):
         self.grant_role_permission()
@@ -293,6 +293,59 @@ class TenantScopedUsersTests(APITestCase):
 
         self.assertEqual(response.status_code, 403, response.content)
 
+    def give_admin_role_writer_in_other_tenant(self):
+        TenantMembership.objects.create(tenant=self.other_tenant, user=self.admin)
+        self.admin.roles.add(self.other_role)
+
+    def test_role_permissions_hold_only_in_their_tenant(self):
+        self.give_admin_role_writer_in_other_tenant()
+
+        in_tenant = self.client.post(
+            "/api/core/auth/roles/",
+            {"name": "New role", "permissions": []},
+            format="json",
+            **self.tenant_header,
+        )
+        in_other_tenant = self.client.post(
+            "/api/core/auth/roles/",
+            {"name": "New role", "permissions": []},
+            format="json",
+            HTTP_X_TENANT_ID=str(self.other_tenant.pk),
+        )
+
+        self.assertEqual(in_tenant.status_code, 403, in_tenant.content)
+        self.assertEqual(in_other_tenant.status_code, 201, in_other_tenant.content)
+
+    def test_role_writer_of_other_tenant_cannot_change_roles_here(self):
+        self.give_admin_role_writer_in_other_tenant()
+
+        response = self.client.patch(
+            self.user_url(self.user),
+            {"roles": []},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertTrue(self.user.roles.filter(pk=self.role.pk).exists())
+
+    def test_cannot_change_direct_permissions_of_shared_user(self):
+        self.grant_role_permission()
+
+        response = self.client.patch(
+            self.user_url(self.shared),
+            {"permissions": ["auth_core.WRITE_USERS"]},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(
+            response.data["permissions"]["code"], "user_shared_with_other_tenants"
+        )
+        self.shared.refresh_from_db()
+        self.assertEqual(self.shared.permissions, [])
+
     def test_cannot_change_email_of_user_shared_with_other_tenants(self):
         response = self.client.patch(
             self.user_url(self.shared),
@@ -361,6 +414,23 @@ class TenantScopedUsersTests(APITestCase):
         self.assertEqual(role_response.status_code, 400, role_response.content)
         self.assertFalse(Role.objects.filter(name="Bogus").exists())
 
+    def test_lock_uses_the_highest_failure_count(self):
+        # Axes keeps one row per username and IP: any of them can be at the limit.
+        for ip, failures in (
+            ("10.0.0.1", 1),
+            ("10.0.0.2", settings.AXES_FAILURE_LIMIT),
+        ):
+            AccessAttempt.objects.create(
+                username=self.user.email,
+                ip_address=ip,
+                user_agent="test",
+                failures_since_start=failures,
+            )
+
+        response = self.client.get(self.user_url(self.user), **self.tenant_header)
+
+        self.assertTrue(response.data["is_locked"])
+
     def test_unlock_returns_the_unlocked_user(self):
         AccessAttempt.objects.create(
             username=self.user.email,
@@ -384,14 +454,14 @@ class RolePermissionsReceiverTests(TestCase):
     def setUp(self):
         tenant = Tenant.objects.create(name="Tenant A", slug="tenant-a")
         self.role = Role.objects.create(
-            tenant=tenant, name="Readers", permissions=["auth_core.LETTURA_UTENTI"]
+            tenant=tenant, name="Readers", permissions=["auth_core.READ_USERS"]
         )
         self.user = get_user_model().objects.create_user(email="user@example.com")
 
     def test_changes_from_the_role_side_update_user_permissions(self):
         self.role.user_set.add(self.user)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.all_permissions, ["auth_core.LETTURA_UTENTI"])
+        self.assertEqual(self.user.all_permissions, ["auth_core.READ_USERS"])
 
         self.role.user_set.clear()
         self.user.refresh_from_db()

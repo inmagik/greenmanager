@@ -1,6 +1,39 @@
 from rest_framework.permissions import BasePermission
 
 
+def tenant_permissions(user, tenant):
+    """Permissions of ``user`` in ``tenant``: the direct ones plus those of the
+    user's roles in that tenant. Without a tenant, only the direct ones.
+
+    ``User.all_permissions`` joins the roles of every tenant: it is not used for
+    authorization, or a role in one tenant would grant its permissions in another.
+    """
+    permissions = set(user.permissions)
+    if tenant is not None:
+        for role_permissions in user.roles.filter(tenant=tenant).values_list(
+            "permissions", flat=True
+        ):
+            permissions.update(role_permissions)
+    return permissions
+
+
+def request_permissions(request, view):
+    """Permissions of the user of the request in the tenant of the view.
+
+    The tenant comes from ``get_current_tenant()`` of the view (TenantContextMixin);
+    a view without it has no tenant. The result is kept on the request.
+    """
+    get_current_tenant = getattr(view, "get_current_tenant", None)
+    tenant = get_current_tenant() if get_current_tenant is not None else None
+    cache = getattr(request, "_tenant_permissions", None)
+    if cache is None:
+        cache = request._tenant_permissions = {}
+    key = tenant.pk if tenant is not None else None
+    if key not in cache:
+        cache[key] = tenant_permissions(request.user, tenant)
+    return cache[key]
+
+
 class RuntimePermission(BasePermission):
     permission_code = None
 
@@ -10,7 +43,7 @@ class RuntimePermission(BasePermission):
             return False
         if user.is_superuser:
             return True
-        return self.permission_code in getattr(user, "all_permissions", [])
+        return self.permission_code in request_permissions(request, view)
 
 
 class ActionPermission(BasePermission):
