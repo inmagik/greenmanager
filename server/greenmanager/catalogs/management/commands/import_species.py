@@ -130,4 +130,10 @@ class Command(BaseCommand):
                 raise CommandError(f"{code}: unknown parent {parent_code}.")
             if entry.parent_id != parent.pk:
                 entry.parent = parent
+                try:
+                    entry.full_clean()
+                except ValidationError as exc:
+                    raise CommandError(
+                        f"{code}: {django_errors_payload(exc, Species)}"
+                    ) from exc
                 entry.save(update_fields=["parent"])
