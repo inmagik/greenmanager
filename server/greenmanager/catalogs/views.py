@@ -155,7 +155,10 @@ class ExtensibleCatalogViewSet(CatalogViewSet):
     }
 
     def fresh(self, entry):
-        return self.get_queryset().get(pk=entry.pk)
+        """The entry after an action, read again without the filters of the
+        request, which may no longer match it (e.g. ``_sf_hidden=false``)."""
+        tenant = self.get_current_tenant()
+        return self.queryset.visible_to(tenant).with_flags(tenant).get(pk=entry.pk)
 
     @extend_schema(request=None)
     @action(detail=True, methods=["post"])

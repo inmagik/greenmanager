@@ -483,7 +483,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - una voce non passa tra il sistema e un'organizzazione (`catalog_scope_immutable`); nei cataloghi senza voci dell'organizzazione, come gli attributi nell'MVP, l'errore è `organization_entries_not_allowed`;
 - campi bloccati quando la voce è in uso (`locked_when_in_use`);
 - per i dati di un committente, `check_available(voce, organizzazione di gestione)`. Il valore già salvato resta valido anche se poi la voce è nascosta o ritirata;
-- per le specie: nome uguale al nome scientifico, genere ricavato dal nome. Il nome scientifico è univoco tra le voci disponibili: una voce propria non ripete una voce di sistema disponibile.
+- per le specie: nome uguale al nome scientifico, genere ricavato dal nome. Il nome scientifico è univoco tra le voci disponibili: una voce propria non ripete una voce di sistema disponibile, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome.
 
 **Attributi della classe** (D-047): `validate_attributes(classe, valori, precedenti)` in `attributes.py` restituisce i valori puliti, oppure un errore con codice per ogni attributo.
 

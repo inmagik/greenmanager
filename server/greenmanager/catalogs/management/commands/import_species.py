@@ -61,12 +61,14 @@ class Command(BaseCommand):
 
         counts = {"created": 0, "updated": 0, "unchanged": 0}
         with transaction.atomic():
-            entries = {}
+            entries, created = {}, set()
             for line, row in enumerate(rows, start=2):
                 entry, outcome = self.import_row(row, line, update)
                 entries[entry.code] = entry
                 counts[outcome] += 1
-            self.link_parents(rows, entries, update)
+                if outcome == "created":
+                    created.add(entry.code)
+            self.link_parents(rows, entries, created, update)
             if dry_run:
                 transaction.set_rollback(True)
 
@@ -111,17 +113,19 @@ class Command(BaseCommand):
         entry.save()
         return entry, "created" if created else "updated"
 
-    def link_parents(self, rows, entries, update):
+    def link_parents(self, rows, entries, created, update):
+        """Link the parents of the entries created now, and with ``--update`` of
+        the existing ones too: without it, existing entries stay as they are."""
         for row in rows:
             code = row["code"].strip()
             parent_code = (row.get("parent_code") or "").strip()
             entry = entries[code]
+            if code not in created and not update:
+                continue
             if not parent_code:
-                if update and entry.parent_id is not None:
+                if entry.parent_id is not None:
                     entry.parent = None
                     entry.save(update_fields=["parent"])
-                continue
-            if entry.parent_id is not None and not update:
                 continue
             parent = entries.get(parent_code) or (
                 Species.objects.system().filter(code=parent_code).first()

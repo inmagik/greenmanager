@@ -258,6 +258,17 @@ class CatalogApiTests(APITestCase):
             .exists()
         )
 
+    def test_actions_answer_without_the_request_filters(self):
+        self.client.force_authenticate(self.writer)
+
+        response = self.client.post(
+            self.url("area-uses", self.system_use.pk, "hide") + "?_sf_hidden=false",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(response.data["is_hidden"])
+
     def test_hiding_stays_out_of_the_shared_history(self):
         self.client.force_authenticate(self.writer)
         self.client.post(
@@ -379,6 +390,21 @@ class SpeciesApiTests(APITestCase):
         self.assertEqual(
             own_duplicate.data["scientific_name"][0]["code"], "species_name_not_unique"
         )
+
+    def test_unhide_refused_while_an_own_entry_has_the_name(self):
+        self.system.hidden_by.add(self.org)
+        own = self.post({"scientific_name": "Tilia cordata"})
+        url = f"/api/catalogs/species/{self.system.pk}/unhide/"
+
+        refused = self.client.post(url, **self.header)
+        Species.objects.filter(pk=own.data["id"]).update(retired=True)
+        accepted = self.client.post(url, **self.header)
+
+        self.assertEqual(refused.status_code, 400, refused.content)
+        self.assertEqual(
+            refused.data["scientific_name"]["code"], "species_name_not_unique"
+        )
+        self.assertEqual(accepted.status_code, 200, accepted.content)
 
     def test_parent_of_another_organization_is_refused(self):
         other = make_tenant("Other")

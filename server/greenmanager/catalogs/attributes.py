@@ -105,6 +105,9 @@ def validate_attributes(element_class, values, previous=None):
 
     cleaned, errors = {}, {}
     for key, value in values.items():
+        # A text of spaces only is empty too.
+        if isinstance(value, str):
+            value = value.strip()
         if is_empty(value):
             continue
         link = links.get(key)

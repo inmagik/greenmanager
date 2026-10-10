@@ -101,6 +101,15 @@ class ImportSpeciesTests(TestCase):
 
         self.assertIsNone(Species.objects.get(code="tilia-cordata").parent)
 
+    def test_existing_entries_get_no_parent_without_update(self):
+        rows = self.rows()
+        rows[0]["parent_code"] = ""
+        self.run_command(self.write_csv(rows))
+
+        self.run_command(self.write_csv(self.rows()))
+
+        self.assertIsNone(Species.objects.get(code="tilia-cordata").parent)
+
     def test_an_entry_cannot_be_its_own_parent(self):
         rows = self.rows()
         rows[1]["parent_code"] = "tilia"

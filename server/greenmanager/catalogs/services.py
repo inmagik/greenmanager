@@ -255,6 +255,20 @@ def hide_entry(entry, organization):
 @transaction.atomic
 def unhide_entry(entry, organization):
     check_hideable(entry)
+    if isinstance(entry, Species):
+        # The scientific name is unique among the available entries: the own
+        # entry that replaced the hidden one must be retired or renamed first.
+        duplicate = Species.objects.filter(
+            organization=organization,
+            retired=False,
+            scientific_name__iexact=entry.scientific_name,
+        )
+        if duplicate.exists():
+            raise api_error(
+                "species_name_not_unique",
+                "An entry with this scientific name already exists.",
+                field="scientific_name",
+            )
     entry.hidden_by.remove(organization)
 
 

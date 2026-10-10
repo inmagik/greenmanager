@@ -86,6 +86,17 @@ class ValidateAttributesTests(TestCase):
             },
         )
 
+    def test_text_of_spaces_is_empty(self):
+        self.assertEqual(
+            validate_attributes(
+                self.element_class, {"t_shape": "round", "t_label": "   "}
+            ),
+            {"t_shape": "round"},
+        )
+        self.assertEqual(
+            self.errors({"t_shape": "   "}), {"t_shape": "attribute_required"}
+        )
+
     def test_invalid_choice(self):
         self.assertEqual(
             self.errors({"t_shape": "oval"}), {"t_shape": "attribute_invalid_choice"}
