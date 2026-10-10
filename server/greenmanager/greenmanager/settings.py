@@ -64,6 +64,9 @@ INSTALLED_APPS = [
     "auth_core",
     "jobs_core",
     # Domain apps
+    "core",
+    "catalogs",
+    "parties",
 ]
 
 MIDDLEWARE = [

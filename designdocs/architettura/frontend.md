@@ -261,6 +261,7 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 - **Quinta revisione della PR dello scaffold**:
   - le liste con selezione la svuotano a ogni cambio di ricerca, ordinamento o pagina, e le azioni multiple mandano solo i record elencati nella conferma: in data-lab potevano eliminare organizzazioni o togliere ruoli a utenti non più visibili;
   - le righe e i contenuti a tutta larghezza di `Table` occupano `headers.length` colonne: con una in più la griglia ne creava una implicita, e la tabella si allargava rispetto all'intestazione.
+- **Prima fetta verticale (T3)**: nel dettaglio dell'utente i permessi diretti si cambiano solo dallo staff, come nel server (D-045). Per gli altri il form dei permessi li mostra in sola lettura, con una nota che rimanda ai ruoli.
 
 ## Domande aperte
 

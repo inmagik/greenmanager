@@ -1,10 +1,10 @@
 # Backend
 
-> **Stato**: completato · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+> **Stato**: completato per T1; §8 in corso con T3 e la prima fetta verticale · **Passo**: T1 e T3 del binario tecnico · Metodologia in [README.md](../README.md)
 
 - **Obiettivo**: descrivere il progetto Django di GreenManager: struttura, settings, app core, pattern delle app di dominio, ambiente di sviluppo, versioni.
 - **Fonte**: `server/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura e pattern, [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036). Commit e regole di copia in [README.md](README.md).
-- **Fuori da questo documento**: l'elenco delle app di dominio e dei loro permessi, che si definisce in T3 partendo da §5 di [04-modello-dati.md](../04-modello-dati.md).
+- **App di dominio**: elenco, permessi e regole sono in §8, che cresce con la prima fetta verticale (T3, D-040), partendo da §5 di [04-modello-dati.md](../04-modello-dati.md).
 
 ## 1. Struttura
 
@@ -141,14 +141,15 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 **Adattamenti.**
 - Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4).
 - `RuntimePermission` e `ActionPermission` lasciano passare il superuser, come in bottaro-pesatura; in data-lab guardano solo `all_permissions` (domanda 2).
-- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia ruoli o permessi diretti deve avere anche `WRITE_ROLES`. In data-lab bastava `WRITE_USERS`, e un utente poteva assegnarsi privilegi da solo.
+- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia i ruoli deve avere anche `WRITE_ROLES`; i permessi diretti li cambia solo lo staff (D-045). In data-lab bastava `WRITE_USERS`, e un utente poteva assegnarsi privilegi da solo.
   - Il controllo sta in `UserSerializer` e confronta i valori nuovi con quelli attuali: chi ha solo `WRITE_USERS` può modificare o disattivare un utente anche se la richiesta ripete ruoli e permessi invariati.
   - bottaro-pesatura usa `ManageUserPrivilegesPermission`, che guarda solo la presenza dei campi nella richiesta. Qui non c'è.
 - **Utenti visti da un tenant** (revisione della PR dello scaffold): `UserSerializer` riceve il tenant della richiesta.
   - Mostra e accetta solo i ruoli di quel tenant; una modifica conserva i ruoli degli altri tenant.
   - Calcola `all_permissions` sui ruoli di quel tenant; mostra le altre appartenenze solo allo staff.
   - `grant_to` e `revoke_from` accettano solo utenti del tenant.
-- **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email o i permessi diretti, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, permessi diretti, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant. Il comportamento definitivo si decide in T3 (domanda 4).
+- **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant.
+- **Permessi diretti** (T3, D-045): li cambia solo lo staff, per ogni utente, anche senza `WRITE_ROLES` nel tenant (errore `403 direct_permissions_staff_only`), perché valgono in tutti i tenant dell'utente. Dentro un'organizzazione i permessi si danno con i ruoli. È una differenza rispetto a data-lab e bottaro-pesatura.
 - **Il proprio account**: nessuno lo disattiva o lo elimina (errore `cannot_change_own_account`).
 - **Codici dei permessi**: utenti e ruoli accettano solo i codici raccolti da `PermissionManager` (errore `unknown_permission`).
 - **Errori con codice** sollevati in `Serializer.validate()`: stanno sotto il campo (`{"email": {"code": ...}}`). DRF trasforma in liste i valori di un payload al primo livello, e il frontend non ne riconoscerebbe più il codice.
@@ -262,7 +263,7 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 
 ### 4.2 Modelli
 
-- **Chiave**: UUID per le entità operative, generato di default e in v2 fornibile dal dispositivo (D-014). data-lab usa chiavi intere, tranne che per le feature geografiche. I campi comuni (§3.1 di [04-modello-dati.md](../04-modello-dati.md)) stanno in un modello astratto.
+- **Chiave**: UUID per tutte le entità di dominio, cataloghi compresi, generato di default e in v2 fornibile dal dispositivo (D-014, D-042). data-lab usa chiavi intere, tranne che per le feature geografiche. I campi comuni (§3.1 di [04-modello-dati.md](../04-modello-dati.md)) stanno in `core.TrackedModel` (§8.2).
 - **Enumerazioni**: `models.TextChoices`, con valori stabili in inglese minuscolo (es. `GeometryType.POINT = "point", "Point"`).
 - **Geometrie**: campi di `django.contrib.gis.db.models` con `srid=4326`. Linee e poligoni possono essere multiparte (D-035): l'area ha un `MultiPolygonField`. Per l'elemento, il cui tipo dipende dalla classe, campo e normalizzazione (per esempio linee e poligoni salvati sempre come multiparte) si fissano in T3.
 - **Vincoli e indici**: in `Meta.constraints` (`UniqueConstraint`, anche con `condition`; `CheckConstraint`) e `Meta.indexes`, con nomi espliciti. Ordinamento di default in `Meta.ordering`.
@@ -286,7 +287,7 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 
 - `ModelViewSet` con i mixin prima della classe base, in quest'ordine:
   1. `AuditlogActorMixin`, per l'autore delle modifiche (§3.4);
-  2. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2);
+  2. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2). Per i dati del patrimonio, `ClientScopedViewSetMixin` (§8.6);
   3. `StandardPaginationMixin`;
   4. `StructuralFilterMixin`;
   5. `BulkDeleteActionMixin`, se serve l'eliminazione multipla.
@@ -295,7 +296,8 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 - Queryset con `select_related` e `prefetch_related` per i dati annidati, annotazioni per i valori calcolati, ordinamento di default.
 - La view valida l'input, chiama il servizio di dominio e serializza il risultato. La logica sta nei servizi.
 - **Action aggiunte**: `@action(detail=…, methods=[…], url_path="kebab-case")` con `@extend_schema` per richiesta, risposta e parametri. Una action che restituisce una lista non paginata dichiara `pagination_class=None`, altrimenti lo schema la descrive paginata. `python manage.py spectacular --file /dev/null` non deve dare errori né avvisi.
-  - Storico del record: action `history` (dettaglio, `GET`), che restituisce `LogEntry.objects.get_for_object(...)` con `AuditLogEntrySerializer`. La usa `AuditHistoryModal` nel frontend; il modello è `anagrafica` di bottaro-pesatura.
+  - Storico del record: action `history` (dettaglio, `GET`), che restituisce `LogEntry.objects.get_for_object(...)` con `AuditLogEntrySerializer`. La usa `AuditHistoryModal` nel frontend; il modello è `anagrafica` di bottaro-pesatura. Nelle app di dominio la dà `AuditHistoryActionMixin` (§8.2).
+  - Voci da scegliere nei form: action `choices` (lista, `GET`), con `ChoicesActionMixin` (§8.2).
   - Upload con `parser_classes=[NestedMultiPartParser, FormParser]`.
   - Operazioni lunghe: avvio di un job (§3.3), con risposta che contiene l'identificativo del `JobRun`.
 - **Export di file**: `HttpResponse` con `Content-Disposition: attachment; filename="…"`. Excel con openpyxl.
@@ -407,19 +409,134 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
 | requests | 2.34.2 | data-lab |
 
 - Si escludono `docker`, `numpy` e `qrcode`, che in data-lab servono ai simulatori e ai codici QR.
-- `django-solo` (impostazioni come singleton) e `jsonschema` (validazione degli attributi JSON rispetto alle definizioni della classe, §5.3 di [04-modello-dati.md](../04-modello-dati.md)) si valutano in T3.
+- `django-solo` (impostazioni come singleton) si valuta in T3. `jsonschema` non serve: gli attributi della classe si validano con una funzione dell'app `catalogs` (§8.4, D-047).
 - Strumenti di sviluppo in `requirements-dev.txt`, alle versioni correnti allo scaffold: black 26.10.0, isort 9.0.2, flake8 7.4.1. I test usano il runner di Django, senza dipendenze aggiuntive.
 - **Verifica di T4**: con Django 6.1.1 e Python 3.14.2 le librerie prese da data-lab funzionano senza cambi di versione. Migrazioni, test, server, worker e scheduler partono.
+
+## 8. App di dominio
+
+Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta aggiunge le sue app. Decisioni D-041–D-048.
+
+### 8.1 App
+
+| App | Modelli | Prefisso | Arriva con |
+|---|---|---|---|
+| `core` | modelli astratti, `ChangeRecord` | — | PR1 |
+| `catalogs` | `Species`, `ElementClass`, `AttributeDefinition`, `ElementClassAttribute`, `UrbanGreenType`, `AreaUse`, `UsageIntensity`, `RemovalCause` | `api/catalogs/` | PR1 |
+| `parties` | `Client` | `api/parties/` | PR1 |
+| `territory` | `Zone`, `Area` | `api/territory/` | PR2 |
+| `inventory` | `Element`, `CompositionItem` | `api/inventory/` | PR2 |
+
+- Le dipendenze vanno in un solo verso: `core` ← `catalogs` ← `parties` ← `territory` ← `inventory` (D-041). Le chiavi esterne verso entità di app successive (interventi, valutazioni, import) si aggiungono con quelle app.
+- `core` non ha endpoint. Lo storico di dominio si consulterà con CE-4 e TR-6.
+
+### 8.2 Basi comuni: `core`
+
+| Modulo | Contenuto |
+|---|---|
+| `models.py` | `UUIDModel`; `TrackedModel` con `created_at`, `created_by`, `updated_at`, `updated_by`, `revision` (D-042); `ChangeRecord`; `system_entry_id(modello, codice)`, la chiave deterministica delle voci di sistema |
+| `services.py` | `ChangeContext` (autore, organizzazione, origine); `change_source(request)`, che legge l'header `X-Change-Source` (`web` o `field`); `stamp`, l'autore della modifica; `snapshot`, i valori di un record in JSON (geometrie in GeoJSON); `record_change`, che scrive il `ChangeRecord`; `lock_for_change(queryset, pk)`, che blocca il record dentro il suo ambito (es. `editable_by(org)`) |
+| `errors.py` | `api_error` e `permission_error`, errori con codice; `validate_model`, il `full_clean()` del record con gli errori nella forma dell'API; `check_revision`, il controllo della revisione (`409 revision_conflict`) |
+| `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision` |
+| `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.6); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view |
+| `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi. Una modifica blocca il record e controlla che la revisione sia quella con cui si è aperto il form. Una cancellazione rifiutata dai servizi si mostra come messaggio, e la cancellazione multipla è atomica; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
+| `audit.py` | `register_audit`: registra un modello in django-auditlog senza i campi di tracciamento |
+| `permissions.py` | `any_permission(*codici)`: classe di permesso soddisfatta da uno dei codici |
+| `testing.py` | `make_tenant`, `make_user` (membro con un ruolo che dà i permessi), `tenant_header` |
+
+### 8.3 Servizi e validazione
+
+Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
+- **La view** valida tipi e formati con il serializer e chiama il servizio con i dati validati e il `ChangeContext` della richiesta. Il serializer non salva.
+- **Il servizio**:
+  1. blocca il record con `lock_for_change`, rileggendolo nel suo ambito (`editable_by` dell'organizzazione della richiesta), e controlla la revisione. Un record uscito dall'ambito dopo la lettura della view dà `404`;
+  2. applica i valori e ricava i derivati;
+  3. controlla le regole di dominio e il modello (`validate_model`);
+  4. salva con l'autore (`stamp`) e scrive il `ChangeRecord`, nella stessa transazione.
+  I passi 2–3 e 4 sono funzioni separate (`prepare_*` e `commit_*`), così l'admin usa le stesse regole (`ServiceAdminMixin`).
+- Gli errori sono quelli di DRF con codice (§4.3). Per gli errori del modello, `validate_model` conserva codice e parametri: i vincoli hanno `violation_error_code`, e `constraint_error_fields` del modello li sposta sul campo giusto (es. `catalog_code_not_unique` su `code`).
+- I validatori dei campi del modello che hanno un codice proprio non girano nel serializer (`"validators": []` negli `extra_kwargs`): DRF restituirebbe solo il messaggio.
+- I modelli con `TrackedModel` non si aggiornano con `QuerySet.update()`, che salterebbe revisione, autore e storico.
+
+### 8.4 Cataloghi: `catalogs`
+
+**Modelli** (`base.py`):
+- `CatalogEntry`: `code`, `name`, `description`, `sort_order`, `source`, `retired`.
+- `ExtensibleCatalog` aggiunge `organization` (vuota per le voci di sistema) e `hidden_by`. Il codice è univoco tra le voci di sistema e, per ogni organizzazione, tra le sue voci: un solo vincolo con `nulls_distinct=False`.
+- `FixedCatalog`: solo voci di sistema, con codice univoco e `retired`.
+- I QuerySet dei due tipi hanno gli stessi metodi:
+  - `system()`;
+  - `visible_to(org)`: voci di sistema e voci proprie, anche ritirate o nascoste;
+  - `available_for(org)`: le voci che l'organizzazione può scegliere;
+  - `with_flags(org)`: annota `is_hidden` e `is_available`.
+
+**Endpoint** sotto `api/catalogs/`: `species/`, `element-classes/`, `attribute-definitions/`, `urban-green-types/`, `area-uses/`, `usage-intensities/`, `removal-causes/`.
+- Lista, dettaglio, scrittura, `history/` e `choices/` (solo voci disponibili); `hide/` e `unhide/` sui cataloghi estendibili.
+- Filtri: `available`, `retired`, `hidden`, `scope` (`system` o `organization`), più quelli del catalogo (es. `rank` per le specie, `category` per le classi).
+- Una voce si crea per l'organizzazione della richiesta; lo staff crea voci di sistema con `is_system: true`.
+- `ElementClass` scrive i suoi attributi in `class_attributes`, che sostituisce l'elenco. Un attributo nuovo deve essere disponibile per l'organizzazione della classe; uno già presente resta anche se nascosto o ritirato.
+- L'admin cambia le voci con gli stessi servizi (`prepare_entry`, `commit_entry`), anche gli attributi delle classi nell'inline. `hidden_by` vi è in sola lettura: si nasconde e si mostra solo con le action dell'API.
+
+**Regole** (D-046), in `services.py`:
+- voci di sistema solo dallo staff; codice delle voci di sistema immutabile;
+- nessuna cancellazione di voci in uso;
+- una voce non passa tra il sistema e un'organizzazione (`catalog_scope_immutable`); nei cataloghi senza voci dell'organizzazione, come gli attributi nell'MVP, l'errore è `organization_entries_not_allowed`;
+- campi bloccati quando la voce è in uso (`locked_when_in_use`): tipo di geometria e modalità della specie di una classe, tipo e flag di misura di un attributo;
+- per i dati di un committente, `check_available(voce, organizzazione di gestione)`. Il valore già salvato resta valido anche se poi la voce è nascosta o ritirata;
+- per le specie:
+  - nome e genere vengono dal nome scientifico;
+  - il genitore ha un livello più alto: un genere non ha genitore, una specie o un ibrido hanno un genere, una cultivar ha un genere, una specie o un ibrido. Così la catena dei genitori non ha cicli, e un rango non cambia se ci sono voci figlie di livello uguale o più alto. Un genitore nuovo dev'essere disponibile (`check_available`); quello già salvato resta anche se poi è nascosto o ritirato. Prima del controllo della gerarchia il genitore si blocca e si rilegge (`lock_parent`), così un cambio di rango contemporaneo non la rompe;
+  - il nome scientifico è univoco tra le voci disponibili, nei due versi: una voce propria non ripete una voce di sistema disponibile, una voce di sistema non ripete una voce propria attiva di un'organizzazione che non la nasconde, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome, salvo che sia ritirata. Le voci ritirate non contano: il vincolo del database vale solo per le voci attive. Il lock sul nome (`pg_advisory_xact_lock`) si prende prima di ogni controllo del nome, vincolo del database compreso: due modifiche contemporanee non creano un doppione, e la seconda riceve l'errore con il codice. `import_species` applica le stesse regole, e le sue modifiche non hanno autore;
+- se il salvataggio viola un vincolo per una modifica contemporanea (es. lo stesso codice generato), la voce si valida di nuovo e la risposta è l'errore della regola, non un `500`;
+- una voce di sistema nuova, creata dall'API, dall'admin o da `import_species`, ha la chiave deterministica (D-042).
+
+**Attributi della classe** (D-047): `validate_attributes(classe, valori, precedenti)` in `attributes.py` restituisce i valori puliti, oppure un errore con codice per ogni attributo. I valori di attributi tolti dalla classe o ritirati non cambiano: se la richiesta non li contiene restano, perché il form mostra solo gli attributi attuali; un valore vuoto esplicito li toglie.
+
+**Dati iniziali** (D-048):
+- la migrazione `0002_system_entries` carica le voci di sistema dei cataloghi piccoli;
+- le specie si caricano con `python manage.py import_species catalogs/seeds/species_starter.csv`, dopo `migrate`. Il comando crea le voci nuove per codice, lascia le esistenti se non c'è `--update` e prova il file con `--dry-run`. La gerarchia (ranghi e genitori) si controlla dopo aver applicato tutte le righe, quindi l'ordine delle righe non conta; un errore, o un codice ripetuto nel file, annulla tutto l'import. Con `--update` le voci esistenti si bloccano quando il comando le legge, come in `update_entry`, così una modifica contemporanea dall'API non va persa.
+
+### 8.5 Committenti: `parties`
+
+`api/parties/clients/`, con `history/` e `choices/`.
+- L'organizzazione di gestione è quella della richiesta. Solo lo staff ne assegna un'altra (errore `managing_organization_staff_only`), per esempio nella variante K2 (§4.7 di [04-modello-dati.md](../04-modello-dati.md)).
+- Un committente con dati non si elimina (`client_has_related_data`): si disattiva con `active`.
+- Ogni creazione, modifica e cancellazione scrive un `ChangeRecord`.
+
+### 8.6 Accesso e permessi
+
+**Permessi.**
+
+| Codice | Descrizione |
+|---|---|
+| `catalogs.WRITE_CATALOGS` | gestione delle voci dei cataloghi dell'organizzazione. La lettura non chiede permessi |
+| `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | lettura e gestione dei committenti |
+
+**Accesso ai dati del patrimonio** (D-044).
+- Il QuerySet del modello ha `visible_to(org)` ed `editable_by(org)`. `ClientScopedViewSetMixin` li applica alle letture e alle scritture.
+- Nell'MVP valgono i committenti con `managing_organization` uguale all'organizzazione della richiesta. Gli affidamenti aggiungeranno i loro casi a questi due metodi.
+- Senza tenant nella richiesta non si vede nulla, nemmeno dallo staff: i record non hanno un tenant proprio da controllare.
+- Le entità con un'organizzazione diretta la chiamano `organization`, come il modello dati.
+
+### 8.7 Storico
+
+Vedi D-043.
+- I modelli di dominio si registrano in django-auditlog con `register_audit`, in fondo a `models.py`. La modale dello storico del frontend legge l'action `history`.
+- `hidden_by` dei cataloghi resta fuori dallo storico tecnico: una voce di sistema è condivisa, e il suo storico mostrerebbe a ogni organizzazione chi la nasconde nelle altre.
+- `ChangeRecord` registra i dati operativi (oggi il committente; poi zone, aree, elementi), non i cataloghi. È immutabile:
+  - nell'ORM, `save()` su un record esistente, `delete()` e le operazioni in blocco del QuerySet (`update()`, `delete()`) sollevano un errore;
+  - nel database, un trigger rifiuta `UPDATE` e `DELETE` da qualunque client (migrazione `core.0002`). Passa solo l'autore messo a `NULL` quando si cancella l'utente: un secondo trigger, differito, controlla al commit che l'utente non esista più (migrazione `core.0003`). Il nome resta in `author_label`.
+- `record_change` salta le modifiche senza differenze. Una cancellazione scrive un *annullamento* con gli ultimi valori.
 
 ## Domande aperte
 
 1. **Test.** Runner di Django con `tests.py` per app, come data-lab, o pytest con pytest-django, come prevede bottaro-pesatura? → **chiusa** alla revisione: runner di Django (`python manage.py test`), con `tests.py` o `tests/` per app, come data-lab.
 2. **Superuser e permessi.** Il frontend lascia passare il superuser in ogni controllo (`hasPermission`), il backend no: `ActionPermission` guarda solo `all_permissions`. → **chiusa** alla revisione: il superuser passa anche nel backend, in `RuntimePermission` e `ActionPermission`, come in bottaro-pesatura (§3.1).
-3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
+3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → **chiusa** nella prima fetta verticale: django-auditlog per il tracciamento tecnico, `ChangeRecord` scritto dai servizi (§8.7, D-043)
 4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. Due punti collegati, emersi dalla revisione della PR dello scaffold:
    - i permessi diretti dell'utente (`permissions`) valgono in tutti i tenant;
    - `is_active` e la cancellazione dell'utente valgono per tutti i tenant. Per ora solo lo staff li cambia per gli utenti condivisi (§3.1).
 
-   → **chiusa in parte** alla revisione della PR dello scaffold: server e frontend calcolano i permessi sui ruoli del tenant della richiesta più i permessi diretti (§3.1); email, attivazione, permessi diretti e cancellazione di un utente condiviso li cambia solo lo staff. Resta per T3, nella prima fetta verticale (D-040): se i permessi diretti debbano diventare per tenant, e come si gestiscono gli utenti condivisi (per esempio l'invito di un utente già esistente).
-5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → rinviata a T3, da chiudere nella prima fetta verticale (D-040)
+   → **chiusa in parte** alla revisione della PR dello scaffold: server e frontend calcolano i permessi sui ruoli del tenant della richiesta più i permessi diretti (§3.1); email, attivazione, permessi diretti e cancellazione di un utente condiviso li cambia solo lo staff. Resta per T3, nella prima fetta verticale (D-040): se i permessi diretti debbano diventare per tenant, e come si gestiscono gli utenti condivisi (per esempio l'invito di un utente già esistente). → **chiusa** nella prima fetta verticale: i permessi diretti restano per tutti i tenant e li cambia solo lo staff; l'invito di un utente esistente è rinviato agli affidamenti (§3.1, D-045)
+5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → **chiusa** nella prima fetta verticale: `visible_to` ed `editable_by` nel QuerySet, `ClientScopedViewSetMixin` nelle view; il campo si chiama `organization` (§8.6, D-044). L'accesso tramite gli affidamenti arriva con le app che li introducono
 6. **Archiviazione di foto e allegati.** data-lab salva i file su disco (`MEDIA_ROOT`). Le foto sono il cuore del registro dello stato e crescono molto. Proposta: disco nell'MVP, con `STORAGES` pronto per un object storage compatibile S3. → rinviata a T3

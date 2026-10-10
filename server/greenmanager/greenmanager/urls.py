@@ -19,6 +19,8 @@ urlpatterns = [
     path("api/core/auth/", include("auth_core.urls")),
     path("api/core/", include("tenants.urls")),
     # domain apps
+    path("api/catalogs/", include("catalogs.urls")),
+    path("api/parties/", include("parties.urls")),
     # swagger
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

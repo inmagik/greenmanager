@@ -1,0 +1,197 @@
+"""
+Load system species from a CSV file (catalog CT-2).
+
+Columns: code, rank, scientific_name, genus, specific_epithet, infraspecific,
+cultivar, family, common_name, parent_code, synonyms (separated by ``|``),
+external_ref. Only ``code`` and ``scientific_name`` are required.
+
+The entries are matched by code: new codes are created, existing ones are left
+as they are unless ``--update``. The keys of the new entries are deterministic
+(``core.models.system_entry_id``). The hierarchy (ranks and parents) is checked
+once all the rows are applied, so the order of the rows does not matter. A code
+repeated in the file stops the import.
+
+    python manage.py import_species catalogs/seeds/species_starter.csv
+"""
+
+import copy
+import csv
+
+from catalogs.models import Species
+from catalogs.services import (
+    check_available,
+    lock_parent,
+    lock_species_name,
+    normalize,
+    validate_references,
+)
+from core.errors import django_errors_payload
+from core.models import system_entry_id
+from core.services import snapshot, stamp
+from django.core.exceptions import ValidationError
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+from rest_framework.exceptions import APIException
+
+FIELDS = (
+    "rank",
+    "scientific_name",
+    "genus",
+    "specific_epithet",
+    "infraspecific",
+    "cultivar",
+    "family",
+    "common_name",
+    "external_ref",
+)
+
+
+class Command(BaseCommand):
+    help = "Load system species from a CSV file."
+
+    def add_arguments(self, parser):
+        parser.add_argument("path", help="CSV file, UTF-8, comma separated.")
+        parser.add_argument(
+            "--update",
+            action="store_true",
+            help="Update the entries that already exist.",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Check the file without saving anything.",
+        )
+
+    def handle(self, path, update=False, dry_run=False, **options):
+        try:
+            with open(path, newline="", encoding="utf-8-sig") as file:
+                rows = list(csv.DictReader(file))
+        except OSError as exc:
+            raise CommandError(f"Cannot read {path}: {exc}") from exc
+
+        counts = {"created": 0, "updated": 0, "unchanged": 0}
+        with transaction.atomic():
+            entries, created, changed = {}, set(), set()
+            for line, row in enumerate(rows, start=2):
+                code = (row.get("code") or "").strip()
+                if code in entries:
+                    raise CommandError(f"Line {line}: the code {code} is repeated.")
+                entry, outcome = self.import_row(row, line, update)
+                entries[entry.code] = entry
+                counts[outcome] += 1
+                if outcome == "created":
+                    created.add(entry.code)
+                if outcome != "unchanged":
+                    changed.add(entry.code)
+            linked = self.link_parents(rows, entries, created, update)
+            # An entry whose only change is the parent is updated too.
+            counts["unchanged"] -= len(linked - changed)
+            counts["updated"] += len(linked - changed)
+            changed |= linked
+            self.check_hierarchy(entries, changed)
+            if dry_run:
+                transaction.set_rollback(True)
+
+        prefix = "[dry run] " if dry_run else ""
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"{prefix}Species: {counts['created']} created, "
+                f"{counts['updated']} updated, {counts['unchanged']} unchanged."
+            )
+        )
+
+    def import_row(self, row, line, update):
+        code = (row.get("code") or "").strip()
+        if not code or not (row.get("scientific_name") or "").strip():
+            raise CommandError(f"Line {line}: code and scientific_name are required.")
+
+        existing = Species.objects.system().filter(code=code)
+        if update:
+            # Locked before the name, as in services.update_entry: a concurrent
+            # change from the API is not overwritten with stale values.
+            existing = existing.select_for_update()
+        entry = existing.first()
+        if entry is not None and not update:
+            return entry, "unchanged"
+        created = entry is None
+        if created:
+            entry = Species(id=system_entry_id("catalogs.species", code), code=code)
+        stored = None if created else copy.copy(entry)
+        before = None if created else snapshot(entry)
+        for field in FIELDS:
+            value = (row.get(field) or "").strip()
+            if value or field != "rank":
+                setattr(entry, field, value)
+        entry.synonyms = [
+            name.strip() for name in (row.get("synonyms") or "").split("|") if name
+        ]
+        entry.source = entry.source or "GreenManager, elenco iniziale"
+        normalize(entry)
+        # Before any check of the name, as in services.prepare_entry.
+        lock_species_name(entry.scientific_name)
+        try:
+            # The parent is linked in a second pass, and the hierarchy
+            # (Species.clean) checked at the end: here fields and constraints.
+            entry.clean_fields(exclude=["parent"])
+            entry.validate_unique(exclude=["parent"])
+            entry.validate_constraints(exclude=["parent"])
+            # The rules of the API too, e.g. the name unique across the scopes.
+            validate_references(entry, stored)
+        except ValidationError as exc:
+            raise CommandError(
+                f"Line {line} ({code}): {django_errors_payload(exc, Species)}"
+            ) from exc
+        except APIException as exc:
+            raise CommandError(f"Line {line} ({code}): {exc.detail}") from exc
+        if not created and snapshot(entry) == before:
+            return entry, "unchanged"
+        # A change of the command has no author: it is the system's.
+        stamp(entry, None)
+        entry.save()
+        return entry, "created" if created else "updated"
+
+    def link_parents(self, rows, entries, created, update):
+        """Link the parents of the entries created now, and with ``--update`` of
+        the existing ones too: without it, existing entries stay as they are.
+        Returns the codes of the entries whose parent changed."""
+        linked = set()
+        for row in rows:
+            code = row["code"].strip()
+            parent_code = (row.get("parent_code") or "").strip()
+            entry = entries[code]
+            if code not in created and not update:
+                continue
+            parent = None
+            if parent_code:
+                parent = entries.get(parent_code) or (
+                    Species.objects.system().filter(code=parent_code).first()
+                )
+                if parent is None:
+                    raise CommandError(f"{code}: unknown parent {parent_code}.")
+            if entry.parent_id != (parent.pk if parent else None):
+                # A new parent must be available, as in the API.
+                try:
+                    check_available(parent, None, field="parent")
+                except APIException as exc:
+                    raise CommandError(f"{code}: {exc.detail}") from exc
+                entry.parent = parent
+                stamp(entry, None)
+                entry.save(update_fields=["parent"])
+                linked.add(code)
+        return linked
+
+    def check_hierarchy(self, entries, codes):
+        """The hierarchy of the changed entries, with the final ranks and parents
+        (an error rolls the whole import back). The parents are locked and read
+        again, as in the API: also those that are not in the file."""
+        for code in sorted(codes):
+            entry = entries[code]
+            try:
+                lock_parent(entry)
+                entry.clean()
+            except ValidationError as exc:
+                raise CommandError(
+                    f"{code}: {django_errors_payload(exc, Species)}"
+                ) from exc
+            except APIException as exc:
+                raise CommandError(f"{code}: {exc.detail}") from exc

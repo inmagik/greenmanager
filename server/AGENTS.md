@@ -20,6 +20,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 
 cd greenmanager
 python manage.py migrate
+python manage.py import_species catalogs/seeds/species_starter.csv   # specie di sistema
 python manage.py createsuperuser
 python manage.py runserver             # API su http://localhost:8000/api/, admin su /admin/
 python manage.py rqworker default      # worker dei job, in un altro terminale
@@ -60,7 +61,9 @@ server/
 │   ├── tenants/              organizzazioni (tenant)
 │   ├── jobs_core/            job asincroni e pianificati (how-to.md)
 │   ├── inmagik_utils/        paginazione, filtri, mixin, storico di auditlog
-│   └── <app di dominio>/     catalogs, parties, territory, inventory… (T3)
+│   ├── core/                 basi del dominio: TrackedModel, ChangeRecord, errori, mixin
+│   ├── catalogs/             cataloghi: specie, classi, attributi, classificazioni delle aree
+│   └── parties/              committenti
 ├── requirements*.txt
 ├── docker-compose.yml        PostGIS e Redis per lo sviluppo
 ├── Dockerfile, scripts/      immagine: start, worker, scheduler
@@ -73,16 +76,24 @@ server/
   - identificatori, commenti e docstring in inglese;
   - in italiano le descrizioni dei permessi in `fm_permissions.py` e i testi delle email;
   - gli errori hanno un `code` stabile in snake_case, che il frontend traduce, e un `detail` in inglese.
-- **App di dominio**: seguono i pattern di §4 di `backend.md` (file, modelli, serializer, viewset, URL, admin, permessi).
+- **App di dominio**: seguono i pattern di §4 e §8 di `backend.md` (file, modelli, serializer, viewset, URL, admin, permessi).
   - Dalle app di dominio dei progetti di riferimento (`datasets`, `anagrafica`) si prendono i pattern, mai il codice.
   - Ogni app si registra in `INSTALLED_APPS`, sotto `# Domain apps`, e in `greenmanager/urls.py`, sotto `api/<app>/`.
 - **Viewset**:
   - `AuditlogActorMixin` come primo mixin;
   - `permission_classes = [ActionPermission]`, con `action_permissions` per ogni action, comprese quelle aggiunte e `bulk_delete`.
 - **Modelli**:
-  - chiave UUID per le entità del dominio (D-014);
-  - geometrie in WGS84 (`srid=4326`); linee e poligoni anche multiparte (D-035).
-- **Logica di dominio** in `services.py`, con transazioni esplicite. Le copie e i derivati (es. l'ultima condizione sull'elemento) si aggiornano lì, non con i segnali.
+  - chiave UUID per le entità del dominio, cataloghi compresi: si eredita da `core.TrackedModel`, che ha anche autori, date e `revision` (D-042);
+  - la chiave verso il tenant si chiama `organization` (D-044);
+  - geometrie in WGS84 (`srid=4326`); linee e poligoni anche multiparte (D-035);
+  - registrazione in django-auditlog con `core.audit.register_audit`, in fondo a `models.py`;
+  - mai `QuerySet.update()` sui modelli con `TrackedModel`: salterebbe revisione, autore e storico.
+- **Logica di dominio** in `services.py`, con transazioni esplicite (§8.3 di `backend.md`). Le copie e i derivati (es. l'ultima condizione sull'elemento) si aggiornano lì, non con i segnali.
+  - La view chiama il servizio con i dati validati e `get_change_context()`; il servizio blocca il record con `core.services.lock_for_change` sul QuerySet `editable_by(...)`, controlla la revisione, valida con `core.errors.validate_model` e scrive lo storico con `core.services.record_change`.
+  - Gli errori hanno un codice: `core.errors.api_error`, `permission_error`.
+  - L'admin salva con i servizi: `core.admin.ServiceAdminMixin`, e per i dati operativi `ServiceBackedAdminMixin`, che scrive anche lo storico.
+- **Dati del patrimonio**: viewset con `ClientScopedViewSetMixin` e QuerySet con `visible_to` ed `editable_by` (§8.6 di `backend.md`).
+- **Test**: in `tests/` per app, con gli helper di `core.testing`; i permessi si danno con un ruolo nel tenant.
 - **Registri non cancellabili** (D-034): osservazioni, valutazioni ed eseguito si correggono o si annullano con una motivazione.
 - **App core** (`auth_core`, `tenants`, `jobs_core`, `inmagik_utils`): sono condivise con gli altri progetti INMAGIK. Si modificano solo se serve, e ogni differenza va annotata in `backend.md`.
 - Non eseguire `build_image.sh`: pubblica l'immagine sul registry.

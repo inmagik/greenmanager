@@ -12,8 +12,9 @@ ROLE_WRITE_PERMISSION = "auth_core.WRITE_ROLES"
 # Fields of the account that hold for every tenant of the user: only staff users
 # change them for users shared with other tenants. The email matters most: who
 # changes it can recover the password and use the account in the other tenants.
-# The direct permissions too hold in every tenant (see tenant_permissions).
-SHARED_ACCOUNT_FIELDS = ("email", "is_active", "permissions")
+# The direct permissions too hold in every tenant (see tenant_permissions): only
+# staff users change them, for every user (validate_direct_permissions).
+SHARED_ACCOUNT_FIELDS = ("email", "is_active")
 
 USER_STATUSES = ("active", "inactive", "locked")
 
@@ -186,41 +187,58 @@ class UserSerializer(serializers.ModelSerializer):
             user, self.tenant
         )
 
-    def privileges_change(self, attrs):
-        """Whether the request changes the roles or the direct permissions."""
+    def roles_change(self, attrs):
+        """Whether the request changes the roles of the user in the tenant."""
+        if "roles" not in attrs:
+            return False
         instance = self.instance
-        if "roles" in attrs:
-            current = (
-                {role.id for role in self.tenant_roles(instance)}
-                if instance is not None and self.tenant is not None
-                else set()
-            )
-            if {role.id for role in attrs["roles"]} != current:
-                return True
-        if "permissions" in attrs:
-            current = set(instance.permissions) if instance is not None else set()
-            if set(attrs["permissions"]) != current:
-                return True
-        return False
+        current = (
+            {role.id for role in self.tenant_roles(instance)}
+            if instance is not None and self.tenant is not None
+            else set()
+        )
+        return {role.id for role in attrs["roles"]} != current
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         self.validate_shared_account(attrs)
-        if self.privileges_change(attrs) and not self.can_manage_privileges():
+        if self.roles_change(attrs) and not self.can_manage_privileges():
             raise PermissionDenied(
                 {
                     "code": "role_write_permission_required",
-                    "detail": "Changing roles or permissions requires "
-                    f"{ROLE_WRITE_PERMISSION}.",
+                    "detail": f"Changing roles requires {ROLE_WRITE_PERMISSION}.",
                 }
             )
+        self.validate_direct_permissions(attrs)
         return attrs
+
+    def validate_direct_permissions(self, attrs):
+        """
+        The direct permissions hold in every tenant of the user: only staff users
+        change them, with or without the permission to manage the roles of the
+        tenant. Inside an organization the permissions come from its roles.
+        """
+        if "permissions" not in attrs:
+            return
+        current = self.instance.permissions if self.instance is not None else []
+        if same_value(attrs["permissions"], current):
+            return
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is not None and (user.is_staff or user.is_superuser):
+            return
+        raise PermissionDenied(
+            {
+                "code": "direct_permissions_staff_only",
+                "detail": "Only staff users change the direct permissions.",
+            }
+        )
 
     def validate_shared_account(self, attrs):
         """
-        Email, activation and direct permissions hold for every tenant of the user
-        (see ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users
-        shared with other tenants. Nobody deactivates their own account.
+        Email and activation hold for every tenant of the user (see
+        ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users shared
+        with other tenants. Nobody deactivates their own account.
         """
         instance = self.instance
         if instance is None:
