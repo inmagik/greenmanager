@@ -13,6 +13,7 @@ from catalogs.models import (
 from core.errors import api_error
 from core.models import system_entry_id
 from core.testing import make_tenant, make_user, tenant_header
+from django.db import connection, transaction
 from django.test import TestCase
 from rest_framework.test import APITestCase
 
@@ -471,6 +472,29 @@ class SpeciesApiTests(APITestCase):
             repeated.data["scientific_name"]["code"], "species_name_not_unique"
         )
         self.assertEqual(renamed_hidden.status_code, 200, renamed_hidden.content)
+
+    def test_retired_entry_is_replaced_with_the_same_name(self):
+        own = self.post({"scientific_name": "Quercus alba"})
+        Species.objects.filter(pk=own.data["id"]).update(retired=True)
+
+        replacement = self.post({"scientific_name": "Quercus alba"})
+
+        self.assertEqual(replacement.status_code, 201, replacement.content)
+
+    def test_name_checks_hold_a_lock_on_the_name(self):
+        entry = Species(scientific_name="Quercus alba", organization=self.org)
+
+        with transaction.atomic():
+            services.validate_references(entry)
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' "
+                    "AND pid = pg_backend_pid() AND classid = %s",
+                    [services.SPECIES_NAME_LOCK],
+                )
+                (locks,) = cursor.fetchone()
+
+        self.assertEqual(locks, 1)
 
     def test_unhide_refused_while_an_own_entry_has_the_name(self):
         self.system.hidden_by.add(self.org)

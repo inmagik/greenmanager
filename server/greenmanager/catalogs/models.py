@@ -70,9 +70,12 @@ class Species(ExtensibleCatalog):
         ordering = ["scientific_name"]
         constraints = [
             *ExtensibleCatalog.Meta.constraints,
+            # Unique among the entries available, so not among the retired ones:
+            # a retired entry can be replaced by a new one with the same name.
             models.UniqueConstraint(
                 Lower("scientific_name"),
                 "organization",
+                condition=models.Q(retired=False),
                 nulls_distinct=False,
                 name="catalogs_species_name_uniq",
                 violation_error_code="species_name_not_unique",

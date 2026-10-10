@@ -486,7 +486,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - per le specie:
   - nome e genere vengono dal nome scientifico;
   - il genitore ha un livello più alto: un genere non ha genitore, una specie o un ibrido hanno un genere, una cultivar ha un genere, una specie o un ibrido. Così la catena dei genitori non ha cicli, e un rango non cambia se ci sono voci figlie di livello uguale o più alto;
-  - il nome scientifico è univoco tra le voci disponibili, nei due versi: una voce propria non ripete una voce di sistema disponibile, una voce di sistema non ripete una voce propria attiva di un'organizzazione che non la nasconde, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome. `import_species` applica le stesse regole;
+  - il nome scientifico è univoco tra le voci disponibili, nei due versi: una voce propria non ripete una voce di sistema disponibile, una voce di sistema non ripete una voce propria attiva di un'organizzazione che non la nasconde, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome. Le voci ritirate non contano: il vincolo del database vale solo per le voci attive. I controlli tra sistema e organizzazioni avvengono sotto un lock sul nome (`pg_advisory_xact_lock`), così due modifiche contemporanee non creano un doppione. `import_species` applica le stesse regole;
 - una voce di sistema nuova, creata dall'API, dall'admin o da `import_species`, ha la chiave deterministica (D-042).
 
 **Attributi della classe** (D-047): `validate_attributes(classe, valori, precedenti)` in `attributes.py` restituisce i valori puliti, oppure un errore con codice per ogni attributo.

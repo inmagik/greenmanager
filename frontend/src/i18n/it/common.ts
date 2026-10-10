@@ -101,7 +101,7 @@ const translations = {
     user_already_has_default_tenant: "L'utente ha già un'organizzazione predefinita.",
     user_shared_with_other_tenants:
       "{{name}} appartiene anche ad altre organizzazioni: solo lo staff può cambiarne l'email, disattivarlo o eliminarlo.",
-    role_write_permission_required: "Per cambiare ruoli e permessi serve il permesso di gestione dei ruoli.",
+    role_write_permission_required: "Per cambiare i ruoli serve il permesso di gestione dei ruoli.",
     direct_permissions_staff_only: "Solo lo staff cambia i permessi diretti di un utente: usa i ruoli.",
     cannot_change_own_account: "Non puoi disattivare o eliminare il tuo account.",
     unknown_permission: "Permessi sconosciuti: {{permissions}}.",

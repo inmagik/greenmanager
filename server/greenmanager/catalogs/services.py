@@ -14,7 +14,7 @@ import copy
 from core.errors import api_error, check_revision, permission_error, validate_model
 from core.models import system_entry_id
 from core.services import stamp
-from django.db import router, transaction
+from django.db import connection, router, transaction
 from django.db.models.deletion import Collector, ProtectedError, RestrictedError
 from django.utils.text import slugify
 
@@ -97,6 +97,27 @@ def check_available(entry, organization, *, field, previous_id=None):
         )
 
 
+# First key of the advisory locks of the species names (any constant of the
+# project, distinct from other advisory locks).
+SPECIES_NAME_LOCK = 7461
+
+
+def lock_species_name(scientific_name):
+    """
+    Serialize, until the end of the transaction, the changes of the species with
+    this scientific name, in the system and in every organization.
+
+    The database constraint keeps the name unique within one scope; across the
+    scopes (an own entry against a system one) the check is a query, which two
+    concurrent transactions would both pass without this lock.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(%s, hashtext(lower(%s)))",
+            [SPECIES_NAME_LOCK, scientific_name],
+        )
+
+
 def validate_references(entry):
     """Entries referenced by an entry: visible to its organization."""
     if isinstance(entry, Species):
@@ -112,6 +133,7 @@ def validate_references(entry):
                 )
         # The scientific name is unique among the entries available to an
         # organization (§2.4): own entries against the system ones and back.
+        lock_species_name(entry.scientific_name)
         if not entry.is_system:
             duplicate = (
                 Species.objects.available_for(entry.organization)
@@ -282,6 +304,7 @@ def unhide_entry(entry, organization):
     if isinstance(entry, Species):
         # The scientific name is unique among the available entries: the own
         # entry that replaced the hidden one must be retired or renamed first.
+        lock_species_name(entry.scientific_name)
         duplicate = Species.objects.filter(
             organization=organization,
             retired=False,
