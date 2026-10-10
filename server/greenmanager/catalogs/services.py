@@ -133,15 +133,16 @@ def validate_references(entry):
                 )
         # The scientific name is unique among the entries available to an
         # organization (§2.4): own entries against the system ones and back. The
-        # caller holds the lock of the name (lock_species_name).
-        if not entry.is_system:
+        # caller holds the lock of the name (lock_species_name). Retired entries,
+        # of the system or of an organization, do not count.
+        if entry.retired:
+            duplicate = Species.objects.none()
+        elif not entry.is_system:
             duplicate = (
                 Species.objects.available_for(entry.organization)
                 .system()
                 .filter(scientific_name__iexact=entry.scientific_name)
             )
-        elif entry.retired:
-            duplicate = Species.objects.none()
         else:
             duplicate = Species.objects.filter(
                 organization__isnull=False,

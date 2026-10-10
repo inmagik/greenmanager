@@ -7,7 +7,8 @@ external_ref. Only ``code`` and ``scientific_name`` are required.
 
 The entries are matched by code: new codes are created, existing ones are left
 as they are unless ``--update``. The keys of the new entries are deterministic
-(``core.models.system_entry_id``).
+(``core.models.system_entry_id``). The hierarchy (ranks and parents) is checked
+once all the rows are applied, so the order of the rows does not matter.
 
     python manage.py import_species catalogs/seeds/species_starter.csv
 """
@@ -62,14 +63,17 @@ class Command(BaseCommand):
 
         counts = {"created": 0, "updated": 0, "unchanged": 0}
         with transaction.atomic():
-            entries, created = {}, set()
+            entries, created, changed = {}, set(), set()
             for line, row in enumerate(rows, start=2):
                 entry, outcome = self.import_row(row, line, update)
                 entries[entry.code] = entry
                 counts[outcome] += 1
                 if outcome == "created":
                     created.add(entry.code)
-            self.link_parents(rows, entries, created, update)
+                if outcome != "unchanged":
+                    changed.add(entry.code)
+            changed |= self.link_parents(rows, entries, created, update)
+            self.check_hierarchy(entries, changed)
             if dry_run:
                 transaction.set_rollback(True)
 
@@ -105,8 +109,11 @@ class Command(BaseCommand):
         # Before any check of the name, as in services.prepare_entry.
         lock_species_name(entry.scientific_name)
         try:
-            # The parent is linked in a second pass.
-            entry.full_clean(exclude=["parent"])
+            # The parent is linked in a second pass, and the hierarchy
+            # (Species.clean) checked at the end: here fields and constraints.
+            entry.clean_fields(exclude=["parent"])
+            entry.validate_unique(exclude=["parent"])
+            entry.validate_constraints(exclude=["parent"])
             # The rules of the API too, e.g. the name unique across the scopes.
             validate_references(entry)
         except ValidationError as exc:
@@ -124,31 +131,36 @@ class Command(BaseCommand):
 
     def link_parents(self, rows, entries, created, update):
         """Link the parents of the entries created now, and with ``--update`` of
-        the existing ones too: without it, existing entries stay as they are."""
+        the existing ones too: without it, existing entries stay as they are.
+        Returns the codes of the entries whose parent changed."""
+        linked = set()
         for row in rows:
             code = row["code"].strip()
             parent_code = (row.get("parent_code") or "").strip()
             entry = entries[code]
             if code not in created and not update:
                 continue
-            if not parent_code:
-                if entry.parent_id is not None:
-                    entry.parent = None
-                    stamp(entry, None)
-                    entry.save(update_fields=["parent"])
-                continue
-            parent = entries.get(parent_code) or (
-                Species.objects.system().filter(code=parent_code).first()
-            )
-            if parent is None:
-                raise CommandError(f"{code}: unknown parent {parent_code}.")
-            if entry.parent_id != parent.pk:
+            parent = None
+            if parent_code:
+                parent = entries.get(parent_code) or (
+                    Species.objects.system().filter(code=parent_code).first()
+                )
+                if parent is None:
+                    raise CommandError(f"{code}: unknown parent {parent_code}.")
+            if entry.parent_id != (parent.pk if parent else None):
                 entry.parent = parent
-                try:
-                    entry.full_clean()
-                except ValidationError as exc:
-                    raise CommandError(
-                        f"{code}: {django_errors_payload(exc, Species)}"
-                    ) from exc
                 stamp(entry, None)
                 entry.save(update_fields=["parent"])
+                linked.add(code)
+        return linked
+
+    def check_hierarchy(self, entries, codes):
+        """The hierarchy of the changed entries, with the final ranks and parents
+        (an error rolls the whole import back)."""
+        for code in sorted(codes):
+            try:
+                entries[code].clean()
+            except ValidationError as exc:
+                raise CommandError(
+                    f"{code}: {django_errors_payload(exc, Species)}"
+                ) from exc

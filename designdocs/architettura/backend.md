@@ -494,7 +494,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 **Dati iniziali** (D-048):
 - la migrazione `0002_system_entries` carica le voci di sistema dei cataloghi piccoli;
-- le specie si caricano con `python manage.py import_species catalogs/seeds/species_starter.csv`, dopo `migrate`. Il comando crea le voci nuove per codice, lascia le esistenti se non c'è `--update` e prova il file con `--dry-run`.
+- le specie si caricano con `python manage.py import_species catalogs/seeds/species_starter.csv`, dopo `migrate`. Il comando crea le voci nuove per codice, lascia le esistenti se non c'è `--update` e prova il file con `--dry-run`. La gerarchia (ranghi e genitori) si controlla dopo aver applicato tutte le righe, quindi l'ordine delle righe non conta; un errore annulla tutto l'import.
 
 ### 8.5 Committenti: `parties`
 

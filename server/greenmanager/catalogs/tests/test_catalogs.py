@@ -526,6 +526,24 @@ class SpeciesApiTests(APITestCase):
         )
         self.assertEqual(accepted.status_code, 200, accepted.content)
 
+    def test_retired_own_entry_ignores_system_entries_with_its_name(self):
+        own = Species.objects.create(
+            code="own",
+            scientific_name="Tilia cordata",
+            genus="Tilia",
+            organization=self.org,
+            retired=True,
+        )
+
+        response = self.client.patch(
+            f"/api/catalogs/species/{own.pk}/",
+            {"common_name": "tiglio"},
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+
     def test_unhide_of_a_retired_entry_ignores_own_entries(self):
         self.system.hidden_by.add(self.org)
         self.post({"scientific_name": "Tilia cordata"})

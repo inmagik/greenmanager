@@ -115,6 +115,26 @@ class ImportSpeciesTests(TestCase):
         # A change of the fields (tilia) and one of the parent (tilia-cordata).
         self.assertFalse(Species.objects.filter(updated_by__isnull=False).exists())
 
+    def test_update_checks_the_final_hierarchy(self):
+        # A cultivar becomes a species: its parent, a species, becomes the genus.
+        rows = self.rows() + [
+            {
+                "code": "tilia-greenspire",
+                "rank": "cultivar",
+                "scientific_name": "Tilia cordata 'Greenspire'",
+                "parent_code": "tilia-cordata",
+            }
+        ]
+        self.run_command(self.write_csv(rows))
+        rows[2].update(
+            rank="species", scientific_name="Tilia platyphyllos", parent_code="tilia"
+        )
+
+        self.run_command(self.write_csv(rows), "--update")
+
+        entry = Species.objects.get(code="tilia-greenspire")
+        self.assertEqual((entry.rank, entry.parent.code), ("species", "tilia"))
+
     def test_existing_entries_get_no_parent_without_update(self):
         rows = self.rows()
         rows[0]["parent_code"] = ""
