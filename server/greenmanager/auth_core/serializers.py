@@ -187,32 +187,26 @@ class UserSerializer(serializers.ModelSerializer):
             user, self.tenant
         )
 
-    def privileges_change(self, attrs):
-        """Whether the request changes the roles or the direct permissions."""
+    def roles_change(self, attrs):
+        """Whether the request changes the roles of the user in the tenant."""
+        if "roles" not in attrs:
+            return False
         instance = self.instance
-        if "roles" in attrs:
-            current = (
-                {role.id for role in self.tenant_roles(instance)}
-                if instance is not None and self.tenant is not None
-                else set()
-            )
-            if {role.id for role in attrs["roles"]} != current:
-                return True
-        if "permissions" in attrs:
-            current = set(instance.permissions) if instance is not None else set()
-            if set(attrs["permissions"]) != current:
-                return True
-        return False
+        current = (
+            {role.id for role in self.tenant_roles(instance)}
+            if instance is not None and self.tenant is not None
+            else set()
+        )
+        return {role.id for role in attrs["roles"]} != current
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         self.validate_shared_account(attrs)
-        if self.privileges_change(attrs) and not self.can_manage_privileges():
+        if self.roles_change(attrs) and not self.can_manage_privileges():
             raise PermissionDenied(
                 {
                     "code": "role_write_permission_required",
-                    "detail": "Changing roles or permissions requires "
-                    f"{ROLE_WRITE_PERMISSION}.",
+                    "detail": f"Changing roles requires {ROLE_WRITE_PERMISSION}.",
                 }
             )
         self.validate_direct_permissions(attrs)
@@ -221,7 +215,8 @@ class UserSerializer(serializers.ModelSerializer):
     def validate_direct_permissions(self, attrs):
         """
         The direct permissions hold in every tenant of the user: only staff users
-        change them. Inside an organization the permissions come from its roles.
+        change them, with or without the permission to manage the roles of the
+        tenant. Inside an organization the permissions come from its roles.
         """
         if "permissions" not in attrs:
             return
@@ -232,12 +227,11 @@ class UserSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         if user is not None and (user.is_staff or user.is_superuser):
             return
-        raise api_error(
+        raise PermissionDenied(
             {
                 "code": "direct_permissions_staff_only",
                 "detail": "Only staff users change the direct permissions.",
-            },
-            field="permissions",
+            }
         )
 
     def validate_shared_account(self, attrs):

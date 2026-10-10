@@ -701,6 +701,17 @@ class CatalogAdminTests(TestCase):
         self.assertEqual(self.playground.updated_by, self.staff)
         self.assertEqual(self.playground.revision, 2)
 
+    def test_hidden_by_is_read_only(self):
+        self.playground.hidden_by.add(self.org)
+
+        response = self.client.post(
+            f"/admin/catalogs/areause/{self.playground.pk}/change/",
+            self.entry_data(self.playground, hidden_by=[]),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(self.playground.hidden_by.filter(pk=self.org.pk).exists())
+
     def test_attributes_of_an_organization_are_refused(self):
         response = self.client.post(
             "/admin/catalogs/attributedefinition/add/",

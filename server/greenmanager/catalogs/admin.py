@@ -33,21 +33,14 @@ class CatalogAdmin(ServiceAdminMixin, admin.ModelAdmin):
         services.delete_entry(obj, user=request.user)
 
 
-class ExtensibleEntryAdminForm(forms.ModelForm):
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data.get("organization") and cleaned_data.get("hidden_by"):
-            self.add_error("hidden_by", "Solo le voci di sistema si nascondono.")
-        return cleaned_data
-
-
 class ExtensibleCatalogAdmin(CatalogAdmin):
-    form = ExtensibleEntryAdminForm
     list_display = ("name", "code", "organization", "retired", "sort_order")
     list_filter = ("retired", ("organization", admin.EmptyFieldListFilter))
     search_fields = ("name", "code")
     autocomplete_fields = ("organization",)
-    filter_horizontal = ("hidden_by",)
+    # An organization hides and shows the system entries with the actions of the
+    # API (services.hide_entry, unhide_entry), which check their rules.
+    readonly_fields = ("hidden_by", *CatalogAdmin.readonly_fields)
 
 
 @admin.register(Species)
@@ -64,7 +57,7 @@ class SpeciesAdmin(ExtensibleCatalogAdmin):
     search_fields = ("scientific_name", "common_name", "genus", "code")
     autocomplete_fields = ("organization", "parent")
     # Name and genus come from the scientific name (services.normalize).
-    readonly_fields = ("name", "genus", *CatalogAdmin.readonly_fields)
+    readonly_fields = ("name", "genus", *ExtensibleCatalogAdmin.readonly_fields)
 
 
 class ElementClassAttributeAdminForm(forms.ModelForm):

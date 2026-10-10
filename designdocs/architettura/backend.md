@@ -141,7 +141,7 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 **Adattamenti.**
 - Gli import di `StandardPaginationMixin` passano da `datasets.commons` a `inmagik_utils.pagination` (§3.4).
 - `RuntimePermission` e `ActionPermission` lasciano passare il superuser, come in bottaro-pesatura; in data-lab guardano solo `all_permissions` (domanda 2).
-- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia ruoli o permessi diretti deve avere anche `WRITE_ROLES`. In data-lab bastava `WRITE_USERS`, e un utente poteva assegnarsi privilegi da solo.
+- **Ruoli e permessi degli utenti**: chi crea o modifica un utente e ne cambia i ruoli deve avere anche `WRITE_ROLES`; i permessi diretti li cambia solo lo staff (D-045). In data-lab bastava `WRITE_USERS`, e un utente poteva assegnarsi privilegi da solo.
   - Il controllo sta in `UserSerializer` e confronta i valori nuovi con quelli attuali: chi ha solo `WRITE_USERS` può modificare o disattivare un utente anche se la richiesta ripete ruoli e permessi invariati.
   - bottaro-pesatura usa `ManageUserPrivilegesPermission`, che guarda solo la presenza dei campi nella richiesta. Qui non c'è.
 - **Utenti visti da un tenant** (revisione della PR dello scaffold): `UserSerializer` riceve il tenant della richiesta.
@@ -149,7 +149,7 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
   - Calcola `all_permissions` sui ruoli di quel tenant; mostra le altre appartenenze solo allo staff.
   - `grant_to` e `revoke_from` accettano solo utenti del tenant.
 - **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant.
-- **Permessi diretti** (T3, D-045): li cambia solo lo staff, per ogni utente (errore `direct_permissions_staff_only`), perché valgono in tutti i tenant dell'utente. Dentro un'organizzazione i permessi si danno con i ruoli. È una differenza rispetto a data-lab e bottaro-pesatura.
+- **Permessi diretti** (T3, D-045): li cambia solo lo staff, per ogni utente, anche senza `WRITE_ROLES` nel tenant (errore `403 direct_permissions_staff_only`), perché valgono in tutti i tenant dell'utente. Dentro un'organizzazione i permessi si danno con i ruoli. È una differenza rispetto a data-lab e bottaro-pesatura.
 - **Il proprio account**: nessuno lo disattiva o lo elimina (errore `cannot_change_own_account`).
 - **Codici dei permessi**: utenti e ruoli accettano solo i codici raccolti da `PermissionManager` (errore `unknown_permission`).
 - **Errori con codice** sollevati in `Serializer.validate()`: stanno sotto il campo (`{"email": {"code": ...}}`). DRF trasforma in liste i valori di un payload al primo livello, e il frontend non ne riconoscerebbe più il codice.
@@ -475,7 +475,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - Filtri: `available`, `retired`, `hidden`, `scope` (`system` o `organization`), più quelli del catalogo (es. `rank` per le specie, `category` per le classi).
 - Una voce si crea per l'organizzazione della richiesta; lo staff crea voci di sistema con `is_system: true`.
 - `ElementClass` scrive i suoi attributi in `class_attributes`, che sostituisce l'elenco. Un attributo nuovo deve essere disponibile per l'organizzazione della classe; uno già presente resta anche se nascosto o ritirato.
-- L'admin cambia le voci con gli stessi servizi (`prepare_entry`, `commit_entry`), anche gli attributi delle classi nell'inline.
+- L'admin cambia le voci con gli stessi servizi (`prepare_entry`, `commit_entry`), anche gli attributi delle classi nell'inline. `hidden_by` vi è in sola lettura: si nasconde e si mostra solo con le action dell'API.
 
 **Regole** (D-046), in `services.py`:
 - voci di sistema solo dallo staff; codice delle voci di sistema immutabile;

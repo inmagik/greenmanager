@@ -142,12 +142,26 @@ class UsersApiTests(APITestCase):
         self.admin.save(update_fields=["is_staff"])
         as_staff = self.client.patch(url, payload, format="json", **self.tenant_header)
 
-        self.assertEqual(as_role_manager.status_code, 400, as_role_manager.content)
-        self.assertEqual(
-            as_role_manager.data["permissions"]["code"],
-            "direct_permissions_staff_only",
-        )
+        self.assertEqual(as_role_manager.status_code, 403, as_role_manager.content)
+        self.assertEqual(as_role_manager.data["code"], "direct_permissions_staff_only")
         self.assertEqual(as_staff.status_code, 200, as_staff.content)
+        user.refresh_from_db()
+        self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
+
+    def test_staff_assigns_direct_permissions_without_role_permission(self):
+        self.admin.is_staff = True
+        self.admin.save(update_fields=["is_staff"])
+        user = get_user_model().objects.create_user(email="user@example.com")
+        TenantMembership.objects.create(tenant=self.tenant, user=user, is_default=True)
+
+        response = self.client.patch(
+            f"/api/core/auth/users/{user.pk}/",
+            {"roles": [], "permissions": ["auth_core.READ_USERS"]},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
         user.refresh_from_db()
         self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
 
@@ -375,10 +389,8 @@ class TenantScopedUsersTests(APITestCase):
             **self.tenant_header,
         )
 
-        self.assertEqual(response.status_code, 400, response.content)
-        self.assertEqual(
-            response.data["permissions"]["code"], "direct_permissions_staff_only"
-        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertEqual(response.data["code"], "direct_permissions_staff_only")
         self.shared.refresh_from_db()
         self.assertEqual(self.shared.permissions, [])
 
