@@ -258,6 +258,9 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 - **Quarta revisione della PR dello scaffold**:
   - i permessi valgono nell'organizzazione corrente, come nel server (§3.1 di [backend.md](backend.md)): `useHasPermission` e il menu usano `useTenantUser()`, con i permessi diretti più quelli dei ruoli dell'organizzazione corrente. `all_permissions` di `me/` unisce i ruoli di tutte le organizzazioni;
   - codici dei permessi in inglese (`READ_USERS`, `WRITE_USERS`, `READ_ROLES`, `WRITE_ROLES`) e rotte del modulo `users` in inglese (`/users/users`, `/users/roles`; in data-lab `/utenti/utenti`, `/utenti/ruoli`), come gli altri identificatori (D-001).
+- **Quinta revisione della PR dello scaffold**:
+  - le liste con selezione la svuotano a ogni cambio di ricerca, ordinamento o pagina, e le azioni multiple mandano solo i record elencati nella conferma: in data-lab potevano eliminare organizzazioni o togliere ruoli a utenti non più visibili;
+  - le righe e i contenuti a tutta larghezza di `Table` occupano `headers.length` colonne: con una in più la griglia ne creava una implicita, e la tabella si allargava rispetto all'intestazione.
 
 ## Domande aperte
 

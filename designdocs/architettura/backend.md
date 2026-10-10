@@ -155,6 +155,7 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 - `unlock` risponde con l'utente riletto dal queryset: lo stato di blocco è un'annotazione, che `refresh_from_db()` non aggiorna.
 - Il receiver di `m2m_changed` gestisce anche le modifiche dal lato del ruolo (`role.user_set.add(...)`, per esempio dall'admin): in data-lab chiamava `update_permissions()` sul ruolo e falliva.
 - **Endpoint di django-userbase**: `auth_core/account_urls.py` monta solo attivazione, recupero, reset e cambio della password, con sottoclassi che ne descrivono lo schema (`account_views.py`). Restano fuori `me/`, un secondo "me" che scrive `last_login` a ogni chiamata, e `resend-activation-email/`, con cui ogni utente autenticato poteva inviare email a qualunque utente e leggerne i dati. `change-password/` richiede l'autenticazione (in userbase non ha permessi, e una richiesta anonima finiva in errore 500); un token valido di un utente cancellato dà `invalid_token`.
+- **Email di attivazione**: userbase la invia da `post_save`, dentro la transazione che crea l'utente; `auth_core/receivers.py` sostituisce quel receiver con uno che la invia dopo il commit (`transaction.on_commit`). La creazione dell'utente e della sua appartenenza è una sola transazione.
 - `PermissionManager` costruisce l'elenco dei permessi in una variabile locale e lo assegna alla fine. In data-lab due prime richieste simultanee lo riempivano due volte, con permessi duplicati nell'interfaccia. Lo stesso vale per l'elenco dei job schedulabili di `jobs_core`.
 - `Role` ha l'ordinamento di default per nome; il viewset dei ruoli lo ripete nel queryset, perché `annotate(Count(...))` ignora `Meta.ordering`.
 - I codici dei permessi sono in inglese (`READ_USERS`, `WRITE_USERS`, `READ_ROLES`, `WRITE_ROLES`), come gli altri identificatori (D-001); le descrizioni restano in italiano. In data-lab erano `LETTURA_UTENTI`, `SCRITTURA_UTENTI`, `LETTURA_RUOLI`, `SCRITTURA_RUOLI`: la migrazione `0003_rename_permission_codes` converte quelli già salvati in ruoli e utenti. Le app di dominio usano lo stesso schema, `<app>.<VERBO>_<OGGETTO>`.
@@ -171,13 +172,13 @@ In GreenManager il tenant è l'**organizzazione** che usa il sistema, l'entità 
 **Mixin per i viewset.**
 - `TenantContextMixin.get_current_tenant()` legge il tenant dall'header `X-Tenant-ID` o dal parametro `?tenant=`, una volta per richiesta. Un utente che non è staff vede solo i tenant di cui è membro; un tenant estraneo dà `404` con codice `tenant_not_found`.
 - Senza tenant nella richiesta, `restrict_queryset_without_tenant()` restituisce un queryset vuoto agli utenti che non sono staff.
-- `TenantScopedViewSetMixin` filtra il queryset con `tenant=<tenant corrente>` e, nella creazione, assegna il tenant corrente. Se manca, risponde con l'errore `tenant_required`.
+- `TenantScopedViewSetMixin` filtra il queryset con `tenant=<tenant corrente>` e, nella creazione, assegna il tenant corrente. Se manca, risponde con l'errore `tenant_required`. Passa il tenant corrente anche ai serializer (`context["tenant"]`), che validano il record con il tenant che riceverà al salvataggio.
 
 **Endpoint** sotto `api/core/`:
 - `tenants/`: lettura per i membri, scrittura solo per lo staff. Un tenant con dati collegati non si elimina (errore `tenant_has_related_data` con l'elenco dei dati). Action `users`, `add-users` e `remove-user` per gestire i membri;
 - `tenant-memberships/`: lettura per i membri con `READ_USERS`, scrittura solo per lo staff, come per i tenant. In data-lab bastava `WRITE_USERS`, e un amministratore poteva aggiungere al proprio tenant qualunque utente del sistema. Creazioni, modifiche e cancellazioni, anche multiple, passano da `services.py` (`save_membership`, `remove_tenant_user`), che mantiene un tenant di default; in data-lab l'endpoint salvava direttamente il modello.
 
-Le modifiche ai membri passano da `services.py`, che blocca con `select_for_update` utenti e tenant coinvolti e mantiene un tenant di default per ogni utente. Nell'admin, che salva direttamente i modelli, le pagine di utenti, tenant e appartenenze ripristinano il tenant di default dopo ogni modifica.
+Le modifiche ai membri passano da `services.py`, che blocca con `select_for_update` utenti e tenant coinvolti e mantiene un tenant di default per ogni utente. Nell'admin, che salva direttamente i modelli, le pagine di utenti, tenant e appartenenze ripristinano il tenant di default dopo ogni modifica, anche per l'utente da cui un'appartenenza è stata spostata.
 
 **In GreenManager.**
 - Le entità che appartengono direttamente a un'organizzazione (persone, squadre, anagrafica degli esecutori, voci di catalogo dell'organizzazione) si appoggiano a questi strumenti.
@@ -207,6 +208,8 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 - Il validatore di `func` solleva una `ValidationError` di Django: in data-lab un `ValueError`, che nell'admin dava un errore 500.
 - Una `ScheduledJobDefinition` salvata di nuovo riporta il suo `JobRun` a `pending`, e ogni esecuzione parte senza l'esito precedente: in data-lab una riesecuzione riuscita conservava l'errore della precedente.
 - Le esecuzioni di una `CronJobDefinition` sono collegate alla definizione (vedi sopra).
+- I receiver cambiano lo scheduler (Redis) solo dopo il commit della definizione (`transaction.on_commit`): in data-lab un salvataggio annullato lasciava comunque il job in coda, e un worker poteva partire prima che il `JobRun` fosse salvato.
+- `job_runner` importa la funzione dentro il blocco che registra l'errore: una funzione rimossa o rinominata dopo la pianificazione dà un `JobRun` fallito, non solo un errore di RQ.
 
 ### 3.4 `inmagik_utils` — utilità condivise
 
@@ -232,7 +235,7 @@ Esegue i lavori lunghi o periodici fuori dalla richiesta HTTP, con django-rq, rq
 - `audit_log/` arriva tutta da bottaro-pesatura: in più di data-lab ha `AuditlogActorMixin` e `AuditLogEntrySerializer`, per l'action `history` (§4.4). `AuditLogEntrySerializer` restituisce l'azione come codice stabile (`create`, `update`, `delete`, `access`) e `actor` nullo per le modifiche del sistema: il frontend li traduce. In bottaro-pesatura restituiva l'etichetta e "Sistema".
 - Commenti, docstring e messaggi di errore delle app core sono in inglese (D-001); in data-lab e bottaro-pesatura alcuni erano in italiano.
 - `nested_multi_parser.py` arriva da bottaro-pesatura: limita le liste nei dati annidati (1.000 elementi per lista, 10.000 in tutto) e lascia chiudere a Django i file caricati.
-- `FullCleanValidatorSerializerMixin` valida l'istanza esistente anche con `PUT`. In data-lab ne creava una nuova, e i vincoli di unicità segnalavano il record stesso come doppione.
+- `FullCleanValidatorSerializerMixin` valida l'istanza esistente anche con `PUT`. In data-lab ne creava una nuova, e i vincoli di unicità segnalavano il record stesso come doppione. Valida una copia, così il record cambia solo al salvataggio; alla creazione aggiunge i valori che la view assegna al salvataggio (`get_server_assigned_values()`, di default il tenant corrente) e ignora i campi molti-a-molti.
 - Si copiano anche i test di `inmagik_utils` di bottaro-pesatura.
 
 ## 4. Pattern delle app di dominio
@@ -359,11 +362,11 @@ Si parte da quello di data-lab, con queste correzioni:
 
   | Script | Processo |
   |---|---|
-  | `start` | `collectstatic`, `migrate` (ripetuto finché il database risponde), gunicorn `greenmanager.wsgi:application` con 4 worker |
+  | `start` | `collectstatic`, attesa del database (al massimo 60 secondi), un solo `migrate`, gunicorn `greenmanager.wsgi:application` con 4 worker. In data-lab `migrate` si ripeteva all'infinito anche per errori permanenti |
   | `worker` | `python manage.py rqworker default`. Nuovo: data-lab lo lancia senza script |
   | `scheduler` | `schedule_auto_tasks`, poi `rqscheduler` |
 
-- Gli script si fermano al primo errore (`set -e`). In data-lab un `collectstatic` o uno `schedule_auto_tasks` non riuscito non fermava l'avvio. Il `migrate` ripetuto resta: un comando nella condizione di `until` non interrompe lo script.
+- Gli script si fermano al primo errore (`set -e`). In data-lab un `collectstatic` o uno `schedule_auto_tasks` non riuscito non fermava l'avvio. L'attesa del database usa `until`, la cui condizione non interrompe lo script.
 
 - `build_image.sh` costruisce per `linux/amd64` e pubblica `docker.inmagik.com/greenmanager/server:latest`, come data-lab.
 

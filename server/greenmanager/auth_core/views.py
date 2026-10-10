@@ -3,6 +3,7 @@ from auth_core.utils import ActionPermission
 from axes.models import AccessAttempt
 from axes.utils import reset as reset_axes
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Count, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
@@ -193,6 +194,7 @@ class UsersViewset(
             raise shared_user_error(instance)
         instance.delete()
 
+    @transaction.atomic
     def perform_create(self, serializer):
         tenant = self.get_current_tenant()
         if tenant is None:
@@ -204,6 +206,7 @@ class UsersViewset(
                     }
                 }
             )
+        # The user and their membership are created together, or not at all.
         user = serializer.save()
         TenantMembership.objects.get_or_create(
             tenant=tenant,

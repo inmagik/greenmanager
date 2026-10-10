@@ -32,6 +32,8 @@ export default function RolesTable({ selection, setSelection, data, isLoadingRol
       orderBy={ordering.replace("-", "")}
       orderDirection={ordering.startsWith("-") ? "desc" : "asc"}
       onOrderChange={(field, direction) => {
+        // A new order is a new result set: the selection would hide rows.
+        setSelection([])
         if (field) {
           if (direction === "desc") {
             setParams({ ...Object.fromEntries(params), ordering: `-${field}` })
@@ -80,7 +82,10 @@ export default function RolesTable({ selection, setSelection, data, isLoadingRol
       <Table.Footer.Left>
         <Pagination
           value={page}
-          onChange={(newPage) => setParams({ ...Object.fromEntries(params), page: newPage.toString() })}
+          onChange={(newPage) => {
+            setSelection([])
+            setParams({ ...Object.fromEntries(params), page: newPage.toString() })
+          }}
           total={Math.ceil((data?.count ?? 0) / 20)}
           radius={100}
         />

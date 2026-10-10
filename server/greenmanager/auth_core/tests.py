@@ -3,6 +3,7 @@ import threading
 from axes.models import AccessAttempt
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import SimpleTestCase, TestCase
 from rest_framework.test import APITestCase
 from tenants.models import Tenant, TenantMembership
@@ -44,6 +45,21 @@ class UsersApiTests(APITestCase):
                 is_default=True,
             ).exists()
         )
+
+    def test_activation_email_waits_for_the_commit(self):
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            response = self.client.post(
+                "/api/core/auth/users/",
+                {"full_name": "New User", "email": "new@example.com"},
+                format="json",
+                **self.tenant_header,
+            )
+            self.assertEqual(len(mail.outbox), 0)
+
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(len(callbacks), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["new@example.com"])
 
     def test_cannot_assign_permissions_when_creating_user_without_role_permission(
         self,

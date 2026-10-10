@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from django.urls import reverse
 from drf_spectacular.generators import SchemaGenerator
 from rest_framework.test import APITestCase
 from tenants.models import Tenant, TenantMembership
@@ -181,3 +182,39 @@ class TenantMembershipApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 201, response.content)
         self.assertTrue(TenantMembership.objects.get(user=newcomer).is_default)
+
+
+class TenantAdminMembershipTests(TestCase):
+    def test_moving_a_membership_keeps_a_default_for_the_previous_user(self):
+        User = get_user_model()
+        admin = User.objects.create_superuser(email="root@example.com", password="pw")
+        tenant = Tenant.objects.create(name="Tenant A", slug="tenant-a")
+        other_tenant = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+        previous = User.objects.create_user(email="previous@example.com")
+        newcomer = User.objects.create_user(email="newcomer@example.com")
+        moved = TenantMembership.objects.create(
+            tenant=tenant, user=previous, is_default=True
+        )
+        remaining = TenantMembership.objects.create(tenant=other_tenant, user=previous)
+        self.client.force_login(admin)
+
+        response = self.client.post(
+            reverse("admin:tenants_tenant_change", args=[tenant.pk]),
+            {
+                "name": tenant.name,
+                "slug": tenant.slug,
+                "is_active": "on",
+                "memberships-TOTAL_FORMS": "1",
+                "memberships-INITIAL_FORMS": "1",
+                "memberships-MIN_NUM_FORMS": "0",
+                "memberships-MAX_NUM_FORMS": "1000",
+                "memberships-0-id": str(moved.pk),
+                "memberships-0-tenant": str(tenant.pk),
+                "memberships-0-user": str(newcomer.pk),
+                "memberships-0-is_default": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302, response.content[:2000])
+        remaining.refresh_from_db()
+        self.assertTrue(remaining.is_default)

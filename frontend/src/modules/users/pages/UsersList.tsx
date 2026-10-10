@@ -203,9 +203,7 @@ export function UsersList() {
           } else {
             mergeParams({ ordering: "" })
           }
-          if (numPages > 1) {
-            setSelection([])
-          }
+          setSelection([])
         }}
       >
         {data?.full_count === 0 && (

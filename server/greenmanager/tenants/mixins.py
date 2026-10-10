@@ -41,6 +41,13 @@ class TenantContextMixin:
 
 
 class TenantScopedViewSetMixin(TenantContextMixin):
+    def get_serializer_context(self):
+        # The serializers validate the record with the tenant it will get on save
+        # (FullCleanValidatorSerializerMixin).
+        context = super().get_serializer_context()
+        context["tenant"] = self.get_current_tenant()
+        return context
+
     def get_queryset(self):
         qs = super().get_queryset()
         tenant = self.get_current_tenant()

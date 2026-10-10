@@ -1,7 +1,22 @@
+from django.db import transaction
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
+from userbase import signals as userbase_signals
+from userbase.helpers import send_activation_email
+from userbase.settings import api_settings as userbase_settings
 
 from .models import Role, User
+
+# userbase sends the activation email from post_save, inside the transaction that
+# creates the user: the email, with its link, would leave even if the creation
+# rolled back. This receiver replaces it and waits for the commit.
+post_save.disconnect(userbase_signals.s_send_activation_email, sender=User)
+
+
+@receiver(post_save, sender=User)
+def send_activation_email_on_commit(sender, instance, created, raw=False, **kwargs):
+    if created and not raw and userbase_settings.ENABLE_ACCOUNT_ACTIVATION:
+        transaction.on_commit(lambda: send_activation_email(instance))
 
 
 @receiver(post_save, sender=User)

@@ -146,7 +146,8 @@ export function RoleDetail() {
                 confirmProps: { color: "red.9" },
                 cancelProps: { color: "gray", variant: "subtle" },
                 onConfirm: () => {
-                  revokeRoleFromUsers({ user_ids: selection })
+                  // Only the users listed in the confirmation.
+                  revokeRoleFromUsers({ user_ids: selectedUsers.map((user) => user.id) })
                     .then(() => {
                       setSelection([])
                       refetchUsers()
@@ -224,9 +225,10 @@ export function RoleDetail() {
                   placeholder={t("common.search")}
                   aria-label={t("common.searchLabel")}
                   value={search}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setSelection([])
                     setParams({ ...Object.fromEntries(params), search: e.currentTarget.value, page: "1" })
-                  }
+                  }}
                 />
               </Group>
             </Box>

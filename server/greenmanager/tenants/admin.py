@@ -15,16 +15,29 @@ class MembershipInlineAdminMixin:
     """
 
     def save_formset(self, request, form, formset, change):
+        if formset.model is not TenantMembership:
+            return super().save_formset(request, form, formset, change)
+        # Users of the memberships before the save: a membership can move to
+        # another user, and the previous one may lose their default.
+        previous_user_ids = [
+            membership_form.initial["user"]
+            for membership_form in formset.forms
+            if membership_form.instance.pk and membership_form.initial.get("user")
+        ]
         super().save_formset(request, form, formset, change)
-        if formset.model is TenantMembership:
-            ensure_default_memberships(
-                membership.user_id
-                for membership in [
-                    *formset.new_objects,
-                    *(obj for obj, _ in formset.changed_objects),
-                    *formset.deleted_objects,
-                ]
-            )
+        ensure_default_memberships(
+            [
+                *previous_user_ids,
+                *(
+                    membership.user_id
+                    for membership in [
+                        *formset.new_objects,
+                        *(obj for obj, _ in formset.changed_objects),
+                        *formset.deleted_objects,
+                    ]
+                ),
+            ]
+        )
 
 
 class TenantMembershipInline(admin.TabularInline):

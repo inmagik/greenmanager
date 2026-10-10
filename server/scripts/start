@@ -2,8 +2,19 @@
 set -e
 cd /code
 python manage.py collectstatic --no-input
-until python manage.py migrate; do
+
+# Wait for the database, at most 60 seconds, then migrate once: an error in a
+# migration or in the configuration stops the container instead of looping.
+attempts=0
+until python manage.py shell -c "from django.db import connection; connection.ensure_connection()" > /dev/null 2>&1; do
+  attempts=$((attempts + 1))
+  if [ "$attempts" -ge 120 ]; then
+    echo "Database not reachable" >&2
+    exit 1
+  fi
   echo "Waiting for db"
   sleep .5
 done
+python manage.py migrate --no-input
+
 exec gunicorn greenmanager.wsgi:application -w 4 -b 0.0.0.0:8000 --max-requests 500 --max-requests-jitter 50

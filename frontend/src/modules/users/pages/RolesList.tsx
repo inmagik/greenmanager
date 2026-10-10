@@ -125,7 +125,10 @@ export function RolesList() {
             placeholder={t("common.search")}
             aria-label={t("common.searchLabel")}
             value={search}
-            onChange={(e) => setParams({ ...Object.fromEntries(params), search: e.currentTarget.value, page: "1" })}
+            onChange={(e) => {
+              setSelection([])
+              setParams({ ...Object.fromEntries(params), search: e.currentTarget.value, page: "1" })
+            }}
           />
         </Group>
       </Box>

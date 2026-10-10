@@ -78,6 +78,19 @@ class JobRunnerTests(TestCase):
         self.assertEqual(job_run.status, "completed")
         self.assertEqual(job_run.error_details, "")
 
+    def test_missing_function_is_recorded_as_failed_run(self):
+        fake_job = SimpleNamespace(
+            meta={"__inmagik_scheduler": {"func": "jobs_core.tests.removed_job"}}
+        )
+
+        with mock.patch("jobs_core.runner.get_current_job", return_value=fake_job):
+            with self.assertRaises(ImportError):
+                job_runner()
+
+        job_run = JobRun.objects.get()
+        self.assertEqual(job_run.status, "failed")
+        self.assertEqual(job_run.func, "jobs_core.tests.removed_job")
+
 
 class JobDefinitionTests(TestCase):
     def test_unschedulable_function_is_a_validation_error(self):
@@ -111,3 +124,22 @@ class JobDefinitionTests(TestCase):
         self.assertEqual(job_run.status, "pending")
         self.assertEqual(job_run.error_details, "")
         self.assertIsNone(job_run.completed_at)
+
+    @mock.patch("jobs_core.receivers.get_scheduler")
+    @mock.patch(
+        "jobs_core.receivers.dynamic_scheduling_manager.is_schedulable",
+        return_value=True,
+    )
+    def test_scheduler_changes_wait_for_the_commit(self, _is_schedulable, scheduler):
+        with self.captureOnCommitCallbacks() as callbacks:
+            ScheduledJobDefinition.objects.create(
+                id="later",
+                start_at=timezone.now() + timedelta(hours=1),
+                func="jobs_core.tests.succeeding_job",
+            )
+            # Inside the transaction Redis is not touched yet.
+            scheduler.assert_not_called()
+
+        for callback in callbacks:
+            callback()
+        scheduler.return_value.enqueue_at.assert_called_once()

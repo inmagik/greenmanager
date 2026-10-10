@@ -192,7 +192,7 @@ export function Table<T>({
             style={{
               minWidth: "100%",
               height: "100%",
-              gridColumn: `1 / span ${headers.length + 1}`,
+              gridColumn: `1 / span ${headers.length}`,
               alignSelf: "center",
               justifySelf: "center",
               ...bodyStyle,
@@ -212,7 +212,7 @@ export function Table<T>({
             role="rowgroup"
             style={{
               minWidth: "100%",
-              gridColumn: `1 / span ${headers.length + 1}`,
+              gridColumn: `1 / span ${headers.length}`,
               gridRow: `2 / span ${1 + bodyItems + extraContentAfter.length + extraContentBefore.length}`,
               ...bodyStyle,
             }}
@@ -241,7 +241,7 @@ export function Table<T>({
                     <div
                       role="cell"
                       aria-colspan={headers.length}
-                      style={{ gridColumn: `1 / span ${headers.length + 1}` }}
+                      style={{ gridColumn: `1 / span ${headers.length}` }}
                     >
                       {extra.children}
                     </div>
@@ -261,7 +261,7 @@ export function Table<T>({
                   role="presentation"
                   style={{
                     minWidth: "100%",
-                    gridColumn: `1 / span ${headers.length + 1}`,
+                    gridColumn: `1 / span ${headers.length}`,
                     gridRow: `${rowStart} / span ${rowSpan}`,
                     ...bodyStyle,
                   }}
@@ -299,7 +299,7 @@ export function Table<T>({
                     return (
                       <div
                         className={classNames(S.tableExpansion, { [S.last]: expIndex === renderExpansions.length - 1 })}
-                        style={{ gridColumn: `1 / span ${headers.length + 1}` }}
+                        style={{ gridColumn: `1 / span ${headers.length}` }}
                         key={expIndex}
                         role="row"
                       >
@@ -340,7 +340,7 @@ export function Table<T>({
                     <div
                       role="cell"
                       aria-colspan={headers.length}
-                      style={{ gridColumn: `1 / span ${headers.length + 1}` }}
+                      style={{ gridColumn: `1 / span ${headers.length}` }}
                     >
                       {extra.children}
                     </div>

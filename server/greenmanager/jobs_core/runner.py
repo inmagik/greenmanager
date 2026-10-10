@@ -12,7 +12,6 @@ def job_runner(*args, **kwargs):
     scheduler_meta = job.meta.get("__inmagik_scheduler", {})
     func_path = scheduler_meta.get("func")
     if func_path:
-        job_func = import_string(func_path)
         run_id = scheduler_meta.get("run_id")
         # Each run of a model-backed cron gets a new JobRun, linked to its
         # definition (if it still exists).
@@ -36,6 +35,9 @@ def job_runner(*args, **kwargs):
         job_run.error_details = ""
         job_run.save()
         try:
+            # Imported here, so that a function removed or renamed after the job
+            # was scheduled is recorded as a failed run too.
+            job_func = import_string(func_path)
             result = job_func(*args, **kwargs)
             job_run.status = "completed"
             job_run.completed_at = timezone.now()

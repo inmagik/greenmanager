@@ -61,7 +61,8 @@ export function TenantsList() {
             confirmProps: { color: "red.9" },
             onConfirm: async () => {
               try {
-                await bulkDelete({ ids: selection })
+                // Only the tenants listed in the confirmation.
+                await bulkDelete({ ids: selectedTenants.map(({ id }) => id) })
                 refreshTenants()
                 setSelection([])
               } catch (error) {
@@ -103,7 +104,17 @@ export function TenantsList() {
             }}
           />
           {search && (
-            <Button variant="subtle" size="xs" color="gray" onClick={() => setParams({ page: "1" })}>{t("common.reset")}</Button>
+            <Button
+              variant="subtle"
+              size="xs"
+              color="gray"
+              onClick={() => {
+                setSelection([])
+                setParams({ page: "1" })
+              }}
+            >
+              {t("common.reset")}
+            </Button>
           )}
         </Group>
       </Box>

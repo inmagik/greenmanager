@@ -3,6 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase
 from jobs_core.models import JobRun
+from rest_framework import serializers
 from rest_framework.test import APIRequestFactory
 from rest_framework.views import APIView
 
@@ -139,3 +140,47 @@ class LastUpdateMixinTests(TestCase):
             self.assertEqual(annotated.created_by_email, "creator@example.com")
             self.assertEqual(annotated.updated_by_email, "editor@example.com")
             self.assertIsNotNone(annotated.created_at)
+
+
+class FullCleanValidatorSerializerMixinTests(TestCase):
+    def setUp(self):
+        from auth_core.models import Role
+        from tenants.models import Tenant
+
+        from .serializers import FullCleanValidatorSerializerMixin
+
+        class RoleSerializer(
+            FullCleanValidatorSerializerMixin, serializers.ModelSerializer
+        ):
+            class Meta:
+                model = Role
+                fields = ["id", "tenant", "name", "permissions"]
+                read_only_fields = ["tenant"]
+
+        self.serializer_class = RoleSerializer
+        self.tenant = Tenant.objects.create(name="Tenant A", slug="tenant-a")
+        self.request = APIRequestFactory().post("/")
+        self.existing = Role.objects.create(tenant=self.tenant, name="Readers")
+
+    def serializer(self, data, tenant, instance=None):
+        return self.serializer_class(
+            instance,
+            data=data,
+            partial=instance is not None,
+            context={"request": self.request, "tenant": tenant},
+        )
+
+    def test_create_is_validated_with_the_tenant_of_the_request(self):
+        # The tenant is read-only: without the server value full_clean would fail.
+        self.assertTrue(self.serializer({"name": "Writers"}, self.tenant).is_valid())
+
+    def test_constraints_use_the_tenant_of_the_request(self):
+        serializer = self.serializer({"name": "Readers"}, self.tenant)
+
+        self.assertFalse(serializer.is_valid())
+
+    def test_update_does_not_change_the_record_before_saving(self):
+        serializer = self.serializer({"name": "Renamed"}, self.tenant, self.existing)
+
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(self.existing.name, "Readers")
