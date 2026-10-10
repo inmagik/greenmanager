@@ -1,6 +1,7 @@
 from unittest import mock
 
 from catalogs import services
+from catalogs.base import CODE_NOT_UNIQUE
 from catalogs.models import (
     AreaUse,
     AttributeDefinition,
@@ -15,6 +16,7 @@ from core.models import system_entry_id
 from core.testing import make_tenant, make_user, tenant_header
 from django.db import connection, transaction
 from django.test import TestCase
+from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
 WRITE = "catalogs.WRITE_CATALOGS"
@@ -481,20 +483,33 @@ class SpeciesApiTests(APITestCase):
 
         self.assertEqual(replacement.status_code, 201, replacement.content)
 
-    def test_name_checks_hold_a_lock_on_the_name(self):
+    def test_name_is_locked_before_the_checks(self):
         entry = Species(scientific_name="Quercus alba", organization=self.org)
+        locks = []
 
-        with transaction.atomic():
-            services.validate_references(entry)
+        def count_locks(instance):
             with connection.cursor() as cursor:
                 cursor.execute(
                     "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' "
                     "AND pid = pg_backend_pid() AND classid = %s",
                     [services.SPECIES_NAME_LOCK],
                 )
-                (locks,) = cursor.fetchone()
+                locks.append(cursor.fetchone()[0])
 
-        self.assertEqual(locks, 1)
+        with mock.patch.object(services, "validate_model", side_effect=count_locks):
+            with transaction.atomic():
+                services.prepare_entry(entry, user=self.writer)
+
+        self.assertEqual(locks, [1])
+
+    def test_save_after_a_concurrent_change_gives_the_error_of_the_rule(self):
+        # The checks passed, then a concurrent request took the same code.
+        entry = Species(code="tilia-cordata", scientific_name="Tilia tomentosa")
+
+        with self.assertRaises(ValidationError) as raised:
+            services.commit_entry(entry, user=self.writer)
+
+        self.assertEqual(raised.exception.detail["code"][0]["code"], CODE_NOT_UNIQUE)
 
     def test_unhide_refused_while_an_own_entry_has_the_name(self):
         self.system.hidden_by.add(self.org)
@@ -510,6 +525,18 @@ class SpeciesApiTests(APITestCase):
             refused.data["scientific_name"]["code"], "species_name_not_unique"
         )
         self.assertEqual(accepted.status_code, 200, accepted.content)
+
+    def test_unhide_of_a_retired_entry_ignores_own_entries(self):
+        self.system.hidden_by.add(self.org)
+        self.post({"scientific_name": "Tilia cordata"})
+        Species.objects.filter(pk=self.system.pk).update(retired=True)
+
+        response = self.client.post(
+            f"/api/catalogs/species/{self.system.pk}/unhide/", **self.header
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertFalse(self.system.hidden_by.filter(pk=self.org.pk).exists())
 
     def test_parent_of_another_organization_is_refused(self):
         other = make_tenant("Other")

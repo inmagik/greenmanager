@@ -15,10 +15,10 @@ as they are unless ``--update``. The keys of the new entries are deterministic
 import csv
 
 from catalogs.models import Species
-from catalogs.services import normalize, validate_references
+from catalogs.services import lock_species_name, normalize, validate_references
 from core.errors import django_errors_payload
 from core.models import system_entry_id
-from core.services import snapshot
+from core.services import snapshot, stamp
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -102,6 +102,8 @@ class Command(BaseCommand):
         ]
         entry.source = entry.source or "GreenManager, elenco iniziale"
         normalize(entry)
+        # Before any check of the name, as in services.prepare_entry.
+        lock_species_name(entry.scientific_name)
         try:
             # The parent is linked in a second pass.
             entry.full_clean(exclude=["parent"])
@@ -115,6 +117,8 @@ class Command(BaseCommand):
             raise CommandError(f"Line {line} ({code}): {exc.detail}") from exc
         if not created and snapshot(entry) == before:
             return entry, "unchanged"
+        # A change of the command has no author: it is the system's.
+        stamp(entry, None)
         entry.save()
         return entry, "created" if created else "updated"
 
@@ -130,6 +134,7 @@ class Command(BaseCommand):
             if not parent_code:
                 if entry.parent_id is not None:
                     entry.parent = None
+                    stamp(entry, None)
                     entry.save(update_fields=["parent"])
                 continue
             parent = entries.get(parent_code) or (
@@ -145,4 +150,5 @@ class Command(BaseCommand):
                     raise CommandError(
                         f"{code}: {django_errors_payload(exc, Species)}"
                     ) from exc
+                stamp(entry, None)
                 entry.save(update_fields=["parent"])

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from catalogs.models import Species
 from core.models import system_entry_id
-from core.testing import make_tenant
+from core.testing import make_tenant, make_user
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
@@ -101,6 +101,19 @@ class ImportSpeciesTests(TestCase):
         self.run_command(self.write_csv(rows), "--update")
 
         self.assertIsNone(Species.objects.get(code="tilia-cordata").parent)
+
+    def test_changes_of_the_import_have_no_author(self):
+        self.run_command(self.write_csv(self.rows()))
+        user = make_user("editor@example.com")
+        Species.objects.update(updated_by=user)
+        rows = self.rows()
+        rows[0]["parent_code"] = ""
+        rows[1]["family"] = "Tiliaceae"
+
+        self.run_command(self.write_csv(rows), "--update")
+
+        # A change of the fields (tilia) and one of the parent (tilia-cordata).
+        self.assertFalse(Species.objects.filter(updated_by__isnull=False).exists())
 
     def test_existing_entries_get_no_parent_without_update(self):
         rows = self.rows()

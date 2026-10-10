@@ -14,7 +14,7 @@ import copy
 from core.errors import api_error, check_revision, permission_error, validate_model
 from core.models import system_entry_id
 from core.services import stamp
-from django.db import connection, router, transaction
+from django.db import IntegrityError, connection, router, transaction
 from django.db.models.deletion import Collector, ProtectedError, RestrictedError
 from django.utils.text import slugify
 
@@ -132,8 +132,8 @@ def validate_references(entry):
                     field="parent",
                 )
         # The scientific name is unique among the entries available to an
-        # organization (§2.4): own entries against the system ones and back.
-        lock_species_name(entry.scientific_name)
+        # organization (§2.4): own entries against the system ones and back. The
+        # caller holds the lock of the name (lock_species_name).
         if not entry.is_system:
             duplicate = (
                 Species.objects.available_for(entry.organization)
@@ -209,6 +209,10 @@ def prepare_entry(entry, *, user, stored=None):
     if stored is not None:
         check_changes(entry, stored)
     normalize(entry)
+    if isinstance(entry, Species):
+        # Before any check of the name, the database constraint too: a
+        # concurrent change of the same name is then committed, and seen.
+        lock_species_name(entry.scientific_name)
     validate_model(entry)
     validate_references(entry)
 
@@ -219,7 +223,14 @@ def commit_entry(entry, *, user):
     if entry._state.adding and entry.is_system:
         entry.pk = system_entry_id(entry._meta.label_lower, entry.code)
     stamp(entry, user)
-    entry.save()
+    try:
+        with transaction.atomic():
+            entry.save()
+    except IntegrityError:
+        # A concurrent change took the code (e.g. the same generated one) after
+        # the validation: validated again, the entry gets the error of the rule.
+        validate_model(entry)
+        raise
     return entry
 
 
@@ -304,13 +315,16 @@ def unhide_entry(entry, organization):
     if isinstance(entry, Species):
         # The scientific name is unique among the available entries: the own
         # entry that replaced the hidden one must be retired or renamed first.
+        # A retired system entry is not available, so it does not conflict; read
+        # under the lock, which a concurrent restore of the entry holds.
         lock_species_name(entry.scientific_name)
+        entry.refresh_from_db(fields=["retired"])
         duplicate = Species.objects.filter(
             organization=organization,
             retired=False,
             scientific_name__iexact=entry.scientific_name,
         )
-        if duplicate.exists():
+        if not entry.retired and duplicate.exists():
             raise api_error(
                 "species_name_not_unique",
                 "An entry with this scientific name already exists.",
