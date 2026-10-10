@@ -1,0 +1,8 @@
+data
+__pycache__
+media
+localsettings.py
+db.sqlite3
+greenmanager/greenmanager/localsettings.py
+env
+.git

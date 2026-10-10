@@ -1,0 +1,144 @@
+.header {
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
+  border-bottom: 0.5px solid var(--mantine-color-gray-2);
+}
+
+.headerInner {
+  padding: var(--mantine-spacing-3xs) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+}
+
+.headerLhs {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  flex: 1;
+}
+
+.headerCopy,
+.titleRow,
+.titleRow h3 {
+  min-width: 0;
+}
+
+.titleRow h3 {
+  overflow-wrap: anywhere;
+}
+
+.breadcrumbs {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadcrumbs :global(.mantine-Breadcrumbs-root) {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.breadcrumbs :global(.mantine-Breadcrumbs-breadcrumb) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerRhs {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+@media (max-width: 47.99em) {
+  .header {
+    padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
+  }
+
+  .headerInner {
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: var(--mantine-spacing-3xs);
+  }
+
+  .headerLhs {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .headerIcon {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .headerLhs h3 {
+    font-size: var(--mantine-font-size-lg);
+    line-height: 1.2;
+  }
+
+  .headerRhs {
+    flex: 0 0 2.5rem;
+    width: 100%;
+    min-height: 2.5rem;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: var(--mantine-spacing-3xs);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .headerRhs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .headerRhs > * {
+    flex: 0 0 auto;
+  }
+
+  .headerRhs :global(.mantine-Button-root) {
+    flex: 0 0 auto;
+    --button-height: 2.5rem;
+    --button-padding-x: var(--mantine-spacing-xs);
+    --button-fz: var(--mantine-font-size-sm);
+  }
+
+  .headerRhs :global(.mantine-Button-label) {
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .headerRhs :global(.mantine-Button-section) {
+    --section-size: 1.125rem;
+    margin-inline-end: var(--mantine-spacing-3xs);
+  }
+
+  .headerRhs :global(.mantine-Button-section) svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .headerRhs :global(.mantine-Button-root[aria-label="Actions"]) {
+    width: 2.5rem;
+    padding-inline: 0;
+  }
+}
+
+.headerIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-filled);
+}

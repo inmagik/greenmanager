@@ -169,7 +169,7 @@ Stati possibili:
 
 ## D-019 — Zone e aree
 
-- **Data**: 2026-10-06 · **Passo**: 3 · **Stato**: confermata allo Step 4
+- **Data**: 2026-10-06 · **Passo**: 3 · **Stato**: confermata allo Step 4, con la precisazione di D-035: un'area può essere multiparte, quindi le parti di un parco separate da una strada possono anche formare una sola area
 - **Decisione**: chiude la domanda 7 dello Step 1.
   - Sopra l'area c'è un solo livello facoltativo, la zona (quartiere, circoscrizione, complesso di un cliente). Sostituisce la macroarea Access e corrisponde alla zona del modello dati CAM.
   - Le aree dello stesso committente non si sovrappongono. Le parti di un parco sono aree distinte della stessa zona.
@@ -254,7 +254,7 @@ Stati possibili:
 
 ## D-027 — Rappresentazione dei cataloghi e cataloghi tra organizzazioni
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**: rappresenta D-016 nel modello e chiude la domanda 2 dello Step 3.
   - Le liste che gli utenti estendono sono cataloghi in tabella. Le liste da cui dipende la logica dell'applicazione (stati, origini, effetti sul censimento, unità) sono enumerazioni nel codice. Una voce di catalogo che guida un comportamento punta a un'enumerazione.
   - Nei cataloghi estendibili, una voce senza organizzazione è di sistema; una voce con organizzazione appartiene a quell'organizzazione. Una voce in uso non si cancella: chi l'ha creata la ritira, un'organizzazione nasconde una voce di sistema.
@@ -264,7 +264,7 @@ Stati possibili:
 
 ## D-028 — Misure nelle osservazioni
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**: chiude la domanda 1 dello Step 3 e precisa D-007.
   - Diametri a 1,30 m (uno per fusto), altezza, diametro della chioma, fase di sviluppo e le misure previste dalla classe (es. altezza e larghezza della siepe) si registrano nelle osservazioni datate. Un'osservazione con misure è un rilievo.
   - L'elemento tiene una copia dell'ultimo valore valido di ogni misura, della condizione e della valutazione, per mappe, filtri ed export.
@@ -274,7 +274,7 @@ Stati possibili:
 
 ## D-029 — Posto d'impianto: classi dedicate e legame di sostituzione
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**: chiude la domanda 5 dello Step 2.
   - Il posto d'impianto non è un'entità. Posti liberi e ceppaie (EL-15, v2) sono elementi di classi dedicate, che non contano come alberi.
   - Ogni elemento può indicare l'elemento di cui prende il posto. La catena di sostituzioni è lo storico di una posizione (es. ippocastano → posto libero → tiglio).
@@ -284,7 +284,7 @@ Stati possibili:
 
 ## D-030 — Codici CAM come corrispondenza
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**: chiude la domanda 10 dello Step 2 e precisa D-011.
   - I codici del modello dati CAM v2.1 sono un catalogo fisso. Non sono il catalogo delle classi di elemento.
   - Ogni classe ha un codice CAM predefinito. Altre corrispondenze legano un codice a una classe più alcuni valori di attributo (es. prato con tipo "in scarpata" = `S101051`).
@@ -295,7 +295,7 @@ Stati possibili:
 
 ## D-031 — Persone, esecutori e squadre
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**:
   - operatori, rilevatori e valutatori sono persone del dominio, distinte dagli utenti del sistema. Una persona può essere collegata a un utente;
   - l'esecutore è un'anagrafica tenuta dall'organizzazione di gestione: impresa, cooperativa, associazione, professionista o squadre interne. Se usa il sistema è collegato alla propria organizzazione;
@@ -305,7 +305,7 @@ Stati possibili:
 
 ## D-032 — Committente e organizzazione di gestione
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**: verifica D-013 e risponde alla domanda sul proprietario dell'area.
   - Il committente è il titolare del patrimonio. Ha un'organizzazione di gestione: quella del gestore, che organizza il patrimonio, emette gli affidamenti e valida.
   - Nel caso base committente e organizzazione di gestione coincidono. Nella variante di K2 il committente è il comune e l'organizzazione di gestione è l'azienda pubblica.
@@ -315,7 +315,7 @@ Stati possibili:
 
 ## D-033 — Interventi proposti, piano come vista, origini
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**: precisa D-020 e D-025.
   - Gli interventi generati da una regola di ricorrenza nascono nello stato *proposto*. La conferma del gestore li rende pianificati; una proposta scartata si elimina.
   - Il piano di manutenzione non è un'entità: è l'insieme degli interventi con origine ricorrenza di un periodo.
@@ -327,7 +327,7 @@ Stati possibili:
 
 ## D-034 — Storico delle modifiche e registri non cancellabili
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata
 - **Decisione**:
   - lo storico delle modifiche è un'entità del dominio: record, campi cambiati, autore, organizzazione, data, motivazione, origine (web, campo, import, sincronizzazione);
   - osservazioni, valutazioni e interventi eseguiti non si cancellano: si correggono con una motivazione o si annullano;
@@ -338,29 +338,34 @@ Stati possibili:
 
 ## D-035 — Geometrie e sistema di riferimento
 
-- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: ipotesi, da confermare alla revisione dello Step 4
+- **Data**: 2026-10-06 · **Passo**: 4 · **Stato**: confermata alla revisione dello Step 4, con una modifica: linee e poligoni anche multiparte. L'ipotesi iniziale prevedeva solo geometrie semplici
 - **Decisione**:
-  - le geometrie di elementi e aree sono semplici, non multiparte, come chiede il CAM. Un elemento ha un solo campo geometria, del tipo previsto dalla classe;
-  - le geometrie si memorizzano in WGS84 (EPSG:4326); superfici e lunghezze si calcolano sull'ellissoide;
-  - l'export CAM usa il sistema RDN2008 scelto per il committente (EPSG 6706 o 7791–7794);
+  - le geometrie di elementi e aree sono punti, linee o poligoni. Linee e poligoni possono essere multiparte; i punti sono semplici. Un elemento ha un solo campo geometria, del tipo previsto dalla classe;
+  - le geometrie si memorizzano in WGS84 (EPSG:4326); superfici e lunghezze si calcolano sull'ellissoide, sommando le parti;
+  - l'export CAM usa il sistema RDN2008 scelto per il committente (EPSG 6706 o 7791–7794). Il CAM vuole geometrie semplici: l'export scrive un oggetto per ogni parte;
   - si conserva la precisione dichiarata della posizione e la sua origine (GPS, mappa, import).
-- **Motivazione**: WGS84 è il sistema del GPS del browser e delle mappe web. La trasformazione verso RDN2008 è di norma nulla nelle librerie, quindi le coordinate di un rilievo di precisione passano senza modifiche. Le misure sull'ellissoide valgono in tutta Italia senza scegliere un fuso. Vedi §4.2 di [04-modello-dati.md](04-modello-dati.md).
-- **Alternative scartate**: memorizzazione in RDN2008 proiettato, che richiede un fuso per committente; geometrie multiparte.
+- **Motivazione**:
+  - WGS84 è il sistema del GPS del browser e delle mappe web. La trasformazione verso RDN2008 è di norma nulla nelle librerie, quindi le coordinate di un rilievo di precisione passano senza modifiche;
+  - le misure sull'ellissoide valgono in tutta Italia senza scegliere un fuso;
+  - con le multiparte una siepe interrotta da un passo carraio, un prato diviso dai vialetti o un parco diviso da una strada restano una sola unità di gestione, con un codice e un intervento. Le feature multiparte degli shapefile degli enti si importano senza spezzarle, e il vincolo del CAM si rispetta all'export. Vedi §4.2 di [04-modello-dati.md](04-modello-dati.md).
+- **Alternative scartate**: memorizzazione in RDN2008 proiettato, che richiede un fuso per committente; geometrie solo semplici, come il CAM, con le parti come elementi o aree distinti (ipotesi iniziale).
 
 ## D-036 — Scaffold dai progetti di riferimento
 
-- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: confermata alla revisione di T1, con una precisazione: da bottaro-pesatura si prendono anche alcuni componenti e i pattern CRUD del modulo `anagrafica`
 - **Decisione**:
   - backend e frontend nascono copiando lo scaffold di [inmagik/data-lab](https://github.com/inmagik/data-lab): struttura, settings, app core (`auth_core`, `tenants`, `jobs_core`, `inmagik_utils`), componenti e pattern di modelli, API e interfaccia;
   - le versioni delle dipendenze vengono da [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura), più aggiornato; Python 3.14;
-  - dalle app di dominio di data-lab si copiano i pattern, non il codice;
+  - da bottaro-pesatura si copiano anche `AuditlogActorMixin`, per l'autore delle voci di django-auditlog con l'autenticazione JWT, e `AuditHistoryModal`, che mostra lo storico di un record. Il suo modulo `anagrafica` è un secondo riferimento per i pattern CRUD, accanto a `datasets` di data-lab;
+  - lo scaffold parte dai commit più recenti dei due progetti al momento della copia;
+  - dalle app di dominio dei progetti di riferimento si copiano i pattern, non il codice;
   - le convenzioni proprie di bottaro-pesatura (identificatori in italiano, single-tenant, compatibilità con SQLite) non si applicano.
 - **Motivazione**: i progetti INMAGIK recenti usano lo stesso stack (Django, React, PostgreSQL) e risolvono già autenticazione, multi-tenancy, permessi e job. Riusare lo scaffold dà al team un codice che conosce e componenti condivisi tra i progetti. Vedi [architettura/README.md](architettura/README.md).
 - **Alternative scartate**: scaffold progettato da zero; template generico di Django e React.
 
 ## D-037 — Organizzazione come tenant
 
-- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: confermata
 - **Decisione**:
   - l'entità di confine `Organization` del modello dati è il `Tenant` dell'app `tenants`, e `User` è l'utente di `auth_core`;
   - gli utenti appartengono a una o più organizzazioni tramite `TenantMembership`; i ruoli sono definiti per organizzazione;
@@ -371,18 +376,31 @@ Stati possibili:
 
 ## D-038 — Frontend come SPA a moduli
 
-- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: confermata alla revisione di T1, con la precisazione di D-036 sul modulo `anagrafica`
 - **Decisione**:
   - una sola SPA React con Vite, TypeScript e Mantine, organizzata in moduli che contribuiscono da soli al menu e alle rotte;
   - data fetching con `@inmagik/react-crud` e TanStack Query; autenticazione con `@inmagik/react-auth`;
-  - form con `@mantine/form` e yup; traduzioni con i18next, con l'italiano come lingua di riferimento;
-  - pattern di lista, dettaglio, form e azioni del modulo `datasets` di data-lab. I pattern per sezione si definiscono in T2.
+  - form con `@mantine/form` e yup; traduzioni con i18next, con l'italiano come lingua di riferimento. Nell'MVP l'interfaccia è solo in italiano;
+  - pattern di lista, dettaglio, form e azioni del modulo `datasets` di data-lab e del modulo `anagrafica` di bottaro-pesatura. I pattern per sezione si definiscono in T2.
 - **Motivazione**: è il frontend dei progetti di riferimento, con componenti e pattern già condivisi. I moduli che si registrano da soli permettono di aggiungere le aree del dominio senza toccare file centrali. Vedi [architettura/frontend.md](architettura/frontend.md).
 - **Alternative scartate**: un'app separata per ogni area funzionale; un'altra libreria di componenti.
 
 ## D-039 — Job asincroni e pianificati
 
-- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: ipotesi, da confermare alla revisione di T1
+- **Data**: 2026-10-06 · **Passo**: T1 · **Stato**: confermata
 - **Decisione**: i lavori lunghi o periodici girano fuori dalla richiesta HTTP con l'app `jobs_core`, su django-rq, rq-scheduler e Redis. Usi previsti: import ed export, generazione degli interventi proposti, scadenzario. L'elenco si definisce in T3.
 - **Motivazione**: import di file CAM o shapefile e generazione del piano (D-020, D-033) possono durare più di una richiesta. `jobs_core` traccia ogni esecuzione e restituisce subito l'identificativo, che il frontend usa per seguirne lo stato. Vedi §3.3 di [architettura/backend.md](architettura/backend.md).
 - **Alternative scartate**: Celery; esecuzione sincrona nella richiesta.
+
+## D-040 — Sequenza dei passi dopo le revisioni dello Step 4 e di T1
+
+- **Data**: 2026-10-09 · **Passo**: revisione dello Step 4 e di T1 · **Stato**: confermata
+- **Decisione**:
+  - dopo la chiusura dello Step 4 e di T1 si fa subito lo scaffold (T4), prima dello Step 5 e di T2;
+  - T3 e T2 si svolgono insieme a una prima fetta verticale: cataloghi (`Species`, `ElementClass`), committente (`Client`), zone e aree, elementi su mappa. I documenti di T3 e T2 registrano le scelte fatte nella fetta;
+  - lo Step 5 (`spec.md`) procede in parallelo e non blocca lo sviluppo.
+- **Motivazione**:
+  - varie ipotesi di T1 si verificano solo con il codice: Django 6.1 con le librerie di data-lab, Mantine 9.7 e TypeScript 6;
+  - le domande rinviate a T3 e T2 (filtro per organizzazione tramite il committente, permessi per tenant, storico, libreria della mappa) sono le più rischiose e si chiudono meglio su una fetta che funziona;
+  - lo Step 5 serve a chi legge la specifica dall'esterno; per lo sviluppo bastano [03-features.md](03-features.md) e [04-modello-dati.md](04-modello-dati.md). Vedi [README.md](README.md).
+- **Alternative scartate**: la sequenza Step 5 → T2 → T3 → T4, con tutta la documentazione chiusa prima del codice.

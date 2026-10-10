@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+cd /code
+exec python manage.py rqworker default

@@ -1,0 +1,40 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+
+    volumes:
+      - ../..:/workspaces:cached
+
+    command: sleep infinity
+
+  db:
+    # PostgreSQL with PostGIS, as in ../docker-compose.yml.
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: greenmanager
+      POSTGRES_USER: greenmanager
+      POSTGRES_PASSWORD: greenmanager
+    volumes:
+      - ../data/db:/var/lib/postgresql/18/docker
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U greenmanager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8
+    volumes:
+      - ../data/redis:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+name: greenmanager-dev

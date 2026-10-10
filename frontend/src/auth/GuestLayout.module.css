@@ -1,0 +1,97 @@
+.guestLayout {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--mantine-color-white);
+}
+
+.guestBrand {
+  position: absolute;
+  z-index: 3;
+  top: var(--mantine-spacing-xl);
+  left: var(--mantine-spacing-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 700;
+}
+
+.guestBrand img {
+  width: 36px;
+  height: 36px;
+}
+
+.guestLayout :global(.mantine-Grid-col:last-child) > div {
+  position: relative;
+  background-color: #1f4d2b !important;
+  background-image: linear-gradient(135deg, #1f4d2b, #2f7d4a 55%, #9cc79a) !important;
+}
+
+.languageSelector {
+  position: absolute;
+  z-index: 3;
+  top: var(--mantine-spacing-md);
+  right: var(--mantine-spacing-md);
+}
+
+@media (max-width: 47.99em) {
+  .guestLayout {
+    overflow-y: auto;
+    background:
+      radial-gradient(circle at 100% 0%, var(--mantine-color-default-1), transparent 18rem),
+      var(--mantine-color-white);
+  }
+
+  .guestBrand {
+    top: max(var(--mantine-spacing-md), env(safe-area-inset-top));
+    left: var(--mantine-spacing-md);
+  }
+
+  .guestLayout :global(.mantine-Grid-root) {
+    display: block;
+    width: 100%;
+    height: auto !important;
+    min-height: 100dvh;
+  }
+
+  .guestLayout :global(.mantine-Grid-col) {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-basis: 100% !important;
+  }
+
+  .guestLayout :global(.mantine-Grid-col:first-child) {
+    height: auto !important;
+    min-height: 100dvh;
+  }
+
+  .guestLayout :global(.mantine-Grid-col:first-child) > div {
+    box-sizing: border-box;
+    height: auto !important;
+    min-height: 100dvh;
+    padding:
+      calc(72px + env(safe-area-inset-top))
+      env(safe-area-inset-right)
+      max(var(--mantine-spacing-xl), env(safe-area-inset-bottom))
+      env(safe-area-inset-left);
+  }
+
+  .guestLayout :global(.guest-form-panel) {
+    width: calc(100% - clamp(48px, 16vw, 80px)) !important;
+    max-width: 420px !important;
+    margin-inline: auto;
+  }
+
+  .guestLayout :global(.mantine-Grid-col:last-child) {
+    display: none;
+  }
+
+  .guestLayout form,
+  .guestLayout button,
+  .guestLayout input {
+    min-width: 0;
+  }
+}

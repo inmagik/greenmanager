@@ -1,0 +1,32 @@
+name: greenmanager
+
+# Database and Redis for local development. The server runs outside Docker
+# (see AGENTS.md), or in the devcontainer.
+services:
+  db:
+    # PostgreSQL with PostGIS: GeoDjango stores the geometries of areas and elements.
+    # The image is published for amd64 only: on Apple silicon it runs under emulation.
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: greenmanager
+      POSTGRES_USER: greenmanager
+      POSTGRES_PASSWORD: greenmanager
+    command: ["postgres", "-c", "listen_addresses=*"]
+    volumes:
+      - ./data/db:/var/lib/postgresql/18/docker
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:8
+    volumes:
+      - ./data/redis:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "6379:6379"

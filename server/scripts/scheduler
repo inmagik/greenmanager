@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+cd /code
+python manage.py schedule_auto_tasks
+exec python manage.py rqscheduler

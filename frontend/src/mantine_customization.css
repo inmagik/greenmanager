@@ -1,0 +1,87 @@
+.mantine-Tabs-tab[data-active="true"] {
+  color: var(--mantine-primary-color-filled);
+  --text-color: var(--mantine-primary-color-filled);
+}
+
+.mantine-InputWrapper-root[data-variant="unstyled"] .mantine-Input-section {
+  color: var(--mantine-color-black);
+  --section-size: 1.5rem;
+  justify-content: flex-start;
+}
+
+.mantine-InputWrapper-root[data-variant="unstyled"] .mantine-Input-input {
+  /* padding-inline-start: 1.5rem; */
+}
+
+.standard-border-top {
+  border-top: 0.5px solid var(--mantine-color-gray-2);
+}
+
+.standard-border-bottom {
+  border-bottom: 0.5px solid var(--mantine-color-gray-2);
+}
+
+.h-100 {
+  height: 100%;
+}
+
+html,
+body,
+#root {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.mantine-AppShell-main {
+  min-width: 0;
+}
+
+@media (max-width: 47.99em) {
+  .mantine-Tabs-panel:has(> .mantine-Loader-root:only-child) {
+    display: grid;
+    place-items: center;
+  }
+
+  .mantine-Tabs-panel > .mantine-Loader-root:only-child {
+    margin: 0;
+  }
+
+  .mantine-Button-root,
+  .mantine-InputWrapper-root,
+  .mantine-Input-root {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mantine-Button-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mantine-Tabs-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .mantine-Tabs-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mantine-Tabs-tab {
+    min-width: max-content;
+  }
+
+  .mantine-Modal-content {
+    max-height: calc(100dvh - var(--mantine-spacing-md));
+  }
+}
+
+.panel-with-table {
+  display: flex;
+  flex-direction: column;
+}

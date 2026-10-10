@@ -1,6 +1,6 @@
 # Frontend
 
-> **Stato**: in revisione · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+> **Stato**: completato · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
 
 - **Obiettivo**: descrivere la SPA React di GreenManager: struttura, provider, moduli, data fetching, pattern UI di base, versioni.
 - **Fonte**: `admin/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura, componenti e pattern; [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036, D-038). Commit e regole di copia in [README.md](README.md).
@@ -54,7 +54,7 @@ Import con l'alias `@/` per tutto ciò che sta fuori dal modulo corrente (`@/com
 | `ThemeProvider` | `MantineProvider` con il tema (palette `default`, spaziature aggiuntive `3xs` e `xxs`), notifiche, `ModalsProvider`, `DatesProvider` con la lingua corrente |
 
 `Navigation.tsx` crea il router (`createBrowserRouter`):
-- **rotte guest** sotto `GuestLayout`, che rimanda alla home chi è già autenticato: `/login`, `/forgot-password`, `/reset-password`, `/verify-email`, `/welcome`;
+- **rotte guest** sotto `GuestLayout`, che rimanda alla home chi è già autenticato: `/login`, `/forgot-password`, `/reset-password`, `/welcome`. data-lab ha anche `/verify-email`, che non chiama nessun endpoint: non si copia, perché l'attivazione dell'account passa dal link verso `/welcome`;
 - **rotte autenticate** sotto `AuthLayout`, che rimanda al login chi non lo è: `/` (home), `/profile` e tutte le rotte dei moduli.
 
 `AuthLayout` usa l'`AppShell` di Mantine:
@@ -105,7 +105,7 @@ src/modules/<modulo>/
 
 ## 5. Pattern dei moduli di dominio
 
-Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli per le singole sezioni sono il passo T2.
+Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pesatura. Qui si fissano i pattern comuni; quelli per le singole sezioni sono il passo T2.
 
 ### 5.1 API e data fetching
 
@@ -128,10 +128,10 @@ Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli
 - Filtri, pagina e ordinamento stanno nei parametri dell'URL (`useSearchParams` o `useUrlParams`): la lista si può ricaricare e condividere. La ricerca passa da `useDebouncedValue` (300 ms); ogni cambio di filtro riporta a pagina 1.
 - Tabella con `createTable<T>()` del componente `Table`:
   - `Table.Column` con `title` (chiave di traduzione), `name`, `render`, `sortable`;
-  - `Table.Selection` per la selezione multipla;
+  - `Table.Selection` per la selezione multipla, con `getRowLabel` per il nome accessibile delle caselle (di solito il nome del record);
   - `Table.Footer.Left` con la `Pagination` di Mantine, `Table.Footer.Right` con il riepilogo dei risultati;
   - `TableEmptyState` quando `full_count` è 0, con le azioni di creazione.
-  - Il nome della risorsa nella prima colonna è un link al dettaglio; l'ultima colonna ha il menu contestuale.
+  - Il nome della risorsa nella prima colonna è un link al dettaglio; l'ultima colonna ha il menu contestuale, il cui pulsante ha un `aria-label` tradotto con il nome del record.
 - Con righe selezionate, le azioni dell'header diventano *Annulla* ed *Elimina*. L'eliminazione chiede conferma con `modals.openConfirmModal` ed elenca i record.
 
 ### 5.3 Azioni e modali
@@ -154,10 +154,11 @@ Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli
 - Il primo tab mostra il form in `layout="page"` e in sola lettura; il bottone *Modifica* dell'header lo rende modificabile.
 - Con modifiche non salvate, `BlockNavigation` chiede conferma prima di lasciare la pagina.
 - L'header può mostrare l'ultima modifica (`lastEditDetails`), dai campi di django-auditlog (§3.4 di [backend.md](backend.md)).
+- Lo storico completo delle modifiche del record si apre con `AuditHistoryModal`, copiato da bottaro-pesatura. Il rapporto con lo storico del dominio (`ChangeRecord`, D-034) si decide in T3 (domanda 3 di [backend.md](backend.md#domande-aperte)).
 
 ### 5.6 Permessi nell'interfaccia
 
-- `hasPermission(user, permesso)` e `useHasPermission(permesso)` accettano un codice, `{ oneOf: [...] }` o `{ allOf: [...] }`. Il superuser passa sempre (domanda 2 di [backend.md](backend.md#domande-aperte)).
+- `hasPermission(user, permesso)` e `useHasPermission(permesso)` accettano un codice, `{ oneOf: [...] }` o `{ allOf: [...] }`. Il superuser passa sempre, come nel backend (§3.1 di [backend.md](backend.md)).
 - `CheckPermission` mostra i figli solo con il permesso; `CheckStaff` solo allo staff.
 - Il controllo nell'interfaccia nasconde ciò che non si può fare. Il controllo vero è quello del backend.
 
@@ -173,11 +174,12 @@ Presi dal modulo `datasets` di data-lab. Qui si fissano i pattern comuni; quelli
 - **Adattamenti**:
   - l'italiano è la lingua di riferimento: il tipo delle traduzioni si ricava dai file `it`, non da `en` come in data-lab, e `fallbackLng` è `it`;
   - si copiano solo le traduzioni comuni (`auth`, `common`, `tenants`, `users`);
-  - le altre lingue dipendono dalla domanda 1.
+  - solo italiano nell'MVP (domanda 1). La struttura di i18next resta, per aggiungere altre lingue; `LanguageSelector` resta nascosto finché le lingue sono una.
 
 ## 7. Strumenti, build e immagine
 
-- **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000`), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
+- **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000` che conserva l'host del browser: così i link `next` della paginazione restano sul proxy), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
+- **Vite**: `vite.config.ts` importa i plugin con l'estensione (`./plugins/menu.ts`), come chiede il caricamento nativo della configurazione.
 - **TypeScript** in modalità `strict`, con `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` (import di soli tipi con `import type`).
 - **ESLint**: configurazione piatta con le regole raccomandate di JavaScript, typescript-eslint, react-hooks e react-refresh.
 - **Prettier**: senza punto e virgola, virgolette doppie, virgola finale `es5`, riga di 120 caratteri, indentazione di 2 spazi. È la stessa configurazione in data-lab e bottaro-pesatura.
@@ -229,10 +231,39 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 
 - Le librerie della mappa e del disegno delle geometrie si scelgono in T2 (domanda 2). Quelle dei grafici, quando servono, si allineano a `@mantine/charts` ^9.7.0.
 - Non si copiano le librerie di data-lab legate a editor di documenti, diagrammi e simulazioni: lexical, reactflow, dagre, dnd-kit, swiper, d3-scale, chroma-js, html-to-image, xlsx. `flag-icons` serve solo al selettore della lingua, se le lingue sono più di una.
-- In T4 si verifica che i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilino con Mantine 9.7 e TypeScript 6.
+- **Verifica di T4**: i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilano con Mantine 9.7 e TypeScript 6 senza modifiche. Le correzioni fatte nello scaffold sono altre:
+  - `yarn.lock` parte da quello di bottaro-pesatura. Con un lockfile nuovo yarn non trova `hashery` 1.x, una dipendenza indiretta di ESLint;
+  - `Table` dà a ogni riga come `key` l'`id` del record, o quella di `getRowKey`, così lo stato dei componenti non passa da una riga all'altra quando cambiano ordinamento o pagina;
+  - `DataProvider` chiama `setState` in un effetto per svuotare la cache al cambio di organizzazione. È voluto: la regola `react-hooks/set-state-in-effect` è disattivata su quella riga, con il motivo;
+  - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio.
+- **Revisione della PR dello scaffold**, correzioni al modulo `users`:
+  - disattivazione e riattivazione mandano solo `is_active`; il salvataggio dei dati solo nome ed email, quello di ruoli e permessi solo quei campi, quello di un ruolo solo nome e permessi. In data-lab si mandava l'intero record, che poteva riscrivere valori cambiati nel frattempo;
+  - gli errori delle azioni fuori dai form (menu, conferme, eliminazioni multiple, sblocco) si mostrano in una notifica con `notifyApiError` di `utils.tsx`: in data-lab si perdevano. Disattiva ed Elimina sono disabilitati sul proprio account;
+  - il form di ruoli e permessi mostra gli errori del server; i gruppi di permessi hanno un nome tradotto (`roles.modules.<app>`), le caselle un nome accessibile;
+  - nella scheda "Ruoli e permessi" il pulsante Modifica richiede `WRITE_USERS` e `WRITE_ROLES`: il salvataggio è una modifica dell'utente, che il server accetta solo con entrambi. L'assegnazione di un ruolo dal dettaglio del ruolo (`grant_to`) richiede solo `WRITE_ROLES`;
+  - la rimozione del ruolo, dagli utenti selezionati o da un utente col menu della riga, chiama `revoke_from`. In data-lab la prima scriveva solo in console, la seconda mandava l'intero utente;
+  - `RoleMultiSelect` e `UserMultiSelect` tengono tra le opzioni gli elementi selezionati anche quando la ricerca non li restituisce.
+- **Revisione della PR dello scaffold**, correzioni ai componenti condivisi:
+  - testi in italiano dove erano scritti nel codice in inglese: errori del login (`login()` lancia un codice, `auth.loginErrors` lo traduce), pulsanti di `BlockNavigation`, `PermissionTooltip`;
+  - `AlertError` mostra l'azione solo con `actionPermission` anche nella variante di errore (es. lo sblocco dell'utente);
+  - accessibilità: `aria-label` sui pulsanti dei menu contestuali e sulle caselle di selezione di `Table`; l'ordinamento delle colonne è un pulsante, usabile da tastiera, con l'etichetta che dice la direzione corrente.
+- **Seconda revisione della PR dello scaffold**:
+  - `Table` ha i ruoli ARIA di una tabella (`table`, `rowgroup`, `row`, `columnheader` con `aria-sort`, `cell`); una riga intercetta il clic solo se ha `onRowClick`, e lascia ai link, ai pulsanti e alle caselle il loro comportamento;
+  - testi nelle traduzioni: `AuditHistoryModal` (con i codici delle azioni del server), `AsyncSelect`, i placeholder; errori di attivazione, reset e cambio della password sui campi, con il token non valido tradotto; tolti i testi dei dataset e delle simulazioni di data-lab;
+  - `TenantSelector` usa `Menu` di Mantine, accessibile da tastiera; `AsyncSelect` ha un pulsante per svuotarlo e un nome accessibile; le ricerche e i filtri hanno un `aria-label`; i tooltip di `PermissionTooltip` e `Header` si aprono anche dal focus;
+  - pagine "Pagina non trovata" e "Accesso non consentito" (`components/StatusPage`): per i percorsi sconosciuti, per i dettagli di un record che non esiste (prima il caricamento non finiva) e per le rotte senza permesso (prima la pagina restava vuota);
+  - profilo: `useUpdateMe` chiamava `me//` (`useAction` aggiunge la `/` finale) e il salvataggio falliva; ora aggiorna anche l'utente di `AuthProvider`. `TenantProvider` ricarica le organizzazioni solo quando cambia l'utente, non i suoi dati;
+  - lo sblocco dell'utente chiama `unlock/` con la `/` finale; il login distingue l'account bloccato (`account_locked`);
+  - la home toglie l'header mobile dall'altezza, come `Page`; `Redirect` sostituisce la voce della cronologia.
+- **Quarta revisione della PR dello scaffold**:
+  - i permessi valgono nell'organizzazione corrente, come nel server (§3.1 di [backend.md](backend.md)): `useHasPermission` e il menu usano `useTenantUser()`, con i permessi diretti più quelli dei ruoli dell'organizzazione corrente. `all_permissions` di `me/` unisce i ruoli di tutte le organizzazioni;
+  - codici dei permessi in inglese (`READ_USERS`, `WRITE_USERS`, `READ_ROLES`, `WRITE_ROLES`) e rotte del modulo `users` in inglese (`/users/users`, `/users/roles`; in data-lab `/utenti/utenti`, `/utenti/ruoli`), come gli altri identificatori (D-001).
+- **Quinta revisione della PR dello scaffold**:
+  - le liste con selezione la svuotano a ogni cambio di ricerca, ordinamento o pagina, e le azioni multiple mandano solo i record elencati nella conferma: in data-lab potevano eliminare organizzazioni o togliere ruoli a utenti non più visibili;
+  - le righe e i contenuti a tutta larghezza di `Table` occupano `headers.length` colonne: con una in più la griglia ne creava una implicita, e la tabella si allargava rispetto all'intestazione.
 
 ## Domande aperte
 
-1. **Lingue dell'interfaccia.** Solo italiano nell'MVP, mantenendo la struttura di i18next per aggiungerne altre, o anche l'inglese, già tradotto nelle parti copiate? Proposta: solo italiano; il selettore della lingua resta nascosto finché le lingue sono una. → da chiudere alla revisione di T1
-2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. → rinviata a T2
+1. **Lingue dell'interfaccia.** Solo italiano nell'MVP, mantenendo la struttura di i18next per aggiungerne altre, o anche l'inglese, già tradotto nelle parti copiate? → **chiusa** alla revisione: solo italiano; il selettore della lingua resta nascosto finché le lingue sono una (§6).
+2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → rinviata a T2, da chiudere nella prima fetta verticale (D-040)
 3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2

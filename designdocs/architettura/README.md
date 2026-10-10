@@ -1,6 +1,6 @@
 # Architettura tecnica
 
-> **Stato**: in revisione · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+> **Stato**: completato · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
 
 - **Obiettivo**: fissare tecnologie e struttura di backend e frontend prima di scrivere codice, riusando lo scaffold dei progetti INMAGIK recenti.
 - **Input**: i progetti di riferimento (§2), il vincolo di stack di [AGENTS.md](../../AGENTS.md), le note Django di §5 di [04-modello-dati.md](../04-modello-dati.md).
@@ -58,16 +58,24 @@ flowchart LR
 | Progetto | Commit letto in T1 | Da cui si prende |
 |---|---|---|
 | [inmagik/data-lab](https://github.com/inmagik/data-lab) | `8fc4b5d10a` (2026-10-05) | struttura di server e frontend, app core, settings, convenzioni, pattern di modelli e API (app `datasets`), componenti e pattern UI |
-| [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) | `3d4b313f00` (2026-10-06) | versioni delle dipendenze, di Python e delle immagini; `inmagik_utils/pagination.py` |
+| [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) | `3d4b313f00` (2026-10-06) | versioni delle dipendenze, di Python e delle immagini; `inmagik_utils/pagination.py`, `AuditlogActorMixin`, `AuditHistoryModal`; pattern CRUD del modulo `anagrafica` |
+
+Alla revisione di T1 (2026-10-09) i repository erano andati avanti:
+- data-lab a `f323e088ea`: cambio di nome e marchio, piccole modifiche a settings, devcontainer e componenti;
+- bottaro-pesatura a `4ab7927398`: modulo CRUD `anagrafica`, `AuditHistoryModal`, `AuditlogActorMixin`.
+
+Lo scaffold parte dai commit più recenti al momento della copia: in T4 si riverificano le tabelle di §3 e le versioni di [backend.md](backend.md) e [frontend.md](frontend.md).
+
+**Commit copiati in T4** (2026-10-09): data-lab `f323e088ea`, bottaro-pesatura `4ab7927398`. Sono gli stessi della revisione di T1; le tabelle di §3 valevano ancora.
 
 Regole (D-036):
-- data-lab dice *cosa* si copia e *come* si scrive; bottaro-pesatura dice *quale versione*. Le librerie che bottaro-pesatura non usa prendono la versione di data-lab.
+- data-lab dice *cosa* si copia e *come* si scrive; bottaro-pesatura dice *quale versione* e fornisce i pezzi indicati in tabella. Le librerie che bottaro-pesatura non usa prendono la versione di data-lab.
 - Le convenzioni proprie di bottaro-pesatura non valgono qui:
   - identificatori in italiano: qui sono in inglese (D-001);
   - codice single-tenant, un'istanza per cliente: qui il sistema è multi-tenant (D-037);
   - compatibilità con SQLite: qui PostGIS è obbligatorio (D-002).
 - I due repository sono privati: per leggerli servono i permessi dell'organizzazione INMAGIK su GitHub.
-- Dalle app di dominio di data-lab non si copia codice: si copiano i pattern, descritti in §4 di [backend.md](backend.md) e §5 di [frontend.md](frontend.md).
+- Dalle app di dominio dei progetti di riferimento (`datasets` di data-lab, `anagrafica` di bottaro-pesatura) non si copia codice: si copiano i pattern, descritti in §4 di [backend.md](backend.md) e §5 di [frontend.md](frontend.md).
 
 ## 3. Cosa si copia
 
@@ -80,10 +88,10 @@ Origine: `server/` di data-lab.
 | Elemento | Esito | Note |
 |---|---|---|
 | package di progetto `datalab/` (`settings.py`, `urls.py`, `schema.py`, `wsgi.py`, `asgi.py`) | si adatta | diventa `greenmanager/`; vedi §2 di [backend.md](backend.md) |
-| `auth_core` | si copia | utenti, ruoli, permessi |
+| `auth_core` | si adatta | utenti, ruoli, permessi; `utils.py` da bottaro-pesatura, con il superuser che passa ogni controllo e il controllo sull'assegnazione di ruoli e permessi (§3.1 di [backend.md](backend.md)) |
 | `tenants` | si copia | organizzazioni (D-037) |
 | `jobs_core` | si adatta | senza i job di esempio |
-| `inmagik_utils` | si adatta | riceve paginazione e validazione da `datasets/commons.py` |
+| `inmagik_utils` | si adatta | riceve paginazione e validazione da `datasets/commons.py`; da bottaro-pesatura `audit_log/`, `nested_multi_parser.py` e i test (§3.4 di [backend.md](backend.md)) |
 | `datasets` | si scarta | resta il modello dei pattern delle app di dominio |
 | `docs_core` | si scarta | editor di documenti, non serve |
 | `simulations`, `simulation_*` | si scarta | dominio di data-lab |
@@ -101,6 +109,8 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 | Elemento | Esito | Note |
 |---|---|---|
 | `package.json` | si adatta | versioni di §8 di [frontend.md](frontend.md) |
+| `yarn.lock` | si scarta | si rigenera partendo da quello di bottaro-pesatura (§8 di [frontend.md](frontend.md)) |
+| `public/` | si scarta | marchio di data-lab; al suo posto un logo provvisorio in `public/logo.svg` e `public/favicon.svg` |
 | `vite.config.ts`, `plugins/`, `tsconfig.*`, `eslint.config.js`, `.prettierrc`, `postcss.config.cjs`, `index.html`, `Dockerfile`, `nginx.conf`, `build_image.sh` | si copia | |
 | `src/main.tsx`, `src/App.tsx`, `src/Navigation.tsx`, `src/declarations.d.ts`, `src/mantine_customization.css` | si adatta | senza gli stili dei pacchetti non usati |
 | `src/auth/`, `src/general/`, `src/context/`, `src/utils.tsx`, `src/utils/` | si copia | |
@@ -108,9 +118,11 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 | `src/hooks/`: `useSimulations`, `useSimulationListFilters`; `src/types/simulations.ts` | si scarta | |
 | `src/components/`: `AlertError`, `AsyncSelect`, `BlockNavigation`, `CheckPermission`, `CheckStaff`, `DoubleNavbar`, `FormFooter`, `Header`, `InputAccessors`, `LanguageSelector`, `Page`, `Redirect`, `ScreenWidthGuard`, `Table`, `TenantSelector`, `utils/` | si copia | |
 | `src/components/`: `DocumentEditor`, `LexicalEditor`, `ViewFrame`, `PhoneFrame`, `Simulations`, `SimulatorIcons`, `ChartExportModal`; `src/all-blocks.ts` | si scarta | editor di documenti e simulazioni |
+| `src/components/AuditHistoryModal`, da bottaro-pesatura | si copia | storico di django-auditlog di un record |
 | `src/components/Allegati` | da valutare in T3 | per `Attachment` |
-| `src/pages/`: accesso, recupero e reset della password, verifica email, benvenuto, profilo, home | si copia | la home si riscrive |
-| `src/i18n/` | si adatta | solo le parti comuni (`auth`, `common`, `tenants`, `users`); italiano come lingua di riferimento |
+| `src/pages/`: accesso, recupero e reset della password, benvenuto, profilo, home | si copia | la home si riscrive |
+| `src/pages/verify-email` | si scarta | non chiama nessun endpoint (§2 di [frontend.md](frontend.md)) |
+| `src/i18n/` | si adatta | solo le parti comuni (`auth`, `common`, `tenants`, `users`); solo italiano nell'MVP (§6 di [frontend.md](frontend.md)) |
 | `src/modules/users`, `src/modules/tenants` | si copia | |
 | `src/modules/datasets` | si scarta | resta il modello dei pattern dei moduli di dominio |
 | `src/modules/spedi`, `toxflam`, `fire_plume_rise` | si scarta | |
@@ -124,5 +136,5 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 
 ## Domande aperte
 
-1. **Commit di partenza per T4.** Lo scaffold parte dai commit letti in T1 o dai più recenti al momento della copia? Proposta: dai più recenti, verificando che le tabelle di §3 valgano ancora e aggiornando le versioni di [backend.md](backend.md) e [frontend.md](frontend.md). → da chiudere alla revisione di T1
+1. **Commit di partenza per T4.** Lo scaffold parte dai commit letti in T1 o dai più recenti al momento della copia? → **chiusa** alla revisione: dai più recenti, verificando che le tabelle di §3 valgano ancora e aggiornando le versioni di [backend.md](backend.md) e [frontend.md](frontend.md) (§2).
 2. Le domande specifiche dei componenti sono in fondo a [backend.md](backend.md#domande-aperte) e [frontend.md](frontend.md#domande-aperte).
