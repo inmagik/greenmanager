@@ -6,7 +6,7 @@ from django.db import models
 # The CAM data model has 5 characters for the ISTAT code, the municipalities have
 # 6 digits: both are accepted until the export is checked (Step 5).
 istat_code_validator = RegexValidator(
-    r"^\d{5,6}$",
+    r"^\d{5,6}\Z",
     message="The ISTAT code has 5 or 6 digits.",
     code="invalid_istat_code",
 )

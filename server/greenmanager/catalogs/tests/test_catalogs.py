@@ -745,6 +745,21 @@ class ElementClassApiTests(APITestCase):
             response.data["is_measure"]["code"], "catalog_entry_in_use_locked"
         )
 
+    def test_attributes_are_system_entries_only_when_asked(self):
+        url = "/api/catalogs/attribute-definitions/"
+        data = {"name": "Colore", "data_type": "text"}
+        self.client.force_authenticate(self.staff)
+
+        implicit = self.client.post(url, data, format="json", **self.header)
+        explicit = self.client.post(
+            url, {**data, "is_system": True}, format="json", **self.header
+        )
+
+        self.assertEqual(implicit.status_code, 403, implicit.content)
+        self.assertEqual(implicit.data["code"], "organization_entries_not_allowed")
+        self.assertEqual(explicit.status_code, 201, explicit.content)
+        self.assertTrue(explicit.data["is_system"])
+
     def test_choice_attributes_need_values(self):
         self.client.force_authenticate(self.staff)
 

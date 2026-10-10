@@ -169,12 +169,14 @@ class Command(BaseCommand):
                 if parent is None:
                     raise CommandError(f"{code}: unknown parent {parent_code}.")
             if entry.parent_id != (parent.pk if parent else None):
-                # A new parent must be available, as in the API.
+                entry.parent = parent
+                # Locked and read again, then a new parent must be available, as
+                # in the API.
                 try:
-                    check_available(parent, None, field="parent")
+                    lock_parent(entry)
+                    check_available(entry.parent, None, field="parent")
                 except APIException as exc:
                     raise CommandError(f"{code}: {exc.detail}") from exc
-                entry.parent = parent
                 stamp(entry, None)
                 entry.save(update_fields=["parent"])
                 linked.add(code)

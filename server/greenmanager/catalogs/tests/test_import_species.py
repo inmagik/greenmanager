@@ -2,6 +2,7 @@ import csv
 import tempfile
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 from catalogs.models import Species
 from core.models import system_entry_id
@@ -172,18 +173,24 @@ class ImportSpeciesTests(TestCase):
             self.run_command(self.write_csv(self.rows()[:1]))
         self.assertFalse(Species.objects.filter(code="tilia-cordata").exists())
 
-    def test_parents_not_in_the_file_are_locked(self):
+    def test_parents_not_in_the_file_are_locked_before_the_checks(self):
         self.run_command(self.write_csv(self.rows()[1:]))
+        locked_when_checked = []
 
         with CaptureQueriesContext(connection) as queries:
-            self.run_command(self.write_csv(self.rows()[:1]))
 
-        locking = [
-            query["sql"]
-            for query in queries.captured_queries
-            if "FOR UPDATE" in query["sql"]
-        ]
-        self.assertEqual(len(locking), 1)
+            def check_available(*args, **kwargs):
+                locked_when_checked.append(
+                    any("FOR UPDATE" in query["sql"] for query in queries)
+                )
+
+            with mock.patch(
+                "catalogs.management.commands.import_species.check_available",
+                side_effect=check_available,
+            ):
+                self.run_command(self.write_csv(self.rows()[:1]))
+
+        self.assertEqual(locked_when_checked, [True])
 
     def test_repeated_code_stops_the_import(self):
         rows = self.rows()

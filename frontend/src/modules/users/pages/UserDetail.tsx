@@ -60,9 +60,11 @@ export function UserDetail() {
     )
   }
 
-  // Roles and permissions are a user update that also needs the role-write permission.
+  // Roles and permissions are a user update that also needs the role-write permission. Staff users change the
+  // direct permissions with the user-write permission alone: the form leaves them the roles read-only.
+  const isStaff = !!(currentUser?.is_staff || currentUser?.is_superuser)
   const editPermission =
-    activeTab === "permissions"
+    activeTab === "permissions" && !isStaff
       ? { allOf: [AUTH_CORE_PERMISSIONS.WRITE_USERS, AUTH_CORE_PERMISSIONS.WRITE_ROLES] }
       : AUTH_CORE_PERMISSIONS.WRITE_USERS
 

@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                         max_length=6,
                         validators=[
                             django.core.validators.RegexValidator(
-                                "^\\d{5,6}$",
+                                "^\\d{5,6}\\Z",
                                 code="invalid_istat_code",
                                 message="The ISTAT code has 5 or 6 digits.",
                             )

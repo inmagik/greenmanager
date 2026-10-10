@@ -257,11 +257,10 @@ def commit_entry(entry, *, user):
 def create_entry(model, data, *, user, organization):
     data = dict(data)
     class_attributes = data.pop("class_attributes", None)
-    is_system = (
-        data.pop("is_system", False)
-        or not model.is_extensible
-        or not model.organization_entries_allowed
-    )
+    # Only the fixed catalogs are system catalogs by themselves: in the others a
+    # system entry is asked for (e.g. attributes, which have no entries of the
+    # organizations, refuse the others with organization_entries_not_allowed).
+    is_system = data.pop("is_system", False) or not model.is_extensible
     if is_system:
         require_system_manager(user)
     elif organization is None:

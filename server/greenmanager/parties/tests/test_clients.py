@@ -1,9 +1,10 @@
 from core.models import ChangeRecord
 from core.services import ChangeContext
 from core.testing import make_tenant, make_user, tenant_header
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from parties import services
-from parties.models import Client
+from parties.models import Client, istat_code_validator
 from rest_framework.exceptions import NotFound
 from rest_framework.test import APITestCase
 
@@ -157,6 +158,11 @@ class ClientApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400, response.content)
         self.assertEqual(response.data["istat_code"][0]["code"], "invalid_istat_code")
+
+    def test_istat_code_has_digits_only_up_to_the_end(self):
+        istat_code_validator("12345")
+        with self.assertRaises(ValidationError):
+            istat_code_validator("12345\n")
 
     def test_history_and_choices(self):
         self.client.force_authenticate(self.manager)

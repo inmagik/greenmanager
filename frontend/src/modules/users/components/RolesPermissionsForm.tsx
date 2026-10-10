@@ -16,6 +16,7 @@ import { CheckPermission } from "@/components/CheckPermission"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "@/auth/auth"
+import { useHasPermission } from "@/hooks/useHasPermission"
 
 type Form = {
   permissions: string[]
@@ -34,6 +35,9 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
   const { user } = useAuth()
   // The direct permissions hold in every organization of the user: only staff users change them.
   const canChangeDirectPermissions = !!(user?.is_staff || user?.is_superuser)
+  // The roles need the role-write permission, staff users included.
+  const canChangeRoles = useHasPermission(AUTH_CORE_PERMISSIONS.WRITE_ROLES)
+  const rolesReadonly = readonly || !canChangeRoles
   const [isLoading, setIsLoading] = useState(false)
 
   // Local data
@@ -87,7 +91,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                 <Button
                   size="xs"
                   leftSection={<TbPlus />}
-                  disabled={readonly}
+                  disabled={rolesReadonly}
                   onClick={() => {
                     const modalId = modals.open({
                       title: t("users.detail.assignRoles"),
@@ -114,7 +118,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                     <Pill
                       key={role.id}
                       size="sm"
-                      withRemoveButton={!readonly}
+                      withRemoveButton={!rolesReadonly}
                       removeButtonProps={{
                         onClick: () =>
                           form.setFieldValue(
@@ -122,7 +126,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                             form.values.roles.filter((item) => item.id !== role.id)
                           ),
                       }}
-                      disabled={readonly}
+                      disabled={rolesReadonly}
                     >
                       {role.name}
                     </Pill>
