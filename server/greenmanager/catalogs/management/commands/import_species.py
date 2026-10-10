@@ -72,7 +72,11 @@ class Command(BaseCommand):
                     created.add(entry.code)
                 if outcome != "unchanged":
                     changed.add(entry.code)
-            changed |= self.link_parents(rows, entries, created, update)
+            linked = self.link_parents(rows, entries, created, update)
+            # An entry whose only change is the parent is updated too.
+            counts["unchanged"] -= len(linked - changed)
+            counts["updated"] += len(linked - changed)
+            changed |= linked
             self.check_hierarchy(entries, changed)
             if dry_run:
                 transaction.set_rollback(True)
@@ -90,7 +94,12 @@ class Command(BaseCommand):
         if not code or not (row.get("scientific_name") or "").strip():
             raise CommandError(f"Line {line}: code and scientific_name are required.")
 
-        entry = Species.objects.system().filter(code=code).first()
+        existing = Species.objects.system().filter(code=code)
+        if update:
+            # Locked before the name, as in services.update_entry: a concurrent
+            # change from the API is not overwritten with stale values.
+            existing = existing.select_for_update()
+        entry = existing.first()
         if entry is not None and not update:
             return entry, "unchanged"
         created = entry is None

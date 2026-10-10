@@ -8,7 +8,9 @@ from core.models import system_entry_id
 from core.testing import make_tenant, make_user
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 FIELDS = (
     "code",
@@ -134,6 +136,28 @@ class ImportSpeciesTests(TestCase):
 
         entry = Species.objects.get(code="tilia-greenspire")
         self.assertEqual((entry.rank, entry.parent.code), ("species", "tilia"))
+
+    def test_update_locks_the_existing_entries(self):
+        self.run_command(self.write_csv(self.rows()))
+
+        with CaptureQueriesContext(connection) as queries:
+            self.run_command(self.write_csv(self.rows()), "--update")
+
+        locking = [
+            query["sql"]
+            for query in queries.captured_queries
+            if "FOR UPDATE" in query["sql"] and '"catalogs_species"' in query["sql"]
+        ]
+        self.assertEqual(len(locking), 2)
+
+    def test_parent_only_changes_are_counted_as_updates(self):
+        self.run_command(self.write_csv(self.rows()))
+        rows = self.rows()
+        rows[0]["parent_code"] = ""
+
+        output = self.run_command(self.write_csv(rows), "--update")
+
+        self.assertIn("0 created, 1 updated, 1 unchanged", output)
 
     def test_existing_entries_get_no_parent_without_update(self):
         rows = self.rows()
