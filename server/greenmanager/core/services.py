@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.contrib.gis.geos import GEOSGeometry
+from rest_framework.exceptions import NotFound
 
+from .errors import error_payload
 from .models import TRACKING_FIELDS, ChangeRecord
 
 CHANGE_SOURCE_HEADER = "HTTP_X_CHANGE_SOURCE"
@@ -27,6 +29,20 @@ class ChangeContext:
     @property
     def is_staff(self):
         return bool(getattr(self.actor, "is_staff", False))
+
+
+def lock_for_change(queryset, pk):
+    """
+    The record ``pk`` of ``queryset``, locked until the end of the transaction.
+
+    ``queryset`` gives the scope of the change (e.g. ``editable_by(org)``), which
+    is checked again under the lock: a record moved out of scope after the view
+    found it is not found (404). Only the record is locked, not the joined ones.
+    """
+    instance = queryset.select_for_update(of=("self",)).filter(pk=pk).first()
+    if instance is None:
+        raise NotFound(error_payload("not_found", "Not found."))
+    return instance
 
 
 def change_source(request):

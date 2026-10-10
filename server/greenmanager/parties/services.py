@@ -2,7 +2,7 @@
 
 from core.errors import api_error, check_revision, permission_error, validate_model
 from core.models import ChangeRecord
-from core.services import record_change, snapshot, stamp
+from core.services import lock_for_change, record_change, snapshot, stamp
 from django.db import transaction
 from django.db.models.deletion import ProtectedError, RestrictedError
 
@@ -53,9 +53,14 @@ def create_client(data, context):
     return commit_client(client, context)
 
 
+def lock_client(client, context):
+    """The client, locked, if the organization of the change can still edit it."""
+    return lock_for_change(Client.objects.editable_by(context.organization), client.pk)
+
+
 @transaction.atomic
 def update_client(client, data, context, expected_revision=None):
-    client = Client.objects.select_for_update().get(pk=client.pk)
+    client = lock_client(client, context)
     check_revision(client, expected_revision)
     before = snapshot(client)
     for field, value in data.items():
@@ -67,6 +72,7 @@ def update_client(client, data, context, expected_revision=None):
 @transaction.atomic
 def delete_client(client, context):
     """Delete a client entered by mistake: one with data is deactivated instead."""
+    client = lock_client(client, context)
     client_id = client.pk
     before = snapshot(client)
     try:

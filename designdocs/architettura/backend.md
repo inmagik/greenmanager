@@ -435,11 +435,11 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 | Modulo | Contenuto |
 |---|---|
 | `models.py` | `UUIDModel`; `TrackedModel` con `created_at`, `created_by`, `updated_at`, `updated_by`, `revision` (D-042); `ChangeRecord`; `system_entry_id(modello, codice)`, la chiave deterministica delle voci di sistema |
-| `services.py` | `ChangeContext` (autore, organizzazione, origine); `change_source(request)`, che legge l'header `X-Change-Source` (`web` o `field`); `stamp`, l'autore della modifica; `snapshot`, i valori di un record in JSON (geometrie in GeoJSON); `record_change`, che scrive il `ChangeRecord` |
+| `services.py` | `ChangeContext` (autore, organizzazione, origine); `change_source(request)`, che legge l'header `X-Change-Source` (`web` o `field`); `stamp`, l'autore della modifica; `snapshot`, i valori di un record in JSON (geometrie in GeoJSON); `record_change`, che scrive il `ChangeRecord`; `lock_for_change(queryset, pk)`, che blocca il record dentro il suo ambito (es. `editable_by(org)`) |
 | `errors.py` | `api_error` e `permission_error`, errori con codice; `validate_model`, il `full_clean()` del record con gli errori nella forma dell'API; `check_revision`, il controllo della revisione (`409 revision_conflict`) |
 | `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision` |
 | `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.6); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view |
-| `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
+| `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi. Una modifica blocca il record e controlla che la revisione sia quella con cui si è aperto il form; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
 | `audit.py` | `register_audit`: registra un modello in django-auditlog senza i campi di tracciamento |
 | `permissions.py` | `any_permission(*codici)`: classe di permesso soddisfatta da uno dei codici |
 | `testing.py` | `make_tenant`, `make_user` (membro con un ruolo che dà i permessi), `tenant_header` |
@@ -449,7 +449,7 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - **La view** valida tipi e formati con il serializer e chiama il servizio con i dati validati e il `ChangeContext` della richiesta. Il serializer non salva.
 - **Il servizio**:
-  1. blocca il record (`select_for_update`) e controlla la revisione;
+  1. blocca il record con `lock_for_change`, rileggendolo nel suo ambito (`editable_by` dell'organizzazione della richiesta), e controlla la revisione. Un record uscito dall'ambito dopo la lettura della view dà `404`;
   2. applica i valori e ricava i derivati;
   3. controlla le regole di dominio e il modello (`validate_model`);
   4. salva con l'autore (`stamp`) e scrive il `ChangeRecord`, nella stessa transazione.

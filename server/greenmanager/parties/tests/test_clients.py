@@ -1,6 +1,10 @@
 from core.models import ChangeRecord
+from core.services import ChangeContext
 from core.testing import make_tenant, make_user, tenant_header
+from django.test import TestCase
+from parties import services
 from parties.models import Client
+from rest_framework.exceptions import NotFound
 from rest_framework.test import APITestCase
 
 READ = "parties.READ_CLIENTS"
@@ -220,3 +224,70 @@ class ClientAdminTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Client.objects.exists())
+
+    def test_admin_refuses_a_stale_revision(self):
+        org = make_tenant("Org")
+        staff = make_user("admin@example.com", org, is_staff=True, is_superuser=True)
+        client = Client.objects.create(
+            name="Comune", kind="public_body", managing_organization=org
+        )
+        self.client.force_login(staff)
+        url = f"/admin/parties/client/{client.pk}/change/"
+        form = self.client.get(url).context["adminform"].form
+        opened_with = form.fields["expected_revision"].initial
+        # Someone else changes the client after the form was opened.
+        services.update_client(
+            client, {"notes": "Altro"}, ChangeContext(actor=staff, organization=org)
+        )
+        data = {
+            "name": "Comune di Prova",
+            "kind": "public_body",
+            "istat_code": "",
+            "tax_code": "",
+            "managing_organization": org.pk,
+            "contacts": "",
+            "cam_export_srid": "",
+            "active": "on",
+            "notes": "Altro",
+            "expected_revision": opened_with,
+        }
+
+        stale = self.client.post(url, data)
+        current = self.client.post(url, {**data, "expected_revision": 2})
+
+        self.assertEqual(opened_with, 1)
+        self.assertEqual(stale.status_code, 200)
+        self.assertIn(
+            "The record was changed by someone else in the meantime.",
+            stale.context["adminform"].form.non_field_errors(),
+        )
+        self.assertEqual(current.status_code, 302)
+        client.refresh_from_db()
+        self.assertEqual(client.name, "Comune di Prova")
+        self.assertEqual(client.revision, 3)
+
+
+class ClientScopeUnderLockTests(TestCase):
+    """The organization of a change is checked again under the lock."""
+
+    def setUp(self):
+        self.org = make_tenant("Org")
+        self.other = make_tenant("Other")
+        self.user = make_user("manager@example.com", self.org)
+        self.context = ChangeContext(actor=self.user, organization=self.org)
+        self.client_record = Client.objects.create(
+            name="Comune", kind="public_body", managing_organization=self.org
+        )
+        # Meanwhile staff moves the client to another organization.
+        Client.objects.filter(pk=self.client_record.pk).update(
+            managing_organization=self.other
+        )
+
+    def test_update_of_a_client_moved_away(self):
+        with self.assertRaises(NotFound):
+            services.update_client(self.client_record, {"notes": "x"}, self.context)
+
+    def test_delete_of_a_client_moved_away(self):
+        with self.assertRaises(NotFound):
+            services.delete_client(self.client_record, self.context)
+        self.assertTrue(Client.objects.filter(pk=self.client_record.pk).exists())

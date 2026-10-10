@@ -1,9 +1,13 @@
+from django import forms
 from django.contrib import admin
 from django.core.exceptions import NON_FIELD_ERRORS
 from rest_framework.exceptions import APIException
 
+from .errors import check_revision
 from .models import ChangeRecord
 from .services import ChangeContext, snapshot
+
+EXPECTED_REVISION = "expected_revision"
 
 
 @admin.register(ChangeRecord)
@@ -63,6 +67,10 @@ class ServiceAdminMixin:
     rules as the API: the form shows the errors of the rules, saving and deleting
     call the services.
 
+    A change locks the stored record until the end of the request (the admin
+    saves in a transaction) and, for the models with a revision, checks that it
+    is still the one the form was opened with (``revision_conflict``).
+
     The subclass implements, with ``stored`` the record as saved (``None`` for a
     new one):
     - ``prepare(request, obj, stored)``: rules and derived values, without saving;
@@ -80,33 +88,60 @@ class ServiceAdminMixin:
     def remove(self, request, obj):
         raise NotImplementedError
 
-    def stored_instance(self, obj):
+    def lock_stored(self, obj):
+        """The record as saved, locked; ``None`` for a new record."""
         if obj is None or obj._state.adding:
             return None
-        return type(obj)._default_manager.get(pk=obj.pk)
+        return type(obj)._default_manager.select_for_update().get(pk=obj.pk)
 
     def get_form(self, request, obj=None, **kwargs):
+        # The revision field belongs to the form below, not to the model.
+        if kwargs.get("fields"):
+            kwargs["fields"] = [
+                field for field in kwargs["fields"] if field != EXPECTED_REVISION
+            ]
         form_class = super().get_form(request, obj, **kwargs)
         model_admin = self
+        has_revision = any(
+            field.name == "revision" for field in self.model._meta.concrete_fields
+        )
 
         class ServiceValidatedForm(form_class):
+            if has_revision:
+                # The revision the form was opened with.
+                expected_revision = forms.IntegerField(
+                    required=False, widget=forms.HiddenInput
+                )
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                if has_revision and not self.instance._state.adding:
+                    self.fields[EXPECTED_REVISION].initial = self.instance.revision
+
             def _post_clean(self):
                 super()._post_clean()
+                self.stored = None
                 if self._errors:
                     return
                 try:
-                    model_admin.prepare(
-                        request,
-                        self.instance,
-                        model_admin.stored_instance(self.instance),
-                    )
+                    self.stored = model_admin.lock_stored(self.instance)
+                    if has_revision and self.stored is not None:
+                        check_revision(
+                            self.stored, self.cleaned_data.get(EXPECTED_REVISION)
+                        )
+                        # The save counts from the locked revision.
+                        self.instance.revision = self.stored.revision
+                    model_admin.prepare(request, self.instance, self.stored)
                 except APIException as exc:
                     add_api_errors(self, exc)
 
         return ServiceValidatedForm
 
     def save_model(self, request, obj, form, change):
-        self.commit(request, obj, self.stored_instance(obj))
+        stored = getattr(form, "stored", None)
+        if change and stored is None:
+            stored = self.lock_stored(obj)
+        self.commit(request, obj, stored)
 
     def delete_model(self, request, obj):
         self.remove(request, obj)
