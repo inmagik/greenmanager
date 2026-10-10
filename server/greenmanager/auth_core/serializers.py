@@ -12,8 +12,9 @@ ROLE_WRITE_PERMISSION = "auth_core.WRITE_ROLES"
 # Fields of the account that hold for every tenant of the user: only staff users
 # change them for users shared with other tenants. The email matters most: who
 # changes it can recover the password and use the account in the other tenants.
-# The direct permissions too hold in every tenant (see tenant_permissions).
-SHARED_ACCOUNT_FIELDS = ("email", "is_active", "permissions")
+# The direct permissions too hold in every tenant (see tenant_permissions): only
+# staff users change them, for every user (validate_direct_permissions).
+SHARED_ACCOUNT_FIELDS = ("email", "is_active")
 
 USER_STATUSES = ("active", "inactive", "locked")
 
@@ -214,13 +215,36 @@ class UserSerializer(serializers.ModelSerializer):
                     f"{ROLE_WRITE_PERMISSION}.",
                 }
             )
+        self.validate_direct_permissions(attrs)
         return attrs
+
+    def validate_direct_permissions(self, attrs):
+        """
+        The direct permissions hold in every tenant of the user: only staff users
+        change them. Inside an organization the permissions come from its roles.
+        """
+        if "permissions" not in attrs:
+            return
+        current = self.instance.permissions if self.instance is not None else []
+        if same_value(attrs["permissions"], current):
+            return
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is not None and (user.is_staff or user.is_superuser):
+            return
+        raise api_error(
+            {
+                "code": "direct_permissions_staff_only",
+                "detail": "Only staff users change the direct permissions.",
+            },
+            field="permissions",
+        )
 
     def validate_shared_account(self, attrs):
         """
-        Email, activation and direct permissions hold for every tenant of the user
-        (see ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users
-        shared with other tenants. Nobody deactivates their own account.
+        Email and activation hold for every tenant of the user (see
+        ``SHARED_ACCOUNT_FIELDS``): only staff users change them for users shared
+        with other tenants. Nobody deactivates their own account.
         """
         instance = self.instance
         if instance is None:

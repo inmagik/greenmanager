@@ -15,6 +15,7 @@ import { PickRolesForm } from "./PickRolesForm"
 import { CheckPermission } from "@/components/CheckPermission"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { useTranslation } from "react-i18next"
+import { useAuth } from "@/auth/auth"
 
 type Form = {
   permissions: string[]
@@ -30,6 +31,9 @@ type Props = {
 
 export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubmit }: Props) {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  // The direct permissions hold in every organization of the user: only staff users change them.
+  const canChangeDirectPermissions = !!(user?.is_staff || user?.is_superuser)
   const [isLoading, setIsLoading] = useState(false)
 
   // Local data
@@ -131,6 +135,11 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
             <Group justify="space-between">
               <Text size="md">{t("roles.fields.permissions")}</Text>
             </Group>
+            {!canChangeDirectPermissions && (
+              <Text size="sm" c="dimmed">
+                {t("roles.directPermissionsStaffOnly")}
+              </Text>
+            )}
             <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }}>
               {Object.entries(groupedPermissions).map(([module, permissions]) => (
                 <Box key={module} bg="gray.0" p="sm" bdrs="sm" bd="1px solid gray.2">
@@ -159,7 +168,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                             size="xs"
                             aria-label={permission.name}
                             checked={isActive}
-                            disabled={readonly || !!itComesFromRole}
+                            disabled={readonly || !!itComesFromRole || !canChangeDirectPermissions}
                             onChange={() => {
                               if (isActive) {
                                 form.setFieldValue(
