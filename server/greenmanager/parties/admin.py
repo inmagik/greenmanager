@@ -16,11 +16,11 @@ class ClientAdmin(ServiceBackedAdminMixin, admin.ModelAdmin):
     def get_change_organization(self, obj):
         return obj.managing_organization
 
-    def prepare(self, obj, context, before):
+    def prepare_change(self, obj, context, before):
         services.prepare_client(obj, context, before)
 
-    def commit(self, obj, context, before):
+    def commit_change(self, obj, context, before):
         services.commit_client(obj, context, before)
 
-    def remove(self, obj, context):
+    def remove_change(self, obj, context):
         services.delete_client(obj, context)

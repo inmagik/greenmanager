@@ -439,7 +439,7 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 | `errors.py` | `api_error` e `permission_error`, errori con codice; `validate_model`, il `full_clean()` del record con gli errori nella forma dell'API; `check_revision`, il controllo della revisione (`409 revision_conflict`) |
 | `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision` |
 | `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.6); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view |
-| `admin.py` | `ChangeRecord` in sola lettura; `ServiceBackedAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori del servizio, il salvataggio scrive il `ChangeRecord` con origine `system` |
+| `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
 | `audit.py` | `register_audit`: registra un modello in django-auditlog senza i campi di tracciamento |
 | `permissions.py` | `any_permission(*codici)`: classe di permesso soddisfatta da uno dei codici |
 | `testing.py` | `make_tenant`, `make_user` (membro con un ruolo che dà i permessi), `tenant_header` |
@@ -453,7 +453,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
   2. applica i valori e ricava i derivati;
   3. controlla le regole di dominio e il modello (`validate_model`);
   4. salva con l'autore (`stamp`) e scrive il `ChangeRecord`, nella stessa transazione.
-  I passi 2–3 e 4 sono funzioni separate (`prepare_*` e `commit_*`), così l'admin usa le stesse regole.
+  I passi 2–3 e 4 sono funzioni separate (`prepare_*` e `commit_*`), così l'admin usa le stesse regole (`ServiceAdminMixin`).
 - Gli errori sono quelli di DRF con codice (§4.3). Per gli errori del modello, `validate_model` conserva codice e parametri: i vincoli hanno `violation_error_code`, e `constraint_error_fields` del modello li sposta sul campo giusto (es. `catalog_code_not_unique` su `code`).
 - I validatori dei campi del modello che hanno un codice proprio non girano nel serializer (`"validators": []` negli `extra_kwargs`): DRF restituirebbe solo il messaggio.
 - I modelli con `TrackedModel` non si aggiornano con `QuerySet.update()`, che salterebbe revisione, autore e storico.
@@ -474,11 +474,13 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - Lista, dettaglio, scrittura, `history/` e `choices/` (solo voci disponibili); `hide/` e `unhide/` sui cataloghi estendibili.
 - Filtri: `available`, `retired`, `hidden`, `scope` (`system` o `organization`), più quelli del catalogo (es. `rank` per le specie, `category` per le classi).
 - Una voce si crea per l'organizzazione della richiesta; lo staff crea voci di sistema con `is_system: true`.
-- `ElementClass` scrive i suoi attributi in `class_attributes`, che sostituisce l'elenco.
+- `ElementClass` scrive i suoi attributi in `class_attributes`, che sostituisce l'elenco. Un attributo nuovo deve essere disponibile per l'organizzazione della classe; uno già presente resta anche se nascosto o ritirato.
+- L'admin cambia le voci con gli stessi servizi (`prepare_entry`, `commit_entry`), anche gli attributi delle classi nell'inline.
 
 **Regole** (D-046), in `services.py`:
 - voci di sistema solo dallo staff; codice delle voci di sistema immutabile;
 - nessuna cancellazione di voci in uso;
+- una voce non passa tra il sistema e un'organizzazione (`catalog_scope_immutable`); nei cataloghi senza voci dell'organizzazione, come gli attributi nell'MVP, l'errore è `organization_entries_not_allowed`;
 - campi bloccati quando la voce è in uso (`locked_when_in_use`);
 - per i dati di un committente, `check_available(voce, organizzazione di gestione)`. Il valore già salvato resta valido anche se poi la voce è nascosta o ritirata;
 - per le specie: nome uguale al nome scientifico, genere ricavato dal nome. Il nome scientifico è univoco tra le voci disponibili: una voce propria non ripete una voce di sistema disponibile.
@@ -515,7 +517,9 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 Vedi D-043.
 - I modelli di dominio si registrano in django-auditlog con `register_audit`, in fondo a `models.py`. La modale dello storico del frontend legge l'action `history`.
-- `ChangeRecord` registra i dati operativi (oggi il committente; poi zone, aree, elementi), non i cataloghi. È immutabile: `save()` su un record esistente e `delete()` sollevano un errore.
+- `ChangeRecord` registra i dati operativi (oggi il committente; poi zone, aree, elementi), non i cataloghi. È immutabile:
+  - nell'ORM, `save()` su un record esistente, `delete()` e le operazioni in blocco del QuerySet (`update()`, `delete()`) sollevano un errore;
+  - nel database, un trigger rifiuta `UPDATE` e `DELETE` da qualunque client (migrazione `core.0002`). Passa solo l'autore messo a `NULL` quando si cancella l'utente: il nome resta in `author_label`.
 - `record_change` salta le modifiche senza differenze. Una cancellazione scrive un *annullamento* con gli ultimi valori.
 
 ## Domande aperte

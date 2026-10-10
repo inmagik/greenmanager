@@ -9,6 +9,8 @@ Rules of the catalogs (§2.2 of 04-modello-dati.md, D-016, D-027).
   retired (``check_available``).
 """
 
+import copy
+
 from core.errors import api_error, check_revision, permission_error, validate_model
 from core.services import stamp
 from django.db import router, transaction
@@ -116,20 +118,63 @@ def validate_references(entry):
                 )
 
 
-def check_locked_fields(entry, data):
-    """Fields that cannot change once the entry is in use (e.g. the geometry of
-    a class with elements)."""
+def check_changes(entry, stored):
+    """Rules of a change to a stored entry."""
+    if stored.organization_id != entry.organization_id:
+        raise api_error(
+            "catalog_scope_immutable",
+            "An entry cannot move between the system and an organization.",
+            field="organization",
+        )
+    if stored.is_system and entry.code != stored.code:
+        raise api_error(
+            "catalog_code_immutable",
+            "The code of a system entry cannot change.",
+            field="code",
+        )
+    # Fields that cannot change once the entry is in use (e.g. the geometry of a
+    # class with elements).
     changed = [
         field
         for field in entry.locked_when_in_use
-        if field in data and data[field] != getattr(entry, field)
+        if getattr(entry, field) != getattr(stored, field)
     ]
-    if changed and is_in_use(entry):
+    if changed and is_in_use(stored):
         raise api_error(
             "catalog_entry_in_use_locked",
             "The field cannot change: the entry is in use.",
             field=changed[0],
         )
+
+
+def prepare_entry(entry, *, user, stored=None):
+    """
+    Rules and derived values of an entry, before saving; ``stored`` is the entry
+    as saved, ``None`` for a new one. The API and the admin both use it.
+    """
+    if entry.is_system or (stored is not None and stored.is_system):
+        require_system_manager(user)
+    if (
+        entry.is_extensible
+        and not entry.is_system
+        and not type(entry).organization_entries_allowed
+    ):
+        raise permission_error(
+            "organization_entries_not_allowed",
+            "The organizations do not add entries to this catalog.",
+        )
+    if stored is not None:
+        check_changes(entry, stored)
+    normalize(entry)
+    validate_model(entry)
+    validate_references(entry)
+
+
+def commit_entry(entry, *, user):
+    """Save a prepared entry."""
+    stamp(entry, user)
+    entry.save()
+    return entry
 
 
 @transaction.atomic
@@ -149,11 +194,8 @@ def create_entry(model, data, *, user, organization):
     entry = model(**data)
     if model.is_extensible:
         entry.organization = None if is_system else organization
-    normalize(entry)
-    stamp(entry, user)
-    validate_model(entry)
-    validate_references(entry)
-    entry.save()
+    prepare_entry(entry, user=user)
+    commit_entry(entry, user=user)
     if class_attributes is not None:
         set_class_attributes(entry, class_attributes, user=user)
     return entry
@@ -163,26 +205,14 @@ def create_entry(model, data, *, user, organization):
 def update_entry(entry, data, *, user, expected_revision=None):
     entry = type(entry)._default_manager.select_for_update().get(pk=entry.pk)
     check_revision(entry, expected_revision)
-    if entry.is_system:
-        require_system_manager(user)
+    stored = copy.copy(entry)
     data = dict(data)
     data.pop("is_system", None)
     class_attributes = data.pop("class_attributes", None)
-    if entry.is_system and "code" in data and data["code"] != entry.code:
-        raise api_error(
-            "catalog_code_immutable",
-            "The code of a system entry cannot change.",
-            field="code",
-        )
-    check_locked_fields(entry, data)
-
     for field, value in data.items():
         setattr(entry, field, value)
-    normalize(entry)
-    stamp(entry, user)
-    validate_model(entry)
-    validate_references(entry)
-    entry.save()
+    prepare_entry(entry, user=user, stored=stored)
+    commit_entry(entry, user=user)
     if class_attributes is not None:
         set_class_attributes(entry, class_attributes, user=user)
     return entry
@@ -228,11 +258,23 @@ def unhide_entry(entry, organization):
     entry.hidden_by.remove(organization)
 
 
+def check_class_attribute(element_class, attribute, *, field="class_attributes"):
+    """A new attribute of a class must be available to the organization of the
+    class. An attribute already in the class stays even if hidden or retired."""
+    available = AttributeDefinition.objects.available_for(element_class.organization)
+    if not available.filter(pk=attribute.pk).exists():
+        raise api_error(
+            "catalog_entry_not_available",
+            "The attribute is not available.",
+            {"name": attribute.name},
+            field=field,
+        )
+
+
 def set_class_attributes(element_class, items, *, user):
     """Replace the attributes of a class with ``items``.
 
     Each item has ``attribute`` and optionally ``required`` and ``sort_order``.
-    The attributes must be visible to the organization of the class.
     """
     attributes = [item["attribute"] for item in items]
     if len({attribute.pk for attribute in attributes}) != len(attributes):
@@ -241,25 +283,16 @@ def set_class_attributes(element_class, items, *, user):
             "The attribute is already in the class.",
             field="class_attributes",
         )
-    visible = AttributeDefinition.objects.visible_to(element_class.organization)
-    visible_ids = set(
-        visible.filter(pk__in=[a.pk for a in attributes]).values_list("pk", flat=True)
-    )
-    for attribute in attributes:
-        if attribute.pk not in visible_ids:
-            raise api_error(
-                "catalog_entry_not_available",
-                "The attribute is not available.",
-                {"name": attribute.name},
-                field="class_attributes",
-            )
-
     links = {
         link.attribute_id: link
         for link in ElementClassAttribute.objects.select_for_update().filter(
             element_class=element_class
         )
     }
+    for attribute in attributes:
+        if attribute.pk not in links:
+            check_class_attribute(element_class, attribute)
+
     selected = {attribute.pk for attribute in attributes}
     for attribute_id, link in links.items():
         if attribute_id not in selected:

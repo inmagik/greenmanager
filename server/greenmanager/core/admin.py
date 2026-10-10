@@ -50,42 +50,40 @@ def api_error_messages(detail):
     return {NON_FIELD_ERRORS: flatten(detail)}
 
 
-class ServiceBackedAdminMixin:
-    """
-    Admin of a domain model whose changes go through the domain services, so that
-    they also write the ChangeRecord (source ``system``) and the derived values.
+def add_api_errors(form, exc):
+    """Show the errors of an API exception on a Django form."""
+    for field, messages in api_error_messages(exc.detail).items():
+        for message in messages:
+            form.add_error(field if field in form.fields else None, message)
 
-    The subclass implements:
-    - ``get_change_organization(obj)``: organization the change is made for;
-    - ``prepare(obj, context, before)``: rules and derived values, without saving;
+
+class ServiceAdminMixin:
+    """
+    Admin of a domain model whose changes go through its services, with the same
+    rules as the API: the form shows the errors of the rules, saving and deleting
+    call the services.
+
+    The subclass implements, with ``stored`` the record as saved (``None`` for a
+    new one):
+    - ``prepare(request, obj, stored)``: rules and derived values, without saving;
       it raises the API errors, which the form shows;
-    - ``commit(obj, context, before)``: saves the prepared record and its history;
-    - ``remove(obj, context)``: deletes the record.
+    - ``commit(request, obj, stored)``: saves the prepared record;
+    - ``remove(request, obj)``: deletes the record.
     """
 
-    def get_change_organization(self, obj):
+    def prepare(self, request, obj, stored):
         raise NotImplementedError
 
-    def prepare(self, obj, context, before):
+    def commit(self, request, obj, stored):
         raise NotImplementedError
 
-    def commit(self, obj, context, before):
+    def remove(self, request, obj):
         raise NotImplementedError
 
-    def remove(self, obj, context):
-        raise NotImplementedError
-
-    def admin_change_context(self, request, obj):
-        return ChangeContext(
-            actor=request.user,
-            organization=self.get_change_organization(obj),
-            source=ChangeRecord.Source.SYSTEM,
-        )
-
-    def stored_snapshot(self, obj):
+    def stored_instance(self, obj):
         if obj is None or obj._state.adding:
             return None
-        return snapshot(type(obj)._default_manager.get(pk=obj.pk))
+        return type(obj)._default_manager.get(pk=obj.pk)
 
     def get_form(self, request, obj=None, **kwargs):
         form_class = super().get_form(request, obj, **kwargs)
@@ -98,27 +96,68 @@ class ServiceBackedAdminMixin:
                     return
                 try:
                     model_admin.prepare(
+                        request,
                         self.instance,
-                        model_admin.admin_change_context(request, self.instance),
-                        model_admin.stored_snapshot(self.instance),
+                        model_admin.stored_instance(self.instance),
                     )
                 except APIException as exc:
-                    for field, messages in api_error_messages(exc.detail).items():
-                        for message in messages:
-                            self.add_error(
-                                field if field in self.fields else None, message
-                            )
+                    add_api_errors(self, exc)
 
         return ServiceValidatedForm
 
     def save_model(self, request, obj, form, change):
-        self.commit(
-            obj, self.admin_change_context(request, obj), self.stored_snapshot(obj)
-        )
+        self.commit(request, obj, self.stored_instance(obj))
 
     def delete_model(self, request, obj):
-        self.remove(obj, self.admin_change_context(request, obj))
+        self.remove(request, obj)
 
     def delete_queryset(self, request, queryset):
         for obj in queryset:
             self.delete_model(request, obj)
+
+
+class ServiceBackedAdminMixin(ServiceAdminMixin):
+    """
+    Admin of the operational data: the services also write the ChangeRecord, with
+    source ``system`` and the organization of ``get_change_organization(obj)``.
+
+    The subclass implements ``prepare_change(obj, context, before)``,
+    ``commit_change(obj, context, before)`` and ``remove_change(obj, context)``,
+    with ``before`` the snapshot of the stored record.
+    """
+
+    def get_change_organization(self, obj):
+        raise NotImplementedError
+
+    def prepare_change(self, obj, context, before):
+        raise NotImplementedError
+
+    def commit_change(self, obj, context, before):
+        raise NotImplementedError
+
+    def remove_change(self, obj, context):
+        raise NotImplementedError
+
+    def admin_change_context(self, request, obj):
+        return ChangeContext(
+            actor=request.user,
+            organization=self.get_change_organization(obj),
+            source=ChangeRecord.Source.SYSTEM,
+        )
+
+    def prepare(self, request, obj, stored):
+        self.prepare_change(
+            obj,
+            self.admin_change_context(request, obj),
+            snapshot(stored) if stored is not None else None,
+        )
+
+    def commit(self, request, obj, stored):
+        self.commit_change(
+            obj,
+            self.admin_change_context(request, obj),
+            snapshot(stored) if stored is not None else None,
+        )
+
+    def remove(self, request, obj):
+        self.remove_change(obj, self.admin_change_context(request, obj))

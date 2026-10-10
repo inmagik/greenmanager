@@ -436,7 +436,8 @@ Stati possibili:
   - django-auditlog registra le modifiche di tutti i modelli di dominio, per il tracciamento tecnico e la modale dello storico dei record (action `history`). I campi di tracciamento ne restano fuori;
   - `ChangeRecord`, nell'app `core`, è lo storico di dominio dei dati operativi (D-034). Lo scrivono i servizi di dominio, nella transazione della modifica: entità, record, committente, operazione (creazione, modifica, annullamento), campi cambiati con valore precedente e nuovo, motivazione, autore, organizzazione, data, origine (web, campo, import, sincronizzazione, sistema);
   - l'origine `field` la dichiara il frontend con l'header `X-Change-Source`; le modifiche dall'admin hanno origine `system`;
-  - il committente di `ChangeRecord` è un identificativo, non una chiave esterna: lo storico sopravvive ai record e `core` non dipende dalle app di dominio. Un record cancellato perché inserito per errore lascia un *annullamento* con i suoi ultimi valori.
+  - il committente di `ChangeRecord` è un identificativo, non una chiave esterna: lo storico sopravvive ai record e `core` non dipende dalle app di dominio. Un record cancellato perché inserito per errore lascia un *annullamento* con i suoi ultimi valori;
+  - lo storico non si modifica né si cancella, anche fuori dall'ORM: un trigger del database rifiuta `UPDATE` e `DELETE`, tranne l'autore messo a `NULL` quando si cancella l'utente.
 - **Motivazione**: chiude la domanda 3 di [architettura/backend.md](architettura/backend.md). Motivazione, origine e approvazione (v2) sono dati di dominio, che il committente consulta (CE-4). django-auditlog resta il registro tecnico, già usato dallo scaffold e dal frontend.
 - **Alternative scartate**: estendere le voci di django-auditlog con dati aggiuntivi; solo django-auditlog, con `ChangeRecord` rinviato ai registri.
 
@@ -465,9 +466,10 @@ Stati possibili:
 
 - **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
 - **Decisione**:
-  - le voci di sistema le crea, modifica ed elimina solo lo staff (errore `system_entry_read_only`); il loro codice non cambia (`catalog_code_immutable`);
+  - le voci di sistema le crea, modifica ed elimina solo lo staff (errore `system_entry_read_only`); il loro codice non cambia (`catalog_code_immutable`). Le stesse regole valgono nell'admin, che salva con i servizi;
   - un'organizzazione nasconde e mostra le voci di sistema con le action `hide/` e `unhide/`; una voce in uso non si elimina (`catalog_entry_in_use`), si ritira;
   - alcuni campi non cambiano quando la voce è in uso: tipo di geometria e modalità della specie di una classe, tipo di un attributo;
+  - a una classe si aggiungono solo attributi disponibili per la sua organizzazione; quelli già presenti restano anche se poi vengono nascosti o ritirati;
   - i cataloghi fissi hanno `retired` ma non `organization` né `hidden_by`: una fonte ufficiale può togliere una voce, e una classificazione obbligatoria non si nasconde;
   - il codice di una voce, se manca, si ricava dal nome. Il nome di una specie è il suo nome scientifico;
   - nell'MVP gli attributi sono solo voci di sistema (EL-4 è in v2);

@@ -75,6 +75,17 @@ class TrackedModel(UUIDModel):
         super().save(*args, **kwargs)
 
 
+class ChangeRecordQuerySet(models.QuerySet):
+    """The history is not changed or deleted in bulk either. A trigger in the
+    database enforces it for every writer (migration 0002)."""
+
+    def update(self, **kwargs):
+        raise ValueError("The history of the changes cannot be changed.")
+
+    def delete(self):
+        raise ValueError("The history of the changes cannot be deleted.")
+
+
 class ChangeRecord(UUIDModel):
     """
     Domain history of the operational data (TR-6, CE-4; D-034).
@@ -122,6 +133,8 @@ class ChangeRecord(UUIDModel):
     )
     recorded_at = models.DateTimeField("registrata il", default=timezone.now)
     source = models.CharField("origine", max_length=20, choices=Source.choices)
+
+    objects = ChangeRecordQuerySet.as_manager()
 
     class Meta:
         verbose_name = "modifica"

@@ -423,6 +423,50 @@ class ElementClassApiTests(APITestCase):
             ["irrigated"],
         )
 
+    def test_only_available_attributes_are_added(self):
+        element_class = ElementClass.objects.create(
+            code="kiosk",
+            name="Chiosco",
+            category="furniture",
+            geometry_type="point",
+            quantity_unit="count",
+            species_mode="none",
+            organization=self.org,
+        )
+        ElementClassAttribute.objects.create(
+            element_class=element_class, attribute=self.material
+        )
+        self.material.retired = True
+        self.material.save()
+        self.irrigated.hidden_by.add(self.org)
+        self.client.force_authenticate(self.writer)
+        url = f"/api/catalogs/element-classes/{element_class.pk}/"
+
+        hidden = self.client.patch(
+            url,
+            {
+                "class_attributes": [
+                    {"attribute": str(self.material.pk)},
+                    {"attribute": str(self.irrigated.pk)},
+                ]
+            },
+            format="json",
+            **self.header,
+        )
+        kept = self.client.patch(
+            url,
+            {"class_attributes": [{"attribute": str(self.material.pk)}]},
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(hidden.status_code, 400, hidden.content)
+        self.assertEqual(
+            hidden.data["class_attributes"]["code"], "catalog_entry_not_available"
+        )
+        # The retired attribute already in the class stays.
+        self.assertEqual(kept.status_code, 200, kept.content)
+
     def test_attributes_are_system_entries_in_the_mvp(self):
         self.client.force_authenticate(self.writer)
 
@@ -464,3 +508,111 @@ class ElementClassApiTests(APITestCase):
         self.assertEqual(
             response.data["choices"][0]["code"], "attribute_choices_required"
         )
+
+
+class CatalogAdminTests(TestCase):
+    """The admin changes the entries with the rules of the services (D-046)."""
+
+    def setUp(self):
+        self.org = make_tenant("Org")
+        self.staff = make_user(
+            "admin@example.com", self.org, is_staff=True, is_superuser=True
+        )
+        self.client.force_login(self.staff)
+        self.playground = AreaUse.objects.get(code="playground", organization=None)
+
+    def entry_data(self, entry, **changes):
+        data = {
+            "code": entry.code,
+            "name": entry.name,
+            "description": entry.description,
+            "sort_order": entry.sort_order,
+            "source": entry.source,
+            "organization": entry.organization_id or "",
+        }
+        if entry.retired:
+            data["retired"] = "on"
+        return {**data, **changes}
+
+    def test_code_of_a_system_entry_does_not_change(self):
+        response = self.client.post(
+            f"/admin/catalogs/areause/{self.playground.pk}/change/",
+            self.entry_data(self.playground, code="games"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("code", response.context["adminform"].form.errors)
+        self.playground.refresh_from_db()
+        self.assertEqual(self.playground.code, "playground")
+
+    def test_changes_are_stamped(self):
+        response = self.client.post(
+            f"/admin/catalogs/areause/{self.playground.pk}/change/",
+            self.entry_data(self.playground, name="Area giochi"),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.playground.refresh_from_db()
+        self.assertEqual(self.playground.name, "Area giochi")
+        self.assertEqual(self.playground.updated_by, self.staff)
+        self.assertEqual(self.playground.revision, 2)
+
+    def test_attributes_of_an_organization_are_refused(self):
+        response = self.client.post(
+            "/admin/catalogs/attributedefinition/add/",
+            {
+                "code": "colour",
+                "name": "Colore",
+                "sort_order": 0,
+                "organization": self.org.pk,
+                "data_type": "text",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "The organizations do not add entries to this catalog.",
+            response.context["adminform"].form.non_field_errors(),
+        )
+        self.assertFalse(AttributeDefinition.objects.filter(code="colour").exists())
+
+    def test_retired_attributes_are_not_added_to_a_class(self):
+        lawn = ElementClass.objects.get(code="lawn", organization=None)
+        material = AttributeDefinition.objects.get(code="material")
+        material.retired = True
+        material.save()
+        links = list(lawn.class_attributes.all())
+        data = {
+            "code": lawn.code,
+            "name": lawn.name,
+            "sort_order": lawn.sort_order,
+            "category": lawn.category,
+            "geometry_type": lawn.geometry_type,
+            "quantity_unit": lawn.quantity_unit,
+            "species_mode": lawn.species_mode,
+            "class_attributes-TOTAL_FORMS": len(links) + 1,
+            "class_attributes-INITIAL_FORMS": len(links),
+            "class_attributes-MIN_NUM_FORMS": 0,
+            "class_attributes-MAX_NUM_FORMS": 1000,
+        }
+        for index, link in enumerate([*links, None]):
+            prefix = f"class_attributes-{index}"
+            data[f"{prefix}-element_class"] = lawn.pk
+            if link is None:
+                data[f"{prefix}-attribute"] = material.pk
+                data[f"{prefix}-sort_order"] = 99
+            else:
+                data[f"{prefix}-id"] = link.pk
+                data[f"{prefix}-attribute"] = link.attribute_id
+                data[f"{prefix}-sort_order"] = link.sort_order
+
+        response = self.client.post(
+            f"/admin/catalogs/elementclass/{lawn.pk}/change/", data
+        )
+
+        self.assertEqual(response.status_code, 200)
+        inline_errors = response.context["inline_admin_formsets"][0].formset.errors
+        self.assertEqual(
+            inline_errors[-1]["attribute"], ["The attribute is not available."]
+        )
+        self.assertFalse(lawn.class_attributes.filter(attribute=material).exists())

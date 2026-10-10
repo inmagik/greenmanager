@@ -92,6 +92,23 @@ class ImportSpeciesTests(TestCase):
         self.assertIn("[dry run]", output)
         self.assertFalse(Species.objects.exists())
 
+    def test_update_clears_a_parent_removed_from_the_file(self):
+        self.run_command(self.write_csv(self.rows()))
+        rows = self.rows()
+        rows[0]["parent_code"] = ""
+
+        self.run_command(self.write_csv(rows), "--update")
+
+        self.assertIsNone(Species.objects.get(code="tilia-cordata").parent)
+
+    def test_an_entry_cannot_be_its_own_parent(self):
+        rows = self.rows()
+        rows[1]["parent_code"] = "tilia"
+
+        with self.assertRaises(CommandError):
+            self.run_command(self.write_csv(rows))
+        self.assertFalse(Species.objects.exists())
+
     def test_unknown_parent_stops_the_import(self):
         rows = self.rows()[:1]
 

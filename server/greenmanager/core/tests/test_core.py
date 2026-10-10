@@ -11,6 +11,7 @@ from core.services import (
 from core.testing import make_tenant, make_user, tenant_header
 from django.contrib.gis.geos import Point
 from django.core.management import call_command
+from django.db import DatabaseError, connection, transaction
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from parties.models import Client
 from rest_framework import serializers
@@ -114,6 +115,40 @@ class ChangeRecordTests(TestCase):
             record.save()
         with self.assertRaises(ValueError):
             record.delete()
+        with self.assertRaises(ValueError):
+            ChangeRecord.objects.filter(pk=record.pk).update(reason="edited")
+        with self.assertRaises(ValueError):
+            ChangeRecord.objects.filter(pk=record.pk).delete()
+
+    def test_database_rejects_changes_to_the_history(self):
+        record = record_change(
+            instance=self.client_record,
+            operation=ChangeRecord.Operation.CREATE,
+            context=self.context,
+        )
+
+        for sql in (
+            "UPDATE core_changerecord SET reason = 'edited' WHERE id = %s",
+            "DELETE FROM core_changerecord WHERE id = %s",
+        ):
+            with self.subTest(sql=sql):
+                with self.assertRaises(DatabaseError), transaction.atomic():
+                    with connection.cursor() as cursor:
+                        cursor.execute(sql, [record.pk])
+        self.assertTrue(ChangeRecord.objects.filter(pk=record.pk).exists())
+
+    def test_deleting_the_author_keeps_the_history(self):
+        record = record_change(
+            instance=self.client_record,
+            operation=ChangeRecord.Operation.CREATE,
+            context=self.context,
+        )
+
+        self.user.delete()
+
+        record.refresh_from_db()
+        self.assertIsNone(record.author)
+        self.assertEqual(record.author_label, "Ada")
 
 
 class HelpersTests(SimpleTestCase):
