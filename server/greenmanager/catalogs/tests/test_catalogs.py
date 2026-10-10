@@ -1,3 +1,6 @@
+from unittest import mock
+
+from catalogs import services
 from catalogs.models import (
     AreaUse,
     AttributeDefinition,
@@ -7,6 +10,7 @@ from catalogs.models import (
     UrbanGreenType,
     UsageIntensity,
 )
+from core.errors import api_error
 from core.models import system_entry_id
 from core.testing import make_tenant, make_user, tenant_header
 from django.test import TestCase
@@ -176,6 +180,21 @@ class CatalogApiTests(APITestCase):
             self.assertEqual(response.data["code"], "system_entry_read_only")
         self.system_use.refresh_from_db()
         self.assertEqual(self.system_use.name, "Area gioco")
+
+    def test_system_entries_created_by_staff_have_deterministic_keys(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.post(
+            self.url("area-uses"),
+            {"name": "Area eventi", "is_system": True},
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(
+            response.data["id"], str(system_entry_id("catalogs.areause", "area-eventi"))
+        )
 
     def test_staff_manage_system_entries_but_not_their_codes(self):
         self.client.force_authenticate(self.staff)
@@ -391,6 +410,68 @@ class SpeciesApiTests(APITestCase):
             own_duplicate.data["scientific_name"][0]["code"], "species_name_not_unique"
         )
 
+    def patch(self, species, data):
+        return self.client.patch(
+            f"/api/catalogs/species/{species.pk}/", data, format="json", **self.header
+        )
+
+    def test_genus_follows_the_scientific_name(self):
+        own = self.post({"scientific_name": "Tilia americana"})
+
+        response = self.client.patch(
+            f"/api/catalogs/species/{own.data['id']}/",
+            {"scientific_name": "× Chitalpa tashkentensis", "parent": None},
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.data["genus"], "Chitalpa")
+
+    def test_parents_have_a_higher_rank(self):
+        own_genus = self.post({"scientific_name": "Acer", "rank": "genus"})
+        own_species = self.post(
+            {"scientific_name": "Acer rubrum", "parent": own_genus.data["id"]}
+        )
+        cultivar = self.post(
+            {
+                "scientific_name": "Acer rubrum 'Red Sunset'",
+                "rank": "cultivar",
+                "parent": own_species.data["id"],
+            }
+        )
+        genus = Species.objects.get(pk=own_genus.data["id"])
+        species = Species.objects.get(pk=own_species.data["id"])
+
+        # A cycle would need a parent of a lower rank.
+        cycle = self.patch(genus, {"parent": own_species.data["id"]})
+        demoted = self.patch(species, {"rank": "cultivar"})
+
+        self.assertEqual(cultivar.status_code, 201, cultivar.content)
+        self.assertEqual(cycle.status_code, 400, cycle.content)
+        self.assertEqual(cycle.data["parent"][0]["code"], "species_parent_rank_invalid")
+        self.assertEqual(demoted.status_code, 400, demoted.content)
+        self.assertEqual(
+            demoted.data["rank"][0]["code"], "species_rank_conflicts_children"
+        )
+
+    def test_system_species_do_not_repeat_active_own_entries(self):
+        staff = make_user("staff@example.com", self.org, [WRITE], is_staff=True)
+        self.system.hidden_by.add(self.org)
+        own = self.post({"scientific_name": "Quercus alba"})
+        self.assertEqual(own.status_code, 201, own.content)
+        self.client.force_authenticate(staff)
+
+        repeated = self.post({"scientific_name": "Quercus alba", "is_system": True})
+        # The organization hides the system entry: its own entry stays available.
+        renamed_hidden = self.patch(self.system, {"scientific_name": "Quercus alba"})
+
+        self.assertEqual(repeated.status_code, 400, repeated.content)
+        self.assertEqual(
+            repeated.data["scientific_name"]["code"], "species_name_not_unique"
+        )
+        self.assertEqual(renamed_hidden.status_code, 200, renamed_hidden.content)
+
     def test_unhide_refused_while_an_own_entry_has_the_name(self):
         self.system.hidden_by.add(self.org)
         own = self.post({"scientific_name": "Tilia cordata"})
@@ -409,7 +490,11 @@ class SpeciesApiTests(APITestCase):
     def test_parent_of_another_organization_is_refused(self):
         other = make_tenant("Other")
         foreign = Species.objects.create(
-            code="x", scientific_name="Xus", genus="Xus", organization=other
+            code="x",
+            rank="genus",
+            scientific_name="Xus",
+            genus="Xus",
+            organization=other,
         )
 
         response = self.post({"scientific_name": "Xus yus", "parent": str(foreign.pk)})
@@ -538,6 +623,21 @@ class ElementClassApiTests(APITestCase):
             response.data["data_type"]["code"], "catalog_entry_in_use_locked"
         )
 
+    def test_measure_flag_of_an_attribute_in_use_is_locked(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.patch(
+            f"/api/catalogs/attribute-definitions/{self.irrigated.pk}/",
+            {"is_measure": True},
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(
+            response.data["is_measure"]["code"], "catalog_entry_in_use_locked"
+        )
+
     def test_choice_attributes_need_values(self):
         self.client.force_authenticate(self.staff)
 
@@ -660,3 +760,62 @@ class CatalogAdminTests(TestCase):
             inline_errors[-1]["attribute"], ["The attribute is not available."]
         )
         self.assertFalse(lawn.class_attributes.filter(attribute=material).exists())
+
+
+class CatalogAdminDeletionTests(TestCase):
+    """A deletion refused by the services is reported, and deletes nothing."""
+
+    def setUp(self):
+        self.org = make_tenant("Org")
+        staff = make_user(
+            "admin@example.com", self.org, is_staff=True, is_superuser=True
+        )
+        self.client.force_login(staff)
+        self.uses = [
+            AreaUse.objects.create(code=f"u{index}", name=f"Uso {index}")
+            for index in range(2)
+        ]
+
+    def refuse_second(self):
+        original = services.delete_entry
+
+        def delete_entry(entry, *, user):
+            if entry.code == "u1":
+                raise api_error("catalog_entry_in_use", "The entry is in use.")
+            original(entry, user=user)
+
+        return mock.patch.object(services, "delete_entry", delete_entry)
+
+    def test_single_deletion(self):
+        with self.refuse_second():
+            response = self.client.post(
+                f"/admin/catalogs/areause/{self.uses[1].pk}/delete/",
+                {"post": "yes"},
+                follow=True,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "The entry is in use.", [str(m) for m in response.context["messages"]]
+        )
+        self.assertTrue(AreaUse.objects.filter(pk=self.uses[1].pk).exists())
+
+    def test_bulk_deletion_is_all_or_nothing(self):
+        with self.refuse_second():
+            response = self.client.post(
+                "/admin/catalogs/areause/",
+                {
+                    "action": "delete_selected",
+                    "_selected_action": [str(use.pk) for use in self.uses],
+                    "post": "yes",
+                },
+                follow=True,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "The entry is in use.", [str(m) for m in response.context["messages"]]
+        )
+        self.assertEqual(
+            AreaUse.objects.filter(pk__in=[use.pk for use in self.uses]).count(), 2
+        )

@@ -15,13 +15,14 @@ as they are unless ``--update``. The keys of the new entries are deterministic
 import csv
 
 from catalogs.models import Species
-from catalogs.services import normalize
+from catalogs.services import normalize, validate_references
 from core.errors import django_errors_payload
 from core.models import system_entry_id
 from core.services import snapshot
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from rest_framework.exceptions import APIException
 
 FIELDS = (
     "rank",
@@ -104,10 +105,14 @@ class Command(BaseCommand):
         try:
             # The parent is linked in a second pass.
             entry.full_clean(exclude=["parent"])
+            # The rules of the API too, e.g. the name unique across the scopes.
+            validate_references(entry)
         except ValidationError as exc:
             raise CommandError(
                 f"Line {line} ({code}): {django_errors_payload(exc, Species)}"
             ) from exc
+        except APIException as exc:
+            raise CommandError(f"Line {line} ({code}): {exc.detail}") from exc
         if not created and snapshot(entry) == before:
             return entry, "unchanged"
         entry.save()

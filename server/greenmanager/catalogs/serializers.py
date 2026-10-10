@@ -114,9 +114,12 @@ class SpeciesSerializer(ExtensibleEntrySerializer):
             "synonyms",
             "external_ref",
         )
-        # The name of a species is its scientific name.
-        read_only_fields = (*ExtensibleEntrySerializer.Meta.read_only_fields, "name")
-        extra_kwargs = {"genus": {"required": False, "allow_blank": True}}
+        # The name and the genus of a species come from its scientific name.
+        read_only_fields = (
+            *ExtensibleEntrySerializer.Meta.read_only_fields,
+            "name",
+            "genus",
+        )
 
     @extend_schema_field(EntryOptionSerializer(allow_null=True))
     def get_parent_data(self, obj):

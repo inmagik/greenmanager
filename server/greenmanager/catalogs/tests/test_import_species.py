@@ -5,6 +5,7 @@ from pathlib import Path
 
 from catalogs.models import Species
 from core.models import system_entry_id
+from core.testing import make_tenant
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
@@ -117,6 +118,20 @@ class ImportSpeciesTests(TestCase):
         with self.assertRaises(CommandError):
             self.run_command(self.write_csv(rows))
         self.assertFalse(Species.objects.exists())
+
+    def test_system_species_do_not_repeat_active_own_entries(self):
+        organization = make_tenant("Org")
+        Species.objects.create(
+            code="own",
+            rank="genus",
+            scientific_name="Tilia",
+            genus="Tilia",
+            organization=organization,
+        )
+
+        with self.assertRaises(CommandError):
+            self.run_command(self.write_csv(self.rows()))
+        self.assertFalse(Species.objects.system().exists())
 
     def test_unknown_parent_stops_the_import(self):
         rows = self.rows()[:1]

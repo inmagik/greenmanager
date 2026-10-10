@@ -12,6 +12,7 @@ Rules of the catalogs (§2.2 of 04-modello-dati.md, D-016, D-027).
 import copy
 
 from core.errors import api_error, check_revision, permission_error, validate_model
+from core.models import system_entry_id
 from core.services import stamp
 from django.db import router, transaction
 from django.db.models.deletion import Collector, ProtectedError, RestrictedError
@@ -59,14 +60,20 @@ def unique_code(entry, text):
     return code
 
 
+def genus_of(scientific_name):
+    """The genus in a scientific name: its first word, without the hybrid sign
+    (e.g. "× Cupressocyparis leylandii" gives "Cupressocyparis")."""
+    words = scientific_name.replace("×", " ").split()
+    return words[0] if words else ""
+
+
 def normalize(entry):
     """Values derived from others, before the validation."""
     if isinstance(entry, Species):
         entry.scientific_name = " ".join(entry.scientific_name.split())
-        # The scientific name is the name of the entry.
+        # The scientific name is the name of the entry, and gives its genus.
         entry.name = entry.scientific_name
-        if not entry.genus and entry.scientific_name:
-            entry.genus = entry.scientific_name.split()[0].lstrip("×")
+        entry.genus = genus_of(entry.scientific_name)
     if not entry.code:
         entry.code = unique_code(entry, entry.name)
 
@@ -103,19 +110,33 @@ def validate_references(entry):
                     {"name": parent.name},
                     field="parent",
                 )
+        # The scientific name is unique among the entries available to an
+        # organization (§2.4): own entries against the system ones and back.
         if not entry.is_system:
-            # Unique among the entries available to the organization (§2.4).
             duplicate = (
                 Species.objects.available_for(entry.organization)
                 .system()
                 .filter(scientific_name__iexact=entry.scientific_name)
             )
-            if duplicate.exists():
-                raise api_error(
-                    "species_name_not_unique",
-                    "An entry with this scientific name already exists.",
-                    field="scientific_name",
+        elif entry.retired:
+            duplicate = Species.objects.none()
+        else:
+            duplicate = Species.objects.filter(
+                organization__isnull=False,
+                retired=False,
+                scientific_name__iexact=entry.scientific_name,
+            )
+            if not entry._state.adding:
+                # Organizations that hide the system entry keep their own.
+                duplicate = duplicate.exclude(
+                    organization__in=entry.hidden_by.values("pk")
                 )
+        if duplicate.exists():
+            raise api_error(
+                "species_name_not_unique",
+                "An entry with this scientific name already exists.",
+                field="scientific_name",
+            )
 
 
 def check_changes(entry, stored):
@@ -171,7 +192,10 @@ def prepare_entry(entry, *, user, stored=None):
 
 
 def commit_entry(entry, *, user):
-    """Save a prepared entry."""
+    """Save a prepared entry. A new system entry gets its deterministic key, the
+    same in every installation (D-042)."""
+    if entry._state.adding and entry.is_system:
+        entry.pk = system_entry_id(entry._meta.label_lower, entry.code)
     stamp(entry, user)
     entry.save()
     return entry

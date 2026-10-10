@@ -420,7 +420,7 @@ Stati possibili:
 
 - **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
 - **Decisione**:
-  - tutte le entità di dominio, cataloghi compresi, hanno una chiave UUID. Le voci di sistema hanno una chiave deterministica, `uuid5` del modello e del codice, uguale in ogni installazione;
+  - tutte le entità di dominio, cataloghi compresi, hanno una chiave UUID. Le voci di sistema hanno una chiave deterministica, `uuid5` del modello e del codice, uguale in ogni installazione, comunque siano create (migrazione, import, API, admin);
   - i campi comuni (§3.1 di [04-modello-dati.md](04-modello-dati.md)) sono colonne di `core.TrackedModel`: `created_at`, `created_by`, `updated_at`, `updated_by`, `revision`. Non si ricavano dalle voci di django-auditlog;
   - `revision` cresce a ogni salvataggio. Chi modifica un record può rimandare la revisione che ha letto: se nel frattempo è cambiata, l'API risponde `409` con codice `revision_conflict`.
 - **Motivazione**:
@@ -469,10 +469,10 @@ Stati possibili:
 - **Decisione**:
   - le voci di sistema le crea, modifica ed elimina solo lo staff (errore `system_entry_read_only`); il loro codice non cambia (`catalog_code_immutable`). Le stesse regole valgono nell'admin, che salva con i servizi;
   - un'organizzazione nasconde e mostra le voci di sistema con le action `hide/` e `unhide/`; una voce in uso non si elimina (`catalog_entry_in_use`), si ritira;
-  - alcuni campi non cambiano quando la voce è in uso: tipo di geometria e modalità della specie di una classe, tipo di un attributo;
+  - alcuni campi non cambiano quando la voce è in uso: tipo di geometria e modalità della specie di una classe, tipo e flag di misura di un attributo;
   - a una classe si aggiungono solo attributi disponibili per la sua organizzazione; quelli già presenti restano anche se poi vengono nascosti o ritirati;
   - i cataloghi fissi hanno `retired` ma non `organization` né `hidden_by`: una fonte ufficiale può togliere una voce, e una classificazione obbligatoria non si nasconde;
-  - il codice di una voce, se manca, si ricava dal nome. Il nome di una specie è il suo nome scientifico;
+  - il codice di una voce, se manca, si ricava dal nome. Nome e genere di una specie vengono dal nome scientifico, e il genitore di una specie ha un rango più alto;
   - nell'MVP gli attributi sono solo voci di sistema (EL-4 è in v2);
   - `RemovalCause` entra nella prima fetta, perché la data e la causa di rimozione servono già all'elemento (EL-7).
 - **Motivazione**: applica D-016 e D-027 all'API. Bloccare i campi che decidono la logica evita che gli elementi esistenti diventino incoerenti con la loro classe.

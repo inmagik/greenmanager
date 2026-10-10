@@ -439,7 +439,7 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 | `errors.py` | `api_error` e `permission_error`, errori con codice; `validate_model`, il `full_clean()` del record con gli errori nella forma dell'API; `check_revision`, il controllo della revisione (`409 revision_conflict`) |
 | `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision` |
 | `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.6); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view |
-| `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi. Una modifica blocca il record e controlla che la revisione sia quella con cui si è aperto il form; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
+| `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi. Una modifica blocca il record e controlla che la revisione sia quella con cui si è aperto il form. Una cancellazione rifiutata dai servizi si mostra come messaggio, e la cancellazione multipla è atomica; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
 | `audit.py` | `register_audit`: registra un modello in django-auditlog senza i campi di tracciamento |
 | `permissions.py` | `any_permission(*codici)`: classe di permesso soddisfatta da uno dei codici |
 | `testing.py` | `make_tenant`, `make_user` (membro con un ruolo che dà i permessi), `tenant_header` |
@@ -481,9 +481,13 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - voci di sistema solo dallo staff; codice delle voci di sistema immutabile;
 - nessuna cancellazione di voci in uso;
 - una voce non passa tra il sistema e un'organizzazione (`catalog_scope_immutable`); nei cataloghi senza voci dell'organizzazione, come gli attributi nell'MVP, l'errore è `organization_entries_not_allowed`;
-- campi bloccati quando la voce è in uso (`locked_when_in_use`);
+- campi bloccati quando la voce è in uso (`locked_when_in_use`): tipo di geometria e modalità della specie di una classe, tipo e flag di misura di un attributo;
 - per i dati di un committente, `check_available(voce, organizzazione di gestione)`. Il valore già salvato resta valido anche se poi la voce è nascosta o ritirata;
-- per le specie: nome uguale al nome scientifico, genere ricavato dal nome. Il nome scientifico è univoco tra le voci disponibili: una voce propria non ripete una voce di sistema disponibile, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome.
+- per le specie:
+  - nome e genere vengono dal nome scientifico;
+  - il genitore ha un livello più alto: un genere non ha genitore, una specie o un ibrido hanno un genere, una cultivar ha un genere, una specie o un ibrido. Così la catena dei genitori non ha cicli, e un rango non cambia se ci sono voci figlie di livello uguale o più alto;
+  - il nome scientifico è univoco tra le voci disponibili, nei due versi: una voce propria non ripete una voce di sistema disponibile, una voce di sistema non ripete una voce propria attiva di un'organizzazione che non la nasconde, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome. `import_species` applica le stesse regole;
+- una voce di sistema nuova, creata dall'API, dall'admin o da `import_species`, ha la chiave deterministica (D-042).
 
 **Attributi della classe** (D-047): `validate_attributes(classe, valori, precedenti)` in `attributes.py` restituisce i valori puliti, oppure un errore con codice per ogni attributo.
 

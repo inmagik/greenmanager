@@ -84,17 +84,46 @@ class Species(ExtensibleCatalog):
     def __str__(self):
         return self.scientific_name
 
+    # Taxonomic level of each rank: the parent of an entry has a lower level, so
+    # a chain of parents has no cycles.
+    RANK_LEVELS = {
+        Rank.GENUS: 0,
+        Rank.SPECIES: 1,
+        Rank.HYBRID: 1,
+        Rank.CULTIVAR: 2,
+    }
+
     def clean(self):
         super().clean()
-        if self.parent_id is not None and self.parent_id == self.pk:
+        level = self.RANK_LEVELS.get(self.rank)
+        if level is None:
+            return
+        parent = self.parent if self.parent_id is not None else None
+        if parent is not None and (
+            parent.pk == self.pk or self.RANK_LEVELS.get(parent.rank, level) >= level
+        ):
             raise ValidationError(
                 {
                     "parent": ValidationError(
-                        "An entry cannot be its own parent.",
-                        code="species_parent_is_self",
+                        "The parent must be of a higher rank "
+                        "(a genus, or the species of a cultivar).",
+                        code="species_parent_rank_invalid",
                     )
                 }
             )
+        if not self._state.adding:
+            lower_ranks = [
+                rank for rank, other in self.RANK_LEVELS.items() if other <= level
+            ]
+            if self.children.filter(rank__in=lower_ranks).exists():
+                raise ValidationError(
+                    {
+                        "rank": ValidationError(
+                            "Entries of this rank or lower depend on this entry.",
+                            code="species_rank_conflicts_children",
+                        )
+                    }
+                )
 
 
 class ElementClass(ExtensibleCatalog):
@@ -169,7 +198,7 @@ class AttributeDefinition(ExtensibleCatalog):
         help_text="Varia nel tempo e si registra nelle osservazioni.",
     )
 
-    locked_when_in_use = ("data_type",)
+    locked_when_in_use = ("data_type", "is_measure")
 
     class Meta(ExtensibleCatalog.Meta):
         verbose_name = "attributo"

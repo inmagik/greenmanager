@@ -1,6 +1,8 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.exceptions import NON_FIELD_ERRORS
+from django.db import router, transaction
+from django.http import HttpResponseRedirect
 from rest_framework.exceptions import APIException
 
 from .errors import check_revision
@@ -8,6 +10,15 @@ from .models import ChangeRecord
 from .services import ChangeContext, snapshot
 
 EXPECTED_REVISION = "expected_revision"
+
+
+class DeletionRefused(Exception):
+    """A service refused a deletion from the admin: the view rolls back and
+    reports it."""
+
+    def __init__(self, api_exception):
+        super().__init__(str(api_exception))
+        self.api_exception = api_exception
 
 
 @admin.register(ChangeRecord)
@@ -56,8 +67,8 @@ def api_error_messages(detail):
 
 def add_api_errors(form, exc):
     """Show the errors of an API exception on a Django form."""
-    for field, messages in api_error_messages(exc.detail).items():
-        for message in messages:
+    for field, field_messages in api_error_messages(exc.detail).items():
+        for message in field_messages:
             form.add_error(field if field in form.fields else None, message)
 
 
@@ -144,11 +155,36 @@ class ServiceAdminMixin:
         self.commit(request, obj, stored)
 
     def delete_model(self, request, obj):
-        self.remove(request, obj)
+        try:
+            self.remove(request, obj)
+        except APIException as exc:
+            raise DeletionRefused(exc) from exc
 
     def delete_queryset(self, request, queryset):
         for obj in queryset:
             self.delete_model(request, obj)
+
+    def refuse_deletion(self, request, exc, redirect_to):
+        """Report a deletion the services refused: nothing was deleted."""
+        for messages_of_field in api_error_messages(exc.api_exception.detail).values():
+            for message in messages_of_field:
+                self.message_user(request, message, messages.ERROR)
+        return HttpResponseRedirect(redirect_to)
+
+    def delete_view(self, request, object_id, extra_context=None):
+        try:
+            with transaction.atomic(using=router.db_for_write(self.model)):
+                return super().delete_view(request, object_id, extra_context)
+        except DeletionRefused as exc:
+            return self.refuse_deletion(request, exc, request.path)
+
+    def changelist_view(self, request, extra_context=None):
+        # The bulk deletion is an action of the list: all the records, or none.
+        try:
+            with transaction.atomic(using=router.db_for_write(self.model)):
+                return super().changelist_view(request, extra_context)
+        except DeletionRefused as exc:
+            return self.refuse_deletion(request, exc, request.get_full_path())
 
 
 class ServiceBackedAdminMixin(ServiceAdminMixin):

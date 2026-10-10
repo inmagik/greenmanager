@@ -63,8 +63,8 @@ class SpeciesAdmin(ExtensibleCatalogAdmin):
     list_filter = ("rank", *ExtensibleCatalogAdmin.list_filter)
     search_fields = ("scientific_name", "common_name", "genus", "code")
     autocomplete_fields = ("organization", "parent")
-    # The name of a species is its scientific name (services.normalize).
-    readonly_fields = ("name", *CatalogAdmin.readonly_fields)
+    # Name and genus come from the scientific name (services.normalize).
+    readonly_fields = ("name", "genus", *CatalogAdmin.readonly_fields)
 
 
 class ElementClassAttributeAdminForm(forms.ModelForm):
