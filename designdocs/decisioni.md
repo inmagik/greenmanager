@@ -404,3 +404,89 @@ Stati possibili:
   - le domande rinviate a T3 e T2 (filtro per organizzazione tramite il committente, permessi per tenant, storico, libreria della mappa) sono le più rischiose e si chiudono meglio su una fetta che funziona;
   - lo Step 5 serve a chi legge la specifica dall'esterno; per lo sviluppo bastano [03-features.md](03-features.md) e [04-modello-dati.md](04-modello-dati.md). Vedi [README.md](README.md).
 - **Alternative scartate**: la sequenza Step 5 → T2 → T3 → T4, con tutta la documentazione chiusa prima del codice.
+
+## D-041 — App di dominio e permessi della prima fetta
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - le app di dominio seguono §5.1 di [04-modello-dati.md](04-modello-dati.md), con dipendenze in un solo verso: `core` ← `catalogs` ← `parties` ← `territory` ← `inventory`. La prima PR della fetta porta `core`, `catalogs` e `parties`; `territory` e `inventory` arrivano con la seconda;
+  - `core` non ha endpoint: contiene i modelli astratti, `ChangeRecord`, gli errori e i mixin dei viewset;
+  - permessi: i cataloghi si leggono senza permessi da ogni membro dell'organizzazione e si scrivono con `catalogs.WRITE_CATALOGS`; i committenti hanno `parties.READ_CLIENTS` e `parties.WRITE_CLIENTS`. Le aree e gli elementi avranno `READ_*` e `WRITE_*` per app;
+  - ogni risorsa che si sceglie nei form ha l'action `choices/`: le voci filtrate come la lista, senza paginazione, in forma compatta.
+- **Motivazione**: le dipendenze in un solo verso permettono di aggiungere le app una alla volta. I cataloghi servono ai form di aree ed elementi: chiedere un permesso per leggerli costringerebbe ad assegnarlo a tutti. `choices/` risolve con una richiesta i menu a tendina dei form. Vedi §8 di [architettura/backend.md](architettura/backend.md).
+- **Alternative scartate**: un permesso di lettura dei cataloghi; un'app unica per il dominio.
+
+## D-042 — Modelli di base e concorrenza
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - tutte le entità di dominio, cataloghi compresi, hanno una chiave UUID. Le voci di sistema hanno una chiave deterministica, `uuid5` del modello e del codice, uguale in ogni installazione;
+  - i campi comuni (§3.1 di [04-modello-dati.md](04-modello-dati.md)) sono colonne di `core.TrackedModel`: `created_at`, `created_by`, `updated_at`, `updated_by`, `revision`. Non si ricavano dalle voci di django-auditlog;
+  - `revision` cresce a ogni salvataggio. Chi modifica un record può rimandare la revisione che ha letto: se nel frattempo è cambiata, l'API risponde `409` con codice `revision_conflict`.
+- **Motivazione**:
+  - chiavi uguali per tutte le entità semplificano il frontend e la sincronizzazione della v2; le chiavi deterministiche permettono a dati iniziali, test e import di riferirsi alle voci di sistema;
+  - le colonne costano meno delle sottoquery sulle voci di auditlog, e la revisione serve alla sincronizzazione offline (§4.1 di [04-modello-dati.md](04-modello-dati.md));
+  - il controllo della revisione evita che una modifica in campo cancelli in silenzio quella di un collega.
+- **Alternative scartate**: chiavi intere per i cataloghi; date e autori annotati da django-auditlog (`standard_auditlog_manager`).
+
+## D-043 — Storico delle modifiche: django-auditlog e ChangeRecord
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: confermata (scelta del responsabile di progetto)
+- **Decisione**:
+  - django-auditlog registra le modifiche di tutti i modelli di dominio, per il tracciamento tecnico e la modale dello storico dei record (action `history`). I campi di tracciamento ne restano fuori;
+  - `ChangeRecord`, nell'app `core`, è lo storico di dominio dei dati operativi (D-034). Lo scrivono i servizi di dominio, nella transazione della modifica: entità, record, committente, operazione (creazione, modifica, annullamento), campi cambiati con valore precedente e nuovo, motivazione, autore, organizzazione, data, origine (web, campo, import, sincronizzazione, sistema);
+  - l'origine `field` la dichiara il frontend con l'header `X-Change-Source`; le modifiche dall'admin hanno origine `system`;
+  - il committente di `ChangeRecord` è un identificativo, non una chiave esterna: lo storico sopravvive ai record e `core` non dipende dalle app di dominio. Un record cancellato perché inserito per errore lascia un *annullamento* con i suoi ultimi valori.
+- **Motivazione**: chiude la domanda 3 di [architettura/backend.md](architettura/backend.md). Motivazione, origine e approvazione (v2) sono dati di dominio, che il committente consulta (CE-4). django-auditlog resta il registro tecnico, già usato dallo scaffold e dal frontend.
+- **Alternative scartate**: estendere le voci di django-auditlog con dati aggiuntivi; solo django-auditlog, con `ChangeRecord` rinviato ai registri.
+
+## D-044 — Accesso ai dati del patrimonio e nome del campo dell'organizzazione
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - i modelli di dominio chiamano `organization` la chiave verso il tenant, come il modello dati (`managing_organization` per il committente). `TenantScopedModel` e `TenantScopedViewSetMixin` restano alle app core;
+  - il QuerySet di ogni dato del patrimonio ha `visible_to(organization)` ed `editable_by(organization)`. Nell'MVP entrambi danno i record dei committenti gestiti dall'organizzazione. L'accesso degli esecutori tramite gli affidamenti estenderà questi due metodi, non le view;
+  - `ClientScopedViewSetMixin` usa `visible_to` per le letture ed `editable_by` per le scritture. Senza tenant nella richiesta non si vede nulla, nemmeno dallo staff;
+  - le voci di catalogo disponibili sui dati di un committente sono quelle della sua organizzazione di gestione (D-027).
+- **Motivazione**: chiude la domanda 5 di [architettura/backend.md](architettura/backend.md). I cataloghi hanno un'organizzazione facoltativa e i dati del patrimonio passano dal committente: nessuno dei due può usare il campo `tenant` obbligatorio dello scaffold, quindi il nome del modello dati non costa modifiche alle app core.
+- **Alternative scartate**: campo `tenant` sulle entità di dominio; un tenant copiato su ogni dato del patrimonio.
+
+## D-045 — Permessi diretti solo dallo staff
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - i permessi diretti di un utente (`User.permissions`) li cambia solo lo staff, per ogni utente (errore `direct_permissions_staff_only`). Dentro un'organizzazione i permessi si danno con i ruoli, che sono per tenant;
+  - i permessi diretti non diventano per tenant;
+  - l'invito di un utente che esiste già in un'altra organizzazione resta rinviato agli affidamenti. Fino ad allora le appartenenze le aggiunge lo staff.
+- **Motivazione**: chiude la domanda 4 di [architettura/backend.md](architettura/backend.md). I permessi diretti valgono in tutte le organizzazioni dell'utente: un amministratore di un'organizzazione non deve poterli dare. Permessi diretti per tenant duplicherebbero i ruoli. L'invito serve quando un esecutore o un valutatore di un'altra organizzazione entra nel sistema, cioè con gli affidamenti.
+- **Alternative scartate**: permessi diretti per tenant; permessi diretti modificabili da chi ha `WRITE_ROLES`, come nello scaffold.
+
+## D-046 — Regole dei cataloghi nell'API
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - le voci di sistema le crea, modifica ed elimina solo lo staff (errore `system_entry_read_only`); il loro codice non cambia (`catalog_code_immutable`);
+  - un'organizzazione nasconde e mostra le voci di sistema con le action `hide/` e `unhide/`; una voce in uso non si elimina (`catalog_entry_in_use`), si ritira;
+  - alcuni campi non cambiano quando la voce è in uso: tipo di geometria e modalità della specie di una classe, tipo di un attributo;
+  - i cataloghi fissi hanno `retired` ma non `organization` né `hidden_by`: una fonte ufficiale può togliere una voce, e una classificazione obbligatoria non si nasconde;
+  - il codice di una voce, se manca, si ricava dal nome. Il nome di una specie è il suo nome scientifico;
+  - nell'MVP gli attributi sono solo voci di sistema (EL-4 è in v2);
+  - `RemovalCause` entra nella prima fetta, perché la data e la causa di rimozione servono già all'elemento (EL-7).
+- **Motivazione**: applica D-016 e D-027 all'API. Bloccare i campi che decidono la logica evita che gli elementi esistenti diventino incoerenti con la loro classe.
+- **Alternative scartate**: voci di sistema modificabili dalle organizzazioni; cancellazione logica delle voci.
+
+## D-047 — Attributi della classe validati senza jsonschema
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**: i valori di `Element.attributes` si validano con una funzione dell'app `catalogs` (`validate_attributes`), che legge gli attributi della classe e restituisce un errore con codice per ogni attributo: sconosciuto, misura, ritirato, obbligatorio, tipo o valore non valido. Le misure si rifiutano, perché vanno nelle osservazioni (D-028). I valori di attributi tolti dalla classe o ritirati restano se non cambiano.
+- **Motivazione**: chiude la nota su `jsonschema` di §7 di [architettura/backend.md](architettura/backend.md). I tipi sono pochi e fissi; i messaggi di jsonschema andrebbero ricondotti a codici che il frontend traduce.
+- **Alternative scartate**: uno schema JSON generato dalla classe e validato con jsonschema.
+
+## D-048 — Dati iniziali dei cataloghi
+
+- **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - i cataloghi piccoli si caricano con una migrazione di dati, con i valori scritti nella migrazione: le 14 tipologie ISTAT, le intensità di fruizione, le cause di rimozione, 20 classi di elemento, alcuni attributi. Le destinazioni d'uso sono un elenco provvisorio, da rivedere con i primi committenti (§2.7 di [04-modello-dati.md](04-modello-dati.md));
+  - le specie si caricano con il comando `import_species`, da un file CSV. Il file `catalogs/seeds/species_starter.csv` ha 72 specie urbane comuni e i loro 48 generi, da verificare sulla nomenclatura di riferimento. La fonte definitiva resta quella proposta allo Step 4, con le licenze da verificare.
+- **Motivazione**: le migrazioni danno a ogni installazione le stesse voci, con le stesse chiavi (D-042). L'elenco delle specie cresce e si cura nel tempo: un comando idempotente lo aggiorna senza nuove migrazioni.
+- **Alternative scartate**: fixture da caricare a mano; specie in una migrazione.
