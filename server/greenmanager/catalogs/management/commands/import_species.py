@@ -116,7 +116,12 @@ class Command(BaseCommand):
             code = row["code"].strip()
             parent_code = (row.get("parent_code") or "").strip()
             entry = entries[code]
-            if not parent_code or (entry.parent_id is not None and not update):
+            if not parent_code:
+                if update and entry.parent_id is not None:
+                    entry.parent = None
+                    entry.save(update_fields=["parent"])
+                continue
+            if entry.parent_id is not None and not update:
                 continue
             parent = entries.get(parent_code) or (
                 Species.objects.system().filter(code=parent_code).first()
