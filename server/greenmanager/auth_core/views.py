@@ -140,12 +140,12 @@ class UsersViewset(
         .prefetch_related("roles")
         .annotate(
             failed_login_attempts=Coalesce(
-                Subquery(
+Subquery(
                     AccessAttempt.objects.filter(
                         username=OuterRef("email"),
-                    ).values(
-                        "failures_since_start"
-                    )[:1]
+                    )
+                    .order_by("-failures_since_start")
+                    .values("failures_since_start")[:1]
                 ),
                 Value(0),
             ),
