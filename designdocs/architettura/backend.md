@@ -485,12 +485,12 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - per i dati di un committente, `check_available(voce, organizzazione di gestione)`. Il valore già salvato resta valido anche se poi la voce è nascosta o ritirata;
 - per le specie:
   - nome e genere vengono dal nome scientifico;
-  - il genitore ha un livello più alto: un genere non ha genitore, una specie o un ibrido hanno un genere, una cultivar ha un genere, una specie o un ibrido. Così la catena dei genitori non ha cicli, e un rango non cambia se ci sono voci figlie di livello uguale o più alto;
+  - il genitore ha un livello più alto: un genere non ha genitore, una specie o un ibrido hanno un genere, una cultivar ha un genere, una specie o un ibrido. Così la catena dei genitori non ha cicli, e un rango non cambia se ci sono voci figlie di livello uguale o più alto. Un genitore nuovo dev'essere disponibile (`check_available`); quello già salvato resta anche se poi è nascosto o ritirato;
   - il nome scientifico è univoco tra le voci disponibili, nei due versi: una voce propria non ripete una voce di sistema disponibile, una voce di sistema non ripete una voce propria attiva di un'organizzazione che non la nasconde, e una voce di sistema nascosta non si mostra di nuovo finché l'organizzazione ha una voce propria attiva con lo stesso nome, salvo che sia ritirata. Le voci ritirate non contano: il vincolo del database vale solo per le voci attive. Il lock sul nome (`pg_advisory_xact_lock`) si prende prima di ogni controllo del nome, vincolo del database compreso: due modifiche contemporanee non creano un doppione, e la seconda riceve l'errore con il codice. `import_species` applica le stesse regole, e le sue modifiche non hanno autore;
 - se il salvataggio viola un vincolo per una modifica contemporanea (es. lo stesso codice generato), la voce si valida di nuovo e la risposta è l'errore della regola, non un `500`;
 - una voce di sistema nuova, creata dall'API, dall'admin o da `import_species`, ha la chiave deterministica (D-042).
 
-**Attributi della classe** (D-047): `validate_attributes(classe, valori, precedenti)` in `attributes.py` restituisce i valori puliti, oppure un errore con codice per ogni attributo.
+**Attributi della classe** (D-047): `validate_attributes(classe, valori, precedenti)` in `attributes.py` restituisce i valori puliti, oppure un errore con codice per ogni attributo. I valori di attributi tolti dalla classe o ritirati non cambiano: se la richiesta non li contiene restano, perché il form mostra solo gli attributi attuali; un valore vuoto esplicito li toglie.
 
 **Dati iniziali** (D-048):
 - la migrazione `0002_system_entries` carica le voci di sistema dei cataloghi piccoli;

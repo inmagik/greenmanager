@@ -556,6 +556,25 @@ class SpeciesApiTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertFalse(self.system.hidden_by.filter(pk=self.org.pk).exists())
 
+    def test_new_parent_must_be_available_the_stored_one_stays(self):
+        own = self.post(
+            {"scientific_name": "Tilia americana", "parent": str(self.genus.pk)}
+        )
+        self.genus.hidden_by.add(self.org)
+        url = f"/api/catalogs/species/{own.data['id']}/"
+
+        kept = self.client.patch(
+            url, {"common_name": "tiglio"}, format="json", **self.header
+        )
+        self.client.patch(url, {"parent": None}, format="json", **self.header)
+        refused = self.client.patch(
+            url, {"parent": str(self.genus.pk)}, format="json", **self.header
+        )
+
+        self.assertEqual(kept.status_code, 200, kept.content)
+        self.assertEqual(refused.status_code, 400, refused.content)
+        self.assertEqual(refused.data["parent"]["code"], "catalog_entry_not_available")
+
     def test_parent_of_another_organization_is_refused(self):
         other = make_tenant("Other")
         foreign = Species.objects.create(

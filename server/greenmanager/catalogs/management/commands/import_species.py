@@ -13,10 +13,16 @@ once all the rows are applied, so the order of the rows does not matter.
     python manage.py import_species catalogs/seeds/species_starter.csv
 """
 
+import copy
 import csv
 
 from catalogs.models import Species
-from catalogs.services import lock_species_name, normalize, validate_references
+from catalogs.services import (
+    check_available,
+    lock_species_name,
+    normalize,
+    validate_references,
+)
 from core.errors import django_errors_payload
 from core.models import system_entry_id
 from core.services import snapshot, stamp
@@ -105,6 +111,7 @@ class Command(BaseCommand):
         created = entry is None
         if created:
             entry = Species(id=system_entry_id("catalogs.species", code), code=code)
+        stored = None if created else copy.copy(entry)
         before = None if created else snapshot(entry)
         for field in FIELDS:
             value = (row.get(field) or "").strip()
@@ -124,7 +131,7 @@ class Command(BaseCommand):
             entry.validate_unique(exclude=["parent"])
             entry.validate_constraints(exclude=["parent"])
             # The rules of the API too, e.g. the name unique across the scopes.
-            validate_references(entry)
+            validate_references(entry, stored)
         except ValidationError as exc:
             raise CommandError(
                 f"Line {line} ({code}): {django_errors_payload(exc, Species)}"
@@ -157,6 +164,11 @@ class Command(BaseCommand):
                 if parent is None:
                     raise CommandError(f"{code}: unknown parent {parent_code}.")
             if entry.parent_id != (parent.pk if parent else None):
+                # A new parent must be available, as in the API.
+                try:
+                    check_available(parent, None, field="parent")
+                except APIException as exc:
+                    raise CommandError(f"{code}: {exc.detail}") from exc
                 entry.parent = parent
                 stamp(entry, None)
                 entry.save(update_fields=["parent"])

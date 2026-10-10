@@ -159,6 +159,19 @@ class ImportSpeciesTests(TestCase):
 
         self.assertIn("0 created, 1 updated, 1 unchanged", output)
 
+    def test_new_parent_must_be_available(self):
+        Species.objects.create(
+            code="tilia",
+            rank="genus",
+            scientific_name="Tilia",
+            genus="Tilia",
+            retired=True,
+        )
+
+        with self.assertRaises(CommandError):
+            self.run_command(self.write_csv(self.rows()[:1]))
+        self.assertFalse(Species.objects.filter(code="tilia-cordata").exists())
+
     def test_existing_entries_get_no_parent_without_update(self):
         rows = self.rows()
         rows[0]["parent_code"] = ""

@@ -82,8 +82,10 @@ def validate_attributes(element_class, values, previous=None):
     - Keys are the codes of the attributes; empty values are dropped.
     - Measures are not attributes of the element: they go in the observations
       (D-028).
-    - Values of attributes no longer in the class, or retired, are kept only if
-      unchanged (``previous`` are the values saved on the element).
+    - Values of attributes no longer in the class, or retired, cannot change
+      (``previous`` are the values saved on the element): omitted, they are kept,
+      as a form shows the current attributes only; an explicit empty value
+      removes them.
 
     Raises a ValidationError ``{"attributes": {<code>: <error>}}``.
     """
@@ -133,6 +135,11 @@ def validate_attributes(element_class, values, previous=None):
             cleaned[key] = coerce(attribute, value)
         except AttributeValueError as exc:
             errors[key] = exc.payload
+
+    for key, value in previous.items():
+        link = links.get(key)
+        if key not in values and (link is None or link.attribute.retired):
+            cleaned[key] = value
 
     for key, link in links.items():
         attribute = link.attribute

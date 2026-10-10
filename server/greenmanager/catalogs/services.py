@@ -118,19 +118,17 @@ def lock_species_name(scientific_name):
         )
 
 
-def validate_references(entry):
-    """Entries referenced by an entry: visible to its organization."""
+def validate_references(entry, stored=None):
+    """Entries referenced by an entry: a new one must be available to its
+    organization; the one already saved (``stored``) stays even if later hidden
+    or retired."""
     if isinstance(entry, Species):
-        parent = entry.parent
-        if parent is not None:
-            visible = Species.objects.visible_to(entry.organization)
-            if not visible.filter(pk=parent.pk).exists():
-                raise api_error(
-                    "catalog_entry_not_available",
-                    "The parent entry is not available.",
-                    {"name": parent.name},
-                    field="parent",
-                )
+        check_available(
+            entry.parent,
+            entry.organization,
+            field="parent",
+            previous_id=stored.parent_id if stored is not None else None,
+        )
         # The scientific name is unique among the entries available to an
         # organization (§2.4): own entries against the system ones and back. The
         # caller holds the lock of the name (lock_species_name). Retired entries,
@@ -215,7 +213,7 @@ def prepare_entry(entry, *, user, stored=None):
         # concurrent change of the same name is then committed, and seen.
         lock_species_name(entry.scientific_name)
     validate_model(entry)
-    validate_references(entry)
+    validate_references(entry, stored)
 
 
 def commit_entry(entry, *, user):

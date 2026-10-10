@@ -102,6 +102,21 @@ class ValidateAttributesTests(TestCase):
             self.errors({"t_shape": "oval"}), {"t_shape": "attribute_invalid_choice"}
         )
 
+    def test_omitted_obsolete_values_are_kept_and_empty_ones_removed(self):
+        previous = {"t_shape": "round", "old": "x", "t_label": "kept"}
+        self.attributes["label"].retired = True
+        self.attributes["label"].save()
+
+        omitted = validate_attributes(
+            self.element_class, {"t_shape": "round"}, previous
+        )
+        emptied = validate_attributes(
+            self.element_class, {"t_shape": "round", "old": None}, previous
+        )
+
+        self.assertEqual(omitted, previous)
+        self.assertEqual(emptied, {"t_shape": "round", "t_label": "kept"})
+
     def test_values_no_longer_in_the_class_are_kept_if_unchanged(self):
         previous = {"t_shape": "round", "old": "x"}
         self.attributes["label"].retired = True

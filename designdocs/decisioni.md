@@ -481,7 +481,7 @@ Stati possibili:
 ## D-047 — Attributi della classe validati senza jsonschema
 
 - **Data**: 2026-10-10 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
-- **Decisione**: i valori di `Element.attributes` si validano con una funzione dell'app `catalogs` (`validate_attributes`), che legge gli attributi della classe e restituisce un errore con codice per ogni attributo: sconosciuto, misura, ritirato, obbligatorio, tipo o valore non valido. Le misure si rifiutano, perché vanno nelle osservazioni (D-028). I valori di attributi tolti dalla classe o ritirati restano se non cambiano.
+- **Decisione**: i valori di `Element.attributes` si validano con una funzione dell'app `catalogs` (`validate_attributes`), che legge gli attributi della classe e restituisce un errore con codice per ogni attributo: sconosciuto, misura, ritirato, obbligatorio, tipo o valore non valido. Le misure si rifiutano, perché vanno nelle osservazioni (D-028). I valori di attributi tolti dalla classe o ritirati non cambiano: restano anche se la richiesta non li contiene, e un valore vuoto esplicito li toglie.
 - **Motivazione**: chiude la nota su `jsonschema` di §7 di [architettura/backend.md](architettura/backend.md). I tipi sono pochi e fissi; i messaggi di jsonschema andrebbero ricondotti a codici che il frontend traduce.
 - **Alternative scartate**: uno schema JSON generato dalla classe e validato con jsonschema.
 
