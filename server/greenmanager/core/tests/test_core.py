@@ -137,6 +137,10 @@ class ChangeRecordTests(TestCase):
                         cursor.execute(sql, [record.pk])
         self.assertTrue(ChangeRecord.objects.filter(pk=record.pk).exists())
 
+    def check_deferred_constraints(self):
+        with connection.cursor() as cursor:
+            cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+
     def test_deleting_the_author_keeps_the_history(self):
         record = record_change(
             instance=self.client_record,
@@ -145,10 +149,28 @@ class ChangeRecordTests(TestCase):
         )
 
         self.user.delete()
+        self.check_deferred_constraints()
 
         record.refresh_from_db()
         self.assertIsNone(record.author)
         self.assertEqual(record.author_label, "Ada")
+
+    def test_author_is_cleared_only_with_the_user(self):
+        record = record_change(
+            instance=self.client_record,
+            operation=ChangeRecord.Operation.CREATE,
+            context=self.context,
+        )
+
+        with self.assertRaises(DatabaseError), transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE core_changerecord SET author_id = NULL WHERE id = %s",
+                    [record.pk],
+                )
+            self.check_deferred_constraints()
+        record.refresh_from_db()
+        self.assertEqual(record.author, self.user)
 
 
 class HelpersTests(SimpleTestCase):

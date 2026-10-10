@@ -517,9 +517,10 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 Vedi D-043.
 - I modelli di dominio si registrano in django-auditlog con `register_audit`, in fondo a `models.py`. La modale dello storico del frontend legge l'action `history`.
+- `hidden_by` dei cataloghi resta fuori dallo storico tecnico: una voce di sistema è condivisa, e il suo storico mostrerebbe a ogni organizzazione chi la nasconde nelle altre.
 - `ChangeRecord` registra i dati operativi (oggi il committente; poi zone, aree, elementi), non i cataloghi. È immutabile:
   - nell'ORM, `save()` su un record esistente, `delete()` e le operazioni in blocco del QuerySet (`update()`, `delete()`) sollevano un errore;
-  - nel database, un trigger rifiuta `UPDATE` e `DELETE` da qualunque client (migrazione `core.0002`). Passa solo l'autore messo a `NULL` quando si cancella l'utente: il nome resta in `author_label`.
+  - nel database, un trigger rifiuta `UPDATE` e `DELETE` da qualunque client (migrazione `core.0002`). Passa solo l'autore messo a `NULL` quando si cancella l'utente: un secondo trigger, differito, controlla al commit che l'utente non esista più (migrazione `core.0003`). Il nome resta in `author_label`.
 - `record_change` salta le modifiche senza differenze. Una cancellazione scrive un *annullamento* con gli ultimi valori.
 
 ## Domande aperte

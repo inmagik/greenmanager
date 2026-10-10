@@ -295,7 +295,7 @@ EXTENSIBLE_CATALOGS = (
 )
 FIXED_CATALOGS = (UrbanGreenType,)
 
-for model in EXTENSIBLE_CATALOGS:
-    register_audit(model, m2m_fields={"hidden_by"})
-for model in (*FIXED_CATALOGS, ElementClassAttribute):
+# hidden_by stays out of the history: a system entry is shared, and its history
+# would show to every organization who hides it in the others.
+for model in (*EXTENSIBLE_CATALOGS, *FIXED_CATALOGS, ElementClassAttribute):
     register_audit(model)

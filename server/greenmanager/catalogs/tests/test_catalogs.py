@@ -258,6 +258,24 @@ class CatalogApiTests(APITestCase):
             .exists()
         )
 
+    def test_hiding_stays_out_of_the_shared_history(self):
+        self.client.force_authenticate(self.writer)
+        self.client.post(
+            self.url("area-uses", self.system_use.pk, "hide"), **self.header
+        )
+        other_reader = make_user("other@example.com", self.other)
+        self.client.force_authenticate(other_reader)
+
+        response = self.client.get(
+            self.url("area-uses", self.system_use.pk, "history"),
+            **tenant_header(self.other),
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertNotIn(
+            "writer@example.com", [entry["actor"] for entry in response.data]
+        )
+
     def test_choices_leave_out_retired_entries(self):
         AreaUse.objects.create(
             code="old", name="Vecchia", organization=self.org, retired=True

@@ -437,7 +437,8 @@ Stati possibili:
   - `ChangeRecord`, nell'app `core`, è lo storico di dominio dei dati operativi (D-034). Lo scrivono i servizi di dominio, nella transazione della modifica: entità, record, committente, operazione (creazione, modifica, annullamento), campi cambiati con valore precedente e nuovo, motivazione, autore, organizzazione, data, origine (web, campo, import, sincronizzazione, sistema);
   - l'origine `field` la dichiara il frontend con l'header `X-Change-Source`; le modifiche dall'admin hanno origine `system`;
   - il committente di `ChangeRecord` è un identificativo, non una chiave esterna: lo storico sopravvive ai record e `core` non dipende dalle app di dominio. Un record cancellato perché inserito per errore lascia un *annullamento* con i suoi ultimi valori;
-  - lo storico non si modifica né si cancella, anche fuori dall'ORM: un trigger del database rifiuta `UPDATE` e `DELETE`, tranne l'autore messo a `NULL` quando si cancella l'utente.
+  - lo storico non si modifica né si cancella, anche fuori dall'ORM: un trigger del database rifiuta `UPDATE` e `DELETE`, tranne l'autore messo a `NULL` quando si cancella l'utente, che un secondo trigger verifica al commit;
+  - nascondere una voce di sistema è una scelta dell'organizzazione e non entra nello storico tecnico della voce, che vedono tutte le organizzazioni.
 - **Motivazione**: chiude la domanda 3 di [architettura/backend.md](architettura/backend.md). Motivazione, origine e approvazione (v2) sono dati di dominio, che il committente consulta (CE-4). django-auditlog resta il registro tecnico, già usato dallo scaffold e dal frontend.
 - **Alternative scartate**: estendere le voci di django-auditlog con dati aggiuntivi; solo django-auditlog, con `ChangeRecord` rinviato ai registri.
 
