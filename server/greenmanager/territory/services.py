@@ -244,11 +244,19 @@ def area_warnings(client_id, geometry, start=None, end=None, exclude=None):
     ]
 
 
-def check_area_geometry(client_id, geometry, context, area=None):
+# Values of a form that change the overlaps of a perimeter (check_area_geometry).
+PROPOSED_AREA_FIELDS = ("management_start", "management_end", "is_fictitious")
+
+
+def check_area_geometry(client_id, geometry, context, area=None, **proposed):
     """
     Surface, perimeter and warnings of a perimeter of an area of the client,
-    before saving it. ``area`` is the area being changed: it gives the period of
-    the management and stays out of the overlaps.
+    before saving it.
+
+    ``proposed`` are the values of the form that matter to the overlaps
+    (``PROPOSED_AREA_FIELDS``): the period of the management and whether the
+    area is fictitious. ``area`` is the area being changed: it gives the values
+    the form does not send, and stays out of the overlaps.
     """
     clients = Client.objects.editable_by(context.organization)
     if not clients.filter(pk=client_id).exists():
@@ -257,19 +265,19 @@ def check_area_geometry(client_id, geometry, context, area=None):
         )
     if area is not None and area.client_id != client_id:
         area = None
+    values = {field: getattr(area, field, None) for field in PROPOSED_AREA_FIELDS}
+    values.update(proposed)
     measures = geo.geodesic_measures(geometry)
-    if area is not None and area.is_fictitious:
+    if values["is_fictitious"]:
         warnings = []
-    elif area is not None:
+    else:
         warnings = area_warnings(
             client_id,
             geometry,
-            area.management_start,
-            area.management_end,
-            exclude=area.pk,
+            values["management_start"],
+            values["management_end"],
+            exclude=area.pk if area is not None else None,
         )
-    else:
-        warnings = area_warnings(client_id, geometry)
     return {
         "surface_m2": measures["area_m2"],
         "perimeter_m": measures["perimeter_m"],

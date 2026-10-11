@@ -102,27 +102,28 @@ class AreaFilter(StructuralFilterSet):
     area_use = FS.UUIDFilter()
     usage_intensity = FS.UUIDFilter()
     is_fictitious = FS.BooleanFilter()
-    has_overlaps = FS.BooleanFilter()
+    has_overlaps = FS.BooleanFilter(method="filter_has_overlaps")
     managed_on = FS.DateFilter(method="filter_managed_on")
+
+    def filter_has_overlaps(self, queryset, name, value):
+        if "has_overlaps" not in queryset.query.annotations:
+            queryset = queryset.with_overlap_flag()
+        return queryset.filter(has_overlaps=value)
 
     def filter_managed_on(self, queryset, name, value):
         return queryset.managed_on(value)
 
 
 class AreaViewSet(AssetViewSet):
-    queryset = (
-        Area.objects.select_related(
-            "client",
-            "zone",
-            "urban_green_type",
-            "area_use",
-            "usage_intensity",
-            "created_by",
-            "updated_by",
-        )
-        .with_overlap_flag()
-        .defer("geometry")
-    )
+    queryset = Area.objects.select_related(
+        "client",
+        "zone",
+        "urban_green_type",
+        "area_use",
+        "usage_intensity",
+        "created_by",
+        "updated_by",
+    ).defer("geometry", "zone__geometry")
     serializer_class = AreaSerializer
     choice_serializer_class = AreaChoiceSerializer
     filterset_class = AreaFilter
@@ -148,10 +149,14 @@ class AreaViewSet(AssetViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if self.action in ("list", "choices"):
+        if self.action == "list":
+            # The flag of the overlaps, a spatial subquery, only where it is
+            # shown; the filter adds it where it is asked (AreaFilter).
+            return queryset.with_overlap_flag()
+        if self.action == "choices":
             return queryset
-        # The detail and the writes need the geometry.
-        return queryset.defer(None)
+        # The detail and the writes need the geometry of the area.
+        return queryset.defer(None).defer("zone__geometry")
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -171,7 +176,16 @@ class AreaViewSet(AssetViewSet):
         area = None
         if data.get("area") is not None:
             area = self.get_queryset().filter(pk=data["area"]).first()
+        proposed = {
+            field: data[field]
+            for field in services.PROPOSED_AREA_FIELDS
+            if field in data
+        }
         result = services.check_area_geometry(
-            data["client"], data["geometry"], self.get_change_context(), area
+            data["client"],
+            data["geometry"],
+            self.get_change_context(),
+            area,
+            **proposed
         )
         return Response(AreaGeometryCheckResultSerializer(result).data)

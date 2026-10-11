@@ -6,7 +6,9 @@ from core.enums import GeometryType
 from core.models import ChangeRecord
 from core.services import ChangeContext
 from core.testing import make_tenant, make_user, tenant_header
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from parties.models import Client
 from rest_framework.test import APITestCase
 from territory import services
@@ -282,6 +284,41 @@ class AreaTests(TerritoryTestCase):
         self.assertEqual(same.data["warnings"], [])
         self.assertEqual(foreign.status_code, 400, foreign.content)
         self.assertEqual(Area.objects.count(), 1)
+
+    def test_geometry_check_with_the_values_of_the_form(self):
+        self.make_area("1", 9, management_end=datetime.date(2020, 12, 31))
+        url = f"{self.url}geometry-check/"
+        data = {"client": str(self.own.pk), "geometry": square(9, 45)}
+
+        today = self.post(url, data)
+        in_2020 = self.post(
+            url,
+            {**data, "management_start": "2020-06-01", "management_end": "2021-06-01"},
+        )
+        fictitious = self.post(
+            url, {**data, "management_start": "2020-06-01", "is_fictitious": True}
+        )
+
+        self.assertEqual(today.data["warnings"], [])
+        self.assertEqual(in_2020.data["warnings"][0]["code"], "area_overlaps")
+        self.assertEqual(fictitious.data["warnings"], [])
+
+    def test_choices_do_not_compute_the_overlaps(self):
+        self.make_area("1", 9)
+
+        with CaptureQueriesContext(connection) as queries:
+            choices = self.client.get(f"{self.url}choices/", **self.header)
+        # Read now: the next request resets the log of the queries.
+        sql = " ".join(query["sql"] for query in queries)
+        overlapping = self.client.get(
+            f"{self.url}choices/", {"has_overlaps": False}, **self.header
+        )
+
+        self.assertEqual(len(choices.data), 1)
+        self.assertIn('"territory_area"', sql)
+        self.assertNotIn("ST_Relate", sql)
+        self.assertNotIn('"territory_zone"."geometry"', sql)
+        self.assertEqual(len(overlapping.data), 1)
 
     def test_update_checks_the_revision_and_records_the_geometry(self):
         area = self.make_area("1", 9)

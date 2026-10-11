@@ -166,12 +166,19 @@ class AreaChoiceSerializer(serializers.ModelSerializer):
 
 
 class AreaGeometryCheckSerializer(serializers.Serializer):
-    """A perimeter to check before saving it: the area being changed, if any,
-    gives its period and is left out of the overlaps."""
+    """
+    A perimeter to check before saving it, with the values of the form that
+    change the overlaps: the period of the management (from today, if not
+    given) and whether the area is fictitious. The area being changed, if any,
+    gives the values not sent and is left out of the overlaps.
+    """
 
     client = serializers.UUIDField()
     geometry = GeoJSONGeometryField(GeometryType.POLYGON)
     area = serializers.UUIDField(required=False, allow_null=True)
+    management_start = serializers.DateField(required=False, allow_null=True)
+    management_end = serializers.DateField(required=False, allow_null=True)
+    is_fictitious = serializers.BooleanField(required=False)
 
 
 class AreaGeometryCheckResultSerializer(serializers.Serializer):
