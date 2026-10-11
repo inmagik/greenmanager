@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from catalogs.models import AreaUse, UrbanGreenType, UsageIntensity
 from core import geo
@@ -284,6 +285,22 @@ class AreaTests(TerritoryTestCase):
         self.assertEqual(same.data["warnings"], [])
         self.assertEqual(foreign.status_code, 400, foreign.content)
         self.assertEqual(Area.objects.count(), 1)
+
+    def test_geometry_check_of_an_area_not_available(self):
+        second = Client.objects.create(
+            name="Consorzio", kind="public_body", managing_organization=self.org
+        )
+        of_another_client = self.make_area("1", 9, client=second)
+        foreign = self.make_area("1", 9, client=self.foreign)
+        url = f"{self.url}geometry-check/"
+        data = {"client": str(self.own.pk), "geometry": square(9, 45)}
+
+        for area in (uuid.uuid4(), foreign.pk, of_another_client.pk):
+            with self.subTest(area=area):
+                response = self.post(url, {**data, "area": str(area)})
+
+                self.assertEqual(response.status_code, 400, response.content)
+                self.assertEqual(response.data["area"]["code"], "area_not_available")
 
     def test_geometry_check_with_the_values_of_the_form(self):
         self.make_area("1", 9, management_end=datetime.date(2020, 12, 31))

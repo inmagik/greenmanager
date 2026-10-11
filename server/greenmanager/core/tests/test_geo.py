@@ -93,6 +93,26 @@ class NormalizeTests(SimpleTestCase):
         self.assertFalse(text.is_valid())
         self.assertFalse(other_srid.is_valid())
 
+    def test_bbox_within_the_limits_of_wgs84(self):
+        whole = GeoJSONQuerySerializer(data={"bbox": "-180,-90,180,90"})
+
+        self.assertTrue(whole.is_valid(), whole.errors)
+        for bbox in (
+            "-181,45,9,46",
+            "9,45,181,46",
+            "9,-91,10,46",
+            "9,45,10,91",
+            "nan,45,10,46",
+            "9,45,10,nan",
+            "-inf,45,10,46",
+            "9,45,1e400,46",
+        ):
+            with self.subTest(bbox=bbox):
+                params = GeoJSONQuerySerializer(data={"bbox": bbox})
+
+                self.assertFalse(params.is_valid())
+                self.assertEqual(params.errors["bbox"]["code"], "bbox_invalid")
+
 
 class GeodesicMeasuresTests(TestCase):
     def test_measures_on_the_ellipsoid_and_sum_of_the_parts(self):

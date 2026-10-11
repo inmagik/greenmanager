@@ -352,7 +352,9 @@ class ElementTests(InventoryTestCase):
 
         self.assertEqual(kept.status_code, 200, kept.content)
         self.assertEqual(hidden.data["species"]["code"], "catalog_entry_not_available")
+        self.assertEqual(hidden.data["species"]["params"], {"name": "Tilia cordata"})
         self.assertEqual(foreign.data["species"]["code"], "catalog_entry_not_available")
+        self.assertNotIn("params", foreign.data["species"])
 
     def test_tag_number_is_unique_among_the_present_elements(self):
         removed = self.make_tree(tag_number="12")

@@ -62,7 +62,7 @@ Aggiornato al 2026-10-11.
 | PR2a | basi geometriche, zone e aree (backend) | PR1 | unita, [#9](https://github.com/inmagik/greenmanager/pull/9) |
 | PR2b | elementi, composizione, ciclo di vita (backend) | PR2a | unita, [#11](https://github.com/inmagik/greenmanager/pull/11) |
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
-| PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | da fare, issue [#20](https://github.com/inmagik/greenmanager/issues/20) |
+| PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | in revisione, [#22](https://github.com/inmagik/greenmanager/pull/22); issue [#20](https://github.com/inmagik/greenmanager/issues/20) |
 | PR3a | parti comuni e committenti (frontend) | — | da fare, issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
 | PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
@@ -70,7 +70,7 @@ Aggiornato al 2026-10-11.
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Le funzioni del backend della fetta sono complete: PR1–PR2c unite. La PR2d chiude le ultime correzioni. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Le funzioni del backend della fetta sono complete: PR1–PR2c unite. La PR2d, in revisione, chiude le ultime correzioni. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono passati alla PR2d ([#20](https://github.com/inmagik/greenmanager/issues/20)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -105,7 +105,7 @@ Aggiornato al 2026-10-11.
 
 ### PR2d. Chiusura del backend
 
-Issue [#20](https://github.com/inmagik/greenmanager/issues/20). Parte da `main`.
+Issue [#20](https://github.com/inmagik/greenmanager/issues/20), PR [#22](https://github.com/inmagik/greenmanager/pull/22), in revisione. Parte da `main`.
 
 Ultime correzioni del backend, raccolte dalle revisioni delle PR2a–PR2c. Le prime tre vengono dalla issue #10:
 - `bbox` della action `geojson`: longitudini e latitudini nei limiti WGS84, senza valori non finiti (`bbox_invalid`);

@@ -39,8 +39,8 @@ LocationStatus = Element.LocationStatus
 # Counter of the element codes of a client (parties.ClientSequence).
 CODE_SEQUENCE = "element"
 MAX_PERCENTAGE = Decimal(100)
-# A new tree closer than this to a present tree may be the same tree, surveyed
-# twice (scenario 4.2): meters on the ellipsoid.
+# A new tree within this distance of a present tree, inclusive, may be the same
+# tree, surveyed twice (scenario 4.2, D-052): meters on the ellipsoid.
 NEAR_TREE_DISTANCE_M = 2
 
 
@@ -567,8 +567,8 @@ def outside_area_warnings(geometry, area):
 
 def near_tree_warnings(elements, element_class, geometry, exclude=None):
     """
-    A tree closer than ``NEAR_TREE_DISTANCE_M`` to a present tree among
-    ``elements``: it may be the same tree, surveyed twice (scenario 4.2).
+    A tree within ``NEAR_TREE_DISTANCE_M`` of a present tree among ``elements``,
+    inclusive: it may be the same tree, surveyed twice (scenario 4.2, D-052).
     Provisional positions do not count: they were not surveyed (EL-10).
     """
     if not element_class.counts_as_tree or not isinstance(geometry, Point):

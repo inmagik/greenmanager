@@ -170,7 +170,8 @@ class AreaGeometryCheckSerializer(serializers.Serializer):
     A perimeter to check before saving it, with the values of the form that
     change the overlaps: the period of the management (from today, if not
     given) and whether the area is fictitious. The area being changed, if any,
-    gives the values not sent and is left out of the overlaps.
+    is of the client: it gives the values not sent and is left out of the
+    overlaps.
     """
 
     client = serializers.UUIDField()
