@@ -64,7 +64,8 @@ server/
 │   ├── core/                 basi del dominio: TrackedModel, ChangeRecord, errori, mixin
 │   ├── catalogs/             cataloghi: specie, classi, attributi, classificazioni delle aree
 │   ├── parties/              committenti
-│   └── territory/            zone e aree
+│   ├── territory/            zone e aree
+│   └── inventory/            elementi censiti e composizione
 ├── requirements*.txt
 ├── docker-compose.yml        PostGIS e Redis per lo sviluppo
 ├── Dockerfile, scripts/      immagine: start, worker, scheduler
@@ -93,7 +94,7 @@ server/
   - La view chiama il servizio con i dati validati e `get_change_context()`; il servizio blocca il record con `core.services.lock_for_change` sul QuerySet `editable_by(...)`, controlla la revisione, valida con `core.errors.validate_model` e scrive lo storico con `core.services.record_change`.
   - Gli errori hanno un codice: `core.errors.api_error`, `permission_error`.
   - L'admin salva con i servizi: `core.admin.ServiceAdminMixin`, e per i dati operativi `ServiceBackedAdminMixin`, che scrive anche lo storico.
-- **Dati del patrimonio**: viewset con `ClientScopedViewSetMixin` e QuerySet con `visible_to` ed `editable_by` (§8.7 di `backend.md`).
+- **Dati del patrimonio**: viewset con `ClientScopedViewSetMixin` e QuerySet con `visible_to` ed `editable_by` (§8.8 di `backend.md`).
 - **Test**: in `tests/` per app, con gli helper di `core.testing`; i permessi si danno con un ruolo nel tenant.
 - **Registri non cancellabili** (D-034): osservazioni, valutazioni ed eseguito si correggono o si annullano con una motivazione.
 - **App core** (`auth_core`, `tenants`, `jobs_core`, `inmagik_utils`): sono condivise con gli altri progetti INMAGIK. Si modificano solo se serve, e ogni differenza va annotata in `backend.md`.

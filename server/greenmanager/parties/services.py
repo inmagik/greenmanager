@@ -6,7 +6,7 @@ from core.services import lock_for_change, record_change, snapshot, stamp
 from django.db import transaction
 from django.db.models.deletion import ProtectedError, RestrictedError
 
-from .models import Client
+from .models import Client, ClientSequence
 
 Operation = ChangeRecord.Operation
 
@@ -92,3 +92,17 @@ def delete_client(client, context):
         before=before,
         client_id=client_id,
     )
+
+
+def next_sequence_value(client_id, key):
+    """
+    The next value of the counter ``key`` of the client, never given before
+    (EL-8). Call it in a transaction: the counter stays locked until its end, so
+    two concurrent records do not get the same value.
+    """
+    sequence, _ = ClientSequence.objects.select_for_update().get_or_create(
+        client_id=client_id, key=key
+    )
+    sequence.last_value += 1
+    sequence.save(update_fields=["last_value"])
+    return sequence.last_value

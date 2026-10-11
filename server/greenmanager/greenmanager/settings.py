@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "catalogs",
     "parties",
     "territory",
+    "inventory",
 ]
 
 MIDDLEWARE = [

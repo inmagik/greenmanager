@@ -288,7 +288,7 @@ Le copie e i derivati del dominio (per esempio l'ultima condizione sull'elemento
 
 - `ModelViewSet` con i mixin prima della classe base, in quest'ordine:
   1. `AuditlogActorMixin`, per l'autore delle modifiche (§3.4);
-  2. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2). Per i dati del patrimonio, `ClientScopedViewSetMixin` (§8.7);
+  2. `TenantScopedViewSetMixin`, oppure `TenantContextMixin` se il filtro per organizzazione è indiretto (§3.2). Per i dati del patrimonio, `ClientScopedViewSetMixin` (§8.8);
   3. `StandardPaginationMixin`;
   4. `StructuralFilterMixin`;
   5. `BulkDeleteActionMixin`, se serve l'eliminazione multipla.
@@ -417,7 +417,7 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
 
 ## 8. App di dominio
 
-Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta aggiunge le sue app. Decisioni D-041–D-050.
+Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta aggiunge le sue app. Decisioni D-041–D-051.
 
 ### 8.1 App
 
@@ -425,9 +425,9 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 |---|---|---|---|
 | `core` | modelli astratti, `ChangeRecord` | — | PR1 |
 | `catalogs` | `Species`, `ElementClass`, `AttributeDefinition`, `ElementClassAttribute`, `UrbanGreenType`, `AreaUse`, `UsageIntensity`, `RemovalCause` | `api/catalogs/` | PR1 |
-| `parties` | `Client` | `api/parties/` | PR1 |
+| `parties` | `Client`, `ClientSequence` | `api/parties/` | PR1; `ClientSequence` con la PR2b |
 | `territory` | `Zone`, `Area` | `api/territory/` | PR2a |
-| `inventory` | `Element`, `CompositionItem` | `api/inventory/` | PR2b |
+| `inventory` | `Element`, `CompositionItem` | `api/inventory/` | PR2b; i controlli spaziali con la PR2c |
 
 - Le dipendenze vanno in un solo verso: `core` ← `catalogs` ← `parties` ← `territory` ← `inventory` (D-041). Le chiavi esterne verso entità di app successive (interventi, valutazioni, import) si aggiungono con quelle app.
 - `core` non ha endpoint. Lo storico di dominio si consulterà con CE-4 e TR-6.
@@ -439,8 +439,8 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 | `models.py` | `UUIDModel`; `TrackedModel` con `created_at`, `created_by`, `updated_at`, `updated_by`, `revision` (D-042); `ChangeRecord`; `system_entry_id(modello, codice)`, la chiave deterministica delle voci di sistema |
 | `services.py` | `ChangeContext` (autore, organizzazione, origine); `change_source(request)`, che legge l'header `X-Change-Source` (`web` o `field`); `stamp`, l'autore della modifica; `snapshot`, i valori di un record in JSON (geometrie in GeoJSON); `record_change`, che scrive il `ChangeRecord`; `lock_for_change(queryset, pk)`, che blocca il record dentro il suo ambito (es. `editable_by(org)`); `save_validated`, che salva e, se una modifica contemporanea viola un vincolo, risponde con l'errore della regola invece di un `500` |
 | `errors.py` | `api_error` e `permission_error`, errori con codice; `validate_model`, il `full_clean()` del record con gli errori nella forma dell'API; `check_revision`, il controllo della revisione (`409 revision_conflict`) |
-| `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision`; `GeoJSONGeometryField`, una geometria come oggetto GeoJSON, normalizzata per tipo; `GeoJSONQuerySerializer`, i parametri `bbox` e `srid` |
-| `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.7); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view; `GeoJSONActionMixin`, action `geojson` (§4.4) |
+| `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision`; `GeoJSONGeometryField`, una geometria come oggetto GeoJSON, normalizzata per tipo (senza tipo, quando dipende da altri dati come la classe dell'elemento, la normalizzano i servizi); `GeoJSONQuerySerializer`, i parametri `bbox` e `srid` |
+| `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.8); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view; `GeoJSONActionMixin`, action `geojson` (§4.4) |
 | `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi. Una modifica blocca il record e controlla che la revisione sia quella con cui si è aperto il form. Una cancellazione rifiutata dai servizi si mostra come messaggio, e la cancellazione multipla è atomica; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
 | `geo.py` | geometrie (D-049): `parse_geojson`, `normalize` per tipo (punto, linea, poligono), `geodesic_measures` (superficie, perimetro e lunghezza sull'ellissoide) |
 | `schema.py` | descrizione del campo GeoJSON e della FeatureCollection nello schema OpenAPI |
@@ -507,6 +507,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - L'organizzazione di gestione è quella della richiesta. Solo lo staff ne assegna un'altra (errore `managing_organization_staff_only`), per esempio nella variante K2 (§4.7 di [04-modello-dati.md](../04-modello-dati.md)).
 - Un committente con dati non si elimina (`client_has_related_data`): si disattiva con `active`.
 - Ogni creazione, modifica e cancellazione scrive un `ChangeRecord`.
+- `ClientSequence` tiene i contatori dei codici leggibili del committente, uno per chiave: `next_sequence_value(client, key)` dà il valore successivo, bloccando il contatore fino alla fine della transazione. Un valore non torna, anche se il suo record si cancella (D-051).
 
 ### 8.6 Territorio: `territory`
 
@@ -529,7 +530,32 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 **Regole comuni**: il committente si sceglie tra quelli che l'organizzazione può modificare (`client_not_available`) e non cambia dopo la creazione (`client_immutable`). Ogni creazione, modifica e cancellazione scrive un `ChangeRecord` con la geometria in GeoJSON. Nello storico tecnico (django-auditlog) la geometria non c'è: superficie e perimetro ne mostrano le modifiche.
 
-### 8.7 Accesso e permessi
+### 8.7 Censimento: `inventory`
+
+`api/inventory/elements/`, con `history/`, `choices/` e `geojson/`, più `remove/` e `restore/` sul singolo elemento. I controlli spaziali (area proposta, elemento fuori dalla sua area, alberi vicini, `geometry-check/`, posizione al centro dell'area) arrivano con la PR2c.
+
+**Elementi** (EL-1, EL-3, EL-5, EL-7, EL-8; D-051):
+- l'area, che l'organizzazione deve poter modificare (`area_not_available`), dà il committente. Un elemento cambia area solo dentro lo stesso committente (`area_of_another_client`);
+- il codice lo dà il server da `ClientSequence`, ed è in sola lettura. Liste e `ordering=code` lo ordinano in ordine naturale. Il cartellino è univoco tra gli elementi presenti (`element_tag_number_not_unique`);
+- classe e specie sono voci disponibili per l'organizzazione di gestione, e quelle già salvate restano valide;
+- la geometria si normalizza per il tipo della classe (`geometry_type_not_allowed`). Le linee hanno `length_m`, i poligoni `surface_m2`, sull'ellissoide;
+- specie e composizione seguono `species_mode` della classe: `species_required`, `species_not_allowed`, `composition_not_allowed`, `species_and_composition`;
+- la composizione sostituisce l'elenco intero: una specie una volta (`composition_species_duplicated`), con quantità o percentuale (`composition_quantity_required`), percentuali fino a 100 (`composition_percentage_over_100`). Una specie nuova dev'essere disponibile;
+- gli attributi si controllano con `validate_attributes` (§8.4) quando cambiano gli attributi o la classe;
+- senza data del rilievo, la creazione mette la data del giorno.
+
+**Ciclo di vita** (EL-7, D-029):
+- `remove/` chiede la data e, per le classi che contano come alberi, la causa (`removal_cause_required`); la data non precede la posa (`element_removed_before_planted`). Su un elemento già rimosso corregge data e causa;
+- `restore/` toglie data e causa (`element_not_removed` se l'elemento è presente). Non vale per un elemento a cui è subentrato un elemento presente (`element_replaced`);
+- le due action accettano `reason`, che va nello storico, e `revision`;
+- `replaces` indica un elemento rimosso dello stesso committente (`replaced_element_not_available`, `replaced_element_not_removed`), senza cicli nella catena delle sostituzioni (`replacement_cycle`);
+- un elemento si elimina solo se è stato inserito per errore e nessun dato lo usa (`element_has_related_data`).
+
+**Filtri**: `client`, `area`, `zone`, `element_class`, `category`, `species`, `location_status`, `removed` e `present_on`, cioè gli elementi presenti a una data (§4.3 di [04-modello-dati.md](../04-modello-dati.md)). La lista non restituisce la geometria.
+
+**Storico**: il `ChangeRecord` dell'elemento contiene la composizione. Nello storico tecnico la composizione ha voci proprie (`CompositionItem`), e la geometria non c'è, come per le aree. L'admin mostra la composizione in sola lettura: cambia dall'API, che la controlla per intero.
+
+### 8.8 Accesso e permessi
 
 **Permessi.**
 
@@ -538,6 +564,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 | `catalogs.WRITE_CATALOGS` | gestione delle voci dei cataloghi dell'organizzazione. La lettura non chiede permessi |
 | `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | lettura e gestione dei committenti |
 | `territory.READ_AREAS`, `territory.WRITE_AREAS` | lettura e gestione delle zone e delle aree; `geometry-check/` chiede la scrittura |
+| `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | lettura e gestione degli elementi; `remove/` e `restore/` chiedono la scrittura |
 
 **Accesso ai dati del patrimonio** (D-044).
 - Il QuerySet del modello ha `visible_to(org)` ed `editable_by(org)`, comuni ai dati di un committente in `parties.ClientDataQuerySet`. `ClientScopedViewSetMixin` li applica alle letture e alle scritture.
@@ -545,12 +572,12 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - Senza tenant nella richiesta non si vede nulla, nemmeno dallo staff: i record non hanno un tenant proprio da controllare.
 - Le entità con un'organizzazione diretta la chiamano `organization`, come il modello dati.
 
-### 8.8 Storico
+### 8.9 Storico
 
 Vedi D-043.
 - I modelli di dominio si registrano in django-auditlog con `register_audit`, in fondo a `models.py`. La modale dello storico del frontend legge l'action `history`.
 - `hidden_by` dei cataloghi resta fuori dallo storico tecnico: una voce di sistema è condivisa, e il suo storico mostrerebbe a ogni organizzazione chi la nasconde nelle altre.
-- `ChangeRecord` registra i dati operativi (committenti, zone e aree; poi gli elementi), non i cataloghi. È immutabile:
+- `ChangeRecord` registra i dati operativi (committenti, zone, aree ed elementi, con la loro composizione), non i cataloghi. È immutabile:
   - nell'ORM, `save()` su un record esistente, `delete()` e le operazioni in blocco del QuerySet (`update()`, `delete()`) sollevano un errore;
   - nel database, un trigger rifiuta `UPDATE` e `DELETE` da qualunque client (migrazione `core.0002`). Passa solo l'autore messo a `NULL` quando si cancella l'utente: un secondo trigger, differito, controlla al commit che l'utente non esista più (migrazione `core.0003`). Il nome resta in `author_label`.
 - `record_change` salta le modifiche senza differenze. Una cancellazione scrive un *annullamento* con gli ultimi valori.
@@ -559,11 +586,11 @@ Vedi D-043.
 
 1. **Test.** Runner di Django con `tests.py` per app, come data-lab, o pytest con pytest-django, come prevede bottaro-pesatura? → **chiusa** alla revisione: runner di Django (`python manage.py test`), con `tests.py` o `tests/` per app, come data-lab.
 2. **Superuser e permessi.** Il frontend lascia passare il superuser in ogni controllo (`hasPermission`), il backend no: `ActionPermission` guarda solo `all_permissions`. → **chiusa** alla revisione: il superuser passa anche nel backend, in `RuntimePermission` e `ActionPermission`, come in bottaro-pesatura (§3.1).
-3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → **chiusa** nella prima fetta verticale: django-auditlog per il tracciamento tecnico, `ChangeRecord` scritto dai servizi (§8.8, D-043)
+3. **Storico delle modifiche e django-auditlog.** django-auditlog registra ogni modifica con l'autore e ne ricava date e autori (§3.4). `ChangeRecord` (D-034) chiede in più motivazione, organizzazione, origine e stato di approvazione, ed è consultabile dal committente. Proposta: django-auditlog resta per il tracciamento tecnico, `ChangeRecord` si scrive nei servizi di dominio. In alternativa si estende la voce di django-auditlog con dati aggiuntivi. → **chiusa** nella prima fetta verticale: django-auditlog per il tracciamento tecnico, `ChangeRecord` scritto dai servizi (§8.9, D-043)
 4. **Permessi per organizzazione.** `all_permissions` unisce i ruoli di tutti i tenant dell'utente: chi ha ruoli in due organizzazioni ha in ciascuna anche i permessi dell'altra. In GreenManager capita, per esempio con un valutatore esterno. Proposta: calcolare i permessi sui ruoli del tenant della richiesta. Due punti collegati, emersi dalla revisione della PR dello scaffold:
    - i permessi diretti dell'utente (`permissions`) valgono in tutti i tenant;
    - `is_active` e la cancellazione dell'utente valgono per tutti i tenant. Per ora solo lo staff li cambia per gli utenti condivisi (§3.1).
 
    → **chiusa in parte** alla revisione della PR dello scaffold: server e frontend calcolano i permessi sui ruoli del tenant della richiesta più i permessi diretti (§3.1); email, attivazione, permessi diretti e cancellazione di un utente condiviso li cambia solo lo staff. Resta per T3, nella prima fetta verticale (D-040): se i permessi diretti debbano diventare per tenant, e come si gestiscono gli utenti condivisi (per esempio l'invito di un utente già esistente). → **chiusa** nella prima fetta verticale: i permessi diretti restano per tutti i tenant e li cambia solo lo staff; l'invito di un utente esistente è rinviato agli affidamenti (§3.1, D-045)
-5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → **chiusa** nella prima fetta verticale: `visible_to` ed `editable_by` nel QuerySet, `ClientScopedViewSetMixin` nelle view; il campo si chiama `organization` (§8.7, D-044). L'accesso tramite gli affidamenti arriva con le app che li introducono
+5. **Filtro per organizzazione dei dati del patrimonio.** `TenantScopedViewSetMixin` filtra su un campo `tenant` diretto. I dati del patrimonio hanno invece `client` (e quindi `managing_organization`), e gli esecutori di un'altra organizzazione vi accedono tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md)). Da decidere anche il nome del campo nelle entità con organizzazione diretta: `tenant`, come lo scaffold, o `organization`, come il modello dati. → **chiusa** nella prima fetta verticale: `visible_to` ed `editable_by` nel QuerySet, `ClientScopedViewSetMixin` nelle view; il campo si chiama `organization` (§8.8, D-044). L'accesso tramite gli affidamenti arriva con le app che li introducono
 6. **Archiviazione di foto e allegati.** data-lab salva i file su disco (`MEDIA_ROOT`). Le foto sono il cuore del registro dello stato e crescono molto. Proposta: disco nell'MVP, con `STORAGES` pronto per un object storage compatibile S3. → rinviata a T3

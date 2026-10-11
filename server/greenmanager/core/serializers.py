@@ -54,6 +54,10 @@ class GeoJSONGeometryField(serializers.Field):
     The input is normalized for ``geometry_type`` (``core.geo.normalize``): a
     polygon becomes a MultiPolygon, and so on. The errors have a code (e.g.
     ``geometry_invalid``, ``geometry_type_not_allowed``).
+
+    With ``geometry_type`` ``None`` the type depends on other data (e.g. the
+    class of an element): the field only parses the GeoJSON, and the services
+    normalize it.
     """
 
     def __init__(self, geometry_type, **kwargs):
@@ -65,7 +69,10 @@ class GeoJSONGeometryField(serializers.Field):
 
     def to_internal_value(self, data):
         try:
-            return geo.normalize(geo.parse_geojson(data), self.geometry_type)
+            geometry = geo.parse_geojson(data)
+            if self.geometry_type is None:
+                return geometry
+            return geo.normalize(geometry, self.geometry_type)
         except geo.GeometryError as exc:
             raise serializers.ValidationError(exc.payload)
 

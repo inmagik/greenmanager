@@ -514,3 +514,18 @@ Stati possibili:
   - la lista delle aree ha il flag `has_overlaps` e il filtro omonimo, per l'elenco delle aree da sistemare.
 - **Motivazione**: dati importati e rilievi in campo possono essere imprecisi (AR-5); un blocco impedirebbe di caricarli. Un'area chiusa e quella che la sostituisce non sono un errore.
 - **Alternative scartate**: un vincolo che rifiuta le sovrapposizioni; avvisi calcolati solo nel frontend, che non servirebbero all'import.
+
+## D-051 — Elementi: codice, cartellino, composizione e ciclo di vita
+
+- **Data**: 2026-10-11 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - il codice dell'elemento lo dà il server alla creazione: il valore successivo di un contatore del committente (`parties.ClientSequence`), mai riusato, anche se l'elemento si cancella. È un testo, come nel modello dati, ordinato in ordine naturale ("2" prima di "10");
+  - il numero di cartellino è univoco tra gli elementi presenti del committente: quello di un elemento rimosso si può riusare;
+  - la geometria è un solo campo. Il tipo lo controllano i servizi, rispetto alla classe, e un vincolo del database che ammette solo punti e linee e poligoni multiparte. Lunghezza e superficie si calcolano come per le aree (D-049);
+  - la composizione si scrive con l'elemento e sostituisce l'elenco intero; senza `composition` resta com'è. Nello storico di dominio fa parte dei valori dell'elemento;
+  - gli attributi della classe si controllano quando cambiano gli attributi o la classe: una modifica di altri dati non dipende da un attributo diventato obbligatorio dopo;
+  - rimozione e ripristino hanno action proprie, con una motivazione facoltativa nello storico. La scrittura dell'elemento non tocca data e causa della rimozione. Rimuovere un elemento già rimosso ne corregge data e causa;
+  - un elemento prende il posto (`replaces`) solo di un elemento rimosso dello stesso committente, senza tornare a sé lungo la catena delle sostituzioni. Un elemento a cui è subentrato un elemento presente non si ripristina;
+  - un elemento con la data di posa stimata, o senza data, è presente dall'inizio della gestione della sua area (§4.3 di [04-modello-dati.md](04-modello-dati.md)); senza data del rilievo, la creazione mette la data del giorno.
+- **Motivazione**: un codice preso dal massimo esistente, come per le zone, tornerebbe a un elemento cancellato (EL-8). Le action rendono esplicito il ciclo di vita (EL-7) e ne separano le regole dalle correzioni dei dati. Il controllo sulla catena delle sostituzioni mantiene leggibile lo storico di una posizione (D-029).
+- **Alternative scartate**: codice come intero; codice uguale al massimo più uno; data e causa della rimozione modificabili con la scrittura dell'elemento; composizione con un endpoint proprio.
