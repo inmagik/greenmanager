@@ -94,7 +94,7 @@ const roles = {
     "I permessi si assegnano con i ruoli. I permessi diretti valgono in tutte le organizzazioni dell'utente e li cambia solo lo staff.",
   permissionInfo: "Informazioni sul permesso {{name}}",
   // Groups of permissions, by Django app (fm_permissions.py); without a key, the app name.
-  modules: { auth_core: "Utenti e ruoli", catalogs: "Cataloghi", parties: "Committenti" },
+  modules: { auth_core: "Utenti e ruoli", catalogs: "Cataloghi", parties: "Committenti", territory: "Zone e aree" },
 } as const
 const profile = {
   breadcrumb: "Profilo utente",

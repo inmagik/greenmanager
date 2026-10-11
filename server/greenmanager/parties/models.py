@@ -12,6 +12,24 @@ istat_code_validator = RegexValidator(
 )
 
 
+class ClientDataQuerySet(models.QuerySet):
+    """
+    Access to the data of the clients: zones, areas, elements (§5.4 of
+    04-modello-dati.md, D-044).
+
+    In the MVP an organization sees and changes the data of the clients it
+    manages; the assignments will add the executors.
+    """
+
+    def visible_to(self, organization):
+        if organization is None:
+            return self.none()
+        return self.filter(client__managing_organization=organization)
+
+    def editable_by(self, organization):
+        return self.visible_to(organization)
+
+
 class ClientQuerySet(models.QuerySet):
     """Access to the clients (§5.4 of 04-modello-dati.md).
 

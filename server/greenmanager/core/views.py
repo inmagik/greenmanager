@@ -1,12 +1,19 @@
 from auditlog.models import LogEntry
-from drf_spectacular.utils import extend_schema
+from django.conf import settings
+from django.contrib.gis.db.models.functions import AsGeoJSON, Transform
+from django.db.models import F, JSONField
+from django.db.models.functions import Cast
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from inmagik_utils.audit_log.audit_log_serializers import AuditLogEntrySerializer
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from tenants.mixins import TenantContextMixin
 
+from . import geo
 from .errors import api_error
+from .schema import GEOJSON_FEATURE_COLLECTION
+from .serializers import GeoJSONQuerySerializer
 from .services import ChangeContext, change_source
 
 
@@ -104,3 +111,63 @@ class ChoicesActionMixin:
     @action(detail=False, methods=["get"], pagination_class=None)
     def choices(self, request, *args, **kwargs):
         return Response(self.get_serializer(self.get_choices_queryset()).data)
+
+
+class GeoJSONActionMixin:
+    """
+    Action ``geojson``: the records filtered like the list, as a GeoJSON
+    FeatureCollection for the map (§4.4 of backend.md).
+
+    - Without pagination: the limit is the part of the map in ``bbox``
+      (``minx,miny,maxx,maxy`` in WGS84), and ``GEOJSON_MAX_FEATURES`` at most,
+      with ``truncated`` true if there were more.
+    - The database writes the GeoJSON of the geometries, in ``srid`` if given.
+    - The properties are the fields in ``geojson_properties``.
+    """
+
+    geojson_geometry_field = "geometry"
+    geojson_properties = ()
+
+    @extend_schema(
+        parameters=[GeoJSONQuerySerializer],
+        responses={200: OpenApiResponse(response=GEOJSON_FEATURE_COLLECTION)},
+    )
+    @action(detail=False, methods=["get"], pagination_class=None)
+    def geojson(self, request, *args, **kwargs):
+        params = GeoJSONQuerySerializer(data=request.query_params)
+        params.is_valid(raise_exception=True)
+        field = self.geojson_geometry_field
+        queryset = self.filter_queryset(self.get_queryset()).filter(
+            **{f"{field}__isnull": False}
+        )
+        bbox = params.validated_data.get("bbox")
+        if bbox is not None:
+            queryset = queryset.filter(**{f"{field}__intersects": bbox})
+        srid = int(params.validated_data["srid"])
+        geometry = F(field) if srid == geo.SRID else Transform(field, srid)
+        limit = settings.GEOJSON_MAX_FEATURES
+        rows = (
+            queryset.annotate(
+                geojson_geometry=Cast(AsGeoJSON(geometry), output_field=JSONField())
+            )
+            .values("pk", "geojson_geometry", *self.geojson_properties)[: limit + 1]
+            .iterator(chunk_size=2000)
+        )
+        features = []
+        for row in rows:
+            features.append(
+                {
+                    "type": "Feature",
+                    "id": str(row.pop("pk")),
+                    "geometry": row.pop("geojson_geometry"),
+                    "properties": row,
+                }
+            )
+        truncated = len(features) > limit
+        return Response(
+            {
+                "type": "FeatureCollection",
+                "features": features[:limit],
+                "truncated": truncated,
+            }
+        )

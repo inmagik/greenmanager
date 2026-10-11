@@ -493,3 +493,24 @@ Stati possibili:
   - le specie si caricano con il comando `import_species`, da un file CSV. Il file `catalogs/seeds/species_starter.csv` ha 72 specie urbane comuni e i loro 48 generi, da verificare sulla nomenclatura di riferimento. La fonte definitiva resta quella proposta allo Step 4, con le licenze da verificare.
 - **Motivazione**: le migrazioni danno a ogni installazione le stesse voci, con le stesse chiavi (D-042). L'elenco delle specie cresce e si cura nel tempo: un comando idempotente lo aggiorna senza nuove migrazioni.
 - **Alternative scartate**: fixture da caricare a mano; specie in una migrazione.
+
+## D-049 — Geometrie, misure ed endpoint GeoJSON
+
+- **Data**: 2026-10-11 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - le geometrie arrivano dall'API come oggetti geometria GeoJSON in WGS84 e si normalizzano prima di salvarle (`core.geo.normalize`): un poligono diventa multiparte, una linea anche, un punto resta semplice; la Z si scarta; geometrie vuote, non valide o con coordinate fuori dai limiti di longitudine e latitudine si rifiutano con un codice (es. `geometry_invalid`, `geometry_out_of_range`);
+  - superficie, perimetro e lunghezza si calcolano sull'ellissoide (`::geography` di PostGIS) e si salvano con la geometria. Per una geometria multiparte sono la somma delle parti;
+  - la mappa legge i dati da una action `geojson` per risorsa: una FeatureCollection filtrata come la lista e per `bbox`, senza paginazione, con il GeoJSON scritto dal database e un limite di feature (`GEOJSON_MAX_FEATURES`, con `truncated` se si supera). Le coordinate si possono chiedere in un altro sistema (`srid`: Web Mercator e RDN2008);
+  - il campo GeoJSON dei serializer è nostro (`GeoJSONGeometryField`), senza djangorestframework-gis.
+- **Motivazione**: un solo formato tra frontend, import e storico (D-035). Le misure in gradi del 4326 non sono metri: sull'ellissoide sono corrette in tutta Italia. Le liste paginate non servono alla mappa, che mostra tutto ciò che sta nella porzione visibile.
+- **Alternative scartate**: djangorestframework-gis, che aggiunge una dipendenza per un campo e un serializer; misure in un sistema proiettato, che dipende dalla zona; correzione automatica delle geometrie non valide (`ST_MakeValid`), che può cambiare il perimetro senza che l'utente lo veda.
+
+## D-050 — Controlli topologici come avvisi
+
+- **Data**: 2026-10-11 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - i controlli topologici di AR-5 non bloccano il salvataggio: il dettaglio e le risposte di scrittura hanno un elenco `warnings`, con codice, parametri e messaggio come gli errori; una action `geometry-check` dà misure e avvisi di un perimetro prima di salvarlo;
+  - due aree dello stesso committente si sovrappongono se le parti interne si intersecano (due aree che si toccano non si sovrappongono) e se sono gestite in periodi che si sovrappongono. Le aree fittizie non contano (AR-3);
+  - la lista delle aree ha il flag `has_overlaps` e il filtro omonimo, per l'elenco delle aree da sistemare.
+- **Motivazione**: dati importati e rilievi in campo possono essere imprecisi (AR-5); un blocco impedirebbe di caricarli. Un'area chiusa e quella che la sostituisce non sono un errore.
+- **Alternative scartate**: un vincolo che rifiuta le sovrapposizioni; avvisi calcolati solo nel frontend, che non servirebbero all'import.

@@ -8,9 +8,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.contrib.gis.geos import GEOSGeometry
+from django.db import IntegrityError, transaction
 from rest_framework.exceptions import NotFound
 
-from .errors import error_payload
+from .errors import error_payload, validate_model
 from .models import TRACKING_FIELDS, ChangeRecord
 
 CHANGE_SOURCE_HEADER = "HTTP_X_CHANGE_SOURCE"
@@ -43,6 +44,20 @@ def lock_for_change(queryset, pk):
     if instance is None:
         raise NotFound(error_payload("not_found", "Not found."))
     return instance
+
+
+def save_validated(instance, **kwargs):
+    """
+    Save a validated record. A constraint broken by a concurrent change after
+    the validation (e.g. the same code) gives the error of the rule, validated
+    again, not a 500.
+    """
+    try:
+        with transaction.atomic():
+            instance.save(**kwargs)
+    except IntegrityError:
+        validate_model(instance)
+        raise
 
 
 def change_source(request):
