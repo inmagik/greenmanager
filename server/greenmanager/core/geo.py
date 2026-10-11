@@ -9,6 +9,7 @@ lengths are computed on the ellipsoid, so they are in meters everywhere.
 import json
 from decimal import Decimal
 
+from django.contrib.gis.db.models import GeometryField
 from django.contrib.gis.gdal import GDALException
 from django.contrib.gis.geos import (
     GEOSException,
@@ -21,6 +22,8 @@ from django.contrib.gis.geos import (
     WKBWriter,
 )
 from django.db import connection
+from django.db.models import FloatField, Func
+from django.db.models.functions import Cast
 
 from .enums import GeometryType
 from .errors import error_payload
@@ -128,3 +131,15 @@ def geodesic_measures(geometry):
 
 def round_meters(value):
     return Decimal(str(round(value or 0, 2)))
+
+
+def geodesic(function, expression):
+    """
+    ``function`` (``ST_Length``, ``ST_Area``) of a WGS84 geometry expression, in
+    meters on the ellipsoid: ``geodesic_measures`` as an expression of a query.
+    """
+    return Func(
+        Cast(expression, GeometryField(srid=SRID, geography=True)),
+        function=function,
+        output_field=FloatField(),
+    )
