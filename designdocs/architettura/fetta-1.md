@@ -62,7 +62,7 @@ Aggiornato al 2026-10-11.
 | PR2a | basi geometriche, zone e aree (backend) | PR1 | unita, [#9](https://github.com/inmagik/greenmanager/pull/9) |
 | PR2b | elementi, composizione, ciclo di vita (backend) | PR2a | unita, [#11](https://github.com/inmagik/greenmanager/pull/11) |
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
-| PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | in revisione, [#22](https://github.com/inmagik/greenmanager/pull/22); issue [#20](https://github.com/inmagik/greenmanager/issues/20) |
+| PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
 | PR3a | parti comuni e committenti (frontend) | — | da fare, issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
 | PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
@@ -70,9 +70,9 @@ Aggiornato al 2026-10-11.
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Le funzioni del backend della fetta sono complete: PR1–PR2c unite. La PR2d, in revisione, chiude le ultime correzioni. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
-- I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono passati alla PR2d ([#20](https://github.com/inmagik/greenmanager/issues/20)); nella #10 restano i due della PR1 sull'ordine dei lock.
+- I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
 ## 4. PR fatte
 
@@ -101,22 +101,14 @@ Aggiornato al 2026-10-11.
 - Posizione provvisoria al centro dell'area, e verifica della posizione.
 - Riferimenti: §8.7.
 
+**PR2d: chiusura del backend** ([#22](https://github.com/inmagik/greenmanager/pull/22); issue [#20](https://github.com/inmagik/greenmanager/issues/20)).
+- Correzioni dalle revisioni delle PR2a–PR2c, tre delle quali dalla issue #10.
+- `bbox` della action `geojson` nei limiti di WGS84, e schema della risposta con le geometrie nello `srid` richiesto.
+- `area_not_available` nel `geometry-check/` delle aree.
+- Nome della voce in `catalog_entry_not_available` solo se l'organizzazione la vede, anche per gli attributi delle classi.
+- Riferimenti: §8.2, §8.4 e §8.6.
+
 ## 5. PR da fare
-
-### PR2d. Chiusura del backend
-
-Issue [#20](https://github.com/inmagik/greenmanager/issues/20), PR [#22](https://github.com/inmagik/greenmanager/pull/22), in revisione. Parte da `main`.
-
-Ultime correzioni del backend, raccolte dalle revisioni delle PR2a–PR2c. Le prime tre vengono dalla issue #10:
-- `bbox` della action `geojson`: longitudini e latitudini nei limiti WGS84, senza valori non finiti (`bbox_invalid`);
-- schema OpenAPI della risposta `geojson`: la geometria è nello `srid` richiesto, non sempre in WGS84;
-- `catalog_entry_not_available` riporta il nome della voce solo se l'organizzazione la vede (`visible_to`);
-- `geometry-check/` delle aree: un'area inesistente, di un'altra organizzazione o di un altro committente dà `area_not_available`, come fa `element_not_available` per gli elementi;
-- commenti del codice sugli alberi vicini allineati alla regola di D-052: entro 2 m, compresi.
-
-**Documenti**: §8.2 e §8.6 di [backend.md](backend.md).
-
-**Verifica**: test nuovi per i primi quattro punti, e i controlli del backend di §7.
 
 ### Regole delle PR del frontend
 
