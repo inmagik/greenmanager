@@ -304,7 +304,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 ### 9.3 Committente come filtro
 
 Vedi D-053. I dati del patrimonio (zone, aree, elementi) appartengono a un committente, e un'organizzazione ne gestisce più di uno.
-- `ClientSelect` (`modules/parties/components/`) sceglie un committente tra quelli dell'action `choices/`, con la ricerca nel testo. Con `activeOnly` mostra solo i committenti attivi: si usa nei form dei dati nuovi. Un committente disattivato è segnato nell'opzione.
+- `ClientSelect` (`modules/parties/components/`) sceglie un committente tra quelli dell'action `choices/`, con la ricerca nel testo. Con `activeOnly` mostra solo i committenti attivi: si usa nei form dei dati nuovi. Un committente disattivato è segnato nell'opzione. Il server accetta dati nuovi anche per un committente disattivato: il limite oggi è solo nell'interfaccia (domanda 5).
 - `useClientFilter` (`modules/parties/hooks/`) dà il committente scelto come filtro di una lista, e la funzione per cambiarlo:
   - il valore sta nel parametro `client` dell'URL, che le API delle liste accettano come filtro: la lista si ricarica e si condivide;
   - l'ultimo valore si ricorda nel browser (localStorage), per organizzazione. Una lista aperta senza il parametro riparte da quel valore, e lo scrive nell'URL;
@@ -324,7 +324,7 @@ Vedi D-043 e D-053.
 ### 9.5 Committenti: `parties`
 
 `api/parties/clients/` (§8.5 di [backend.md](backend.md)).
-- **Lista**: ricerca per nome, codice fiscale o codice ISTAT; filtri per stato e per tipo; ordinamento per nome e per ultima modifica. Un errore di caricamento si mostra sopra la tabella. Nessuna selezione multipla: il server non ha un'eliminazione multipla dei committenti.
+- **Lista**: ricerca per nome, codice fiscale o codice ISTAT; filtri per stato e per tipo; ordinamento per nome e per ultima modifica. Un errore di caricamento si mostra sopra la tabella; ricerca e filtri senza risultati hanno un messaggio proprio, diverso dalla lista vuota. Nessuna selezione multipla: il server non ha un'eliminazione multipla dei committenti.
 - **Dettaglio** (`/parties/clients/:id`), senza schede: il form in sola lettura, i pulsanti *Storico* e *Modifica*, il menu con disattiva o riattiva ed elimina. Un committente disattivato ha un avviso con *Riattiva*.
 - **Form**: denominazione e tipo obbligatori; codice ISTAT di 5 o 6 cifre, codice fiscale o partita IVA, recapiti, sistema di riferimento per l'export CAM, note. `active` non è nel form: cambia con le azioni disattiva e riattiva.
 - **Eliminazione**: solo per un committente inserito per errore. Uno con dati collegati non si elimina (`client_has_related_data`): l'errore tradotto invita a disattivarlo.
@@ -336,3 +336,4 @@ Vedi D-043 e D-053.
 2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → rinviata a T2, da chiudere nella prima fetta verticale (D-040)
 3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2
 4. **Storico di dominio nell'interfaccia.** `ChangeRecord` ha motivazione, organizzazione e origine di ogni modifica, e il committente consulta le modifiche di un periodo (CE-4, TR-6). Serve un endpoint con i filtri (committente, periodo, entità, record) e una pagina, o una scheda nei dettagli accanto allo storico tecnico? → rinviata oltre la prima fetta (D-053)
+5. **Committente disattivato e dati nuovi.** Il form dei dati nuovi propone solo i committenti attivi (`ClientSelect` con `activeOnly`), ma il server accetta zone, aree ed elementi anche per un committente disattivato. Il server deve rifiutarli, per esempio con `client_not_available`, o un committente disattivato deve poter ricevere dati, per esempio da un import? → da decidere con la PR3c

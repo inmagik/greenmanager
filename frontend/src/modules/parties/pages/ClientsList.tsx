@@ -61,6 +61,8 @@ export function ClientsList() {
         <Group gap="xs">
           <TextInput
             size="sm"
+            w={300}
+            maw="100%"
             leftSection={<TbSearch />}
             leftSectionPointerEvents="none"
             placeholder={t("parties.searchPlaceholder")}
@@ -127,6 +129,11 @@ export function ClientsList() {
             />
           </Table.Extra.BeforeContent>
         )}
+        {!!data?.full_count && data.count === 0 && (
+          <Table.Extra.BeforeContent>
+            <TableEmptyState title={t("common.noResults")} description={t("parties.noResultsDescription")} />
+          </Table.Extra.BeforeContent>
+        )}
         <Table.HeaderConfig sticky />
         <Table.Column
           title="parties.fields.name"
@@ -141,9 +148,9 @@ export function ClientsList() {
           )}
         />
         <Table.Column title="parties.fields.kind" name="kind" render={(client) => t(`parties.kinds.${client.kind}`)} />
-        <Table.Column title="parties.fields.taxCode" name="tax_code" render={(client) => client.tax_code || "—"} />
+        <Table.Column title="parties.columns.taxCode" name="tax_code" render={(client) => client.tax_code || "—"} />
         <Table.Column
-          title="parties.fields.istatCode"
+          title="parties.columns.istatCode"
           name="istat_code"
           render={(client) => client.istat_code || "—"}
         />

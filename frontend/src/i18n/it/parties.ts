@@ -9,6 +9,7 @@ export default {
     searchPlaceholder: "Cerca per nome, codice fiscale o ISTAT...",
     results: "Visualizzati {{shown}} committenti su {{total}}",
     loadError: "Impossibile caricare i committenti",
+    noResultsDescription: "Nessun committente corrisponde alla ricerca o ai filtri.",
     emptyTitle: "Non c'è ancora nessun committente",
     emptyDescription:
       "Il committente possiede o ha in carico il verde: zone, aree ed elementi appartengono sempre a un committente.",
@@ -29,6 +30,10 @@ export default {
     deleteError: "Impossibile eliminare il committente",
     unsavedChanges: "Modifiche non salvate",
     unsavedChangesMessage: "Sono presenti modifiche non salvate. Vuoi uscire senza salvarle?",
+    columns: {
+      taxCode: "CF o partita IVA",
+      istatCode: "Codice ISTAT",
+    },
     filters: {
       status: "Stato",
       kind: "Tipo",
@@ -68,7 +73,8 @@ export default {
     },
   },
   serverErrors: {
-    client_has_related_data: "{{name}} ha dati collegati, come zone o aree, e non si può eliminare: disattivalo.",
+    client_has_related_data:
+      "{{name}} ha dati collegati, come zone o aree: non si può eliminare, ma si può disattivare.",
     managing_organization_staff_only: "Solo lo staff cambia l'organizzazione di gestione di un committente.",
     invalid_istat_code: "Il codice ISTAT ha 5 o 6 cifre.",
   },

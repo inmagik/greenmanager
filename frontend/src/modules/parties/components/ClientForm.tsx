@@ -31,7 +31,8 @@ export function ClientForm({ initialValues, onSubmit, onReload, readonly = false
   const [conflict, setConflict] = useState(false)
   const schema = yup.object({
     name: yup.string().trim().required().max(255).label(t("parties.fields.name")),
-    kind: yup.string().required().oneOf(CLIENT_KINDS).label(t("parties.fields.kind")),
+    // The select offers only the kinds of the server: an empty value is the only error.
+    kind: yup.string().required().label(t("parties.fields.kind")),
     istat_code: yup
       .string()
       .trim()
@@ -99,6 +100,7 @@ export function ClientForm({ initialValues, onSubmit, onReload, readonly = false
               data={kindOptions}
               readOnly={readonly}
               variant={inputVariant}
+              rightSection={readonly ? null : undefined}
               allowDeselect={false}
               {...form.getInputProps("kind")}
             />
@@ -123,6 +125,7 @@ export function ClientForm({ initialValues, onSubmit, onReload, readonly = false
               clearable={!readonly}
               readOnly={readonly}
               variant={inputVariant}
+              rightSection={readonly ? null : undefined}
               value={form.values.cam_export_srid?.toString() ?? null}
               onChange={(value) =>
                 form.setFieldValue("cam_export_srid", value ? (Number(value) as CamExportSrid) : null)
