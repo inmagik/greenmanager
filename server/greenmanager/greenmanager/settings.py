@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "core",
     "catalogs",
     "parties",
+    "territory",
 ]
 
 MIDDLEWARE = [
@@ -160,6 +161,13 @@ STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", BASE_DIR / "static"))
 
 MEDIA_URL = MEDIA_URL if MEDIA_URL.endswith("/") else f"{MEDIA_URL}/"
 STATIC_URL = STATIC_URL if STATIC_URL.endswith("/") else f"{STATIC_URL}/"
+
+# region Map settings
+
+# Features of a GeoJSON action of the API at most (core.views.GeoJSONActionMixin).
+GEOJSON_MAX_FEATURES = int(os.getenv("GEOJSON_MAX_FEATURES", "10000"))
+
+# endregion
 
 # region REST Framework settings
 

@@ -21,6 +21,7 @@ urlpatterns = [
     # domain apps
     path("api/catalogs/", include("catalogs.urls")),
     path("api/parties/", include("parties.urls")),
+    path("api/territory/", include("territory.urls")),
     # swagger
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
