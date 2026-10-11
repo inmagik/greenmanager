@@ -235,11 +235,21 @@ def check_replaced(element, before=None):
 
 def check_life_cycle(element, organization, before=None):
     """
-    Removal and restoration (EL-7): the cause of a removal is available and,
-    for the classes that count as trees, required. An element restored must not
-    have been replaced by a present element.
+    Removal and restoration (EL-7): a removal has already happened, its cause is
+    available and, for the classes that count as trees, required. An element
+    restored must not have been replaced by a present element.
+
+    A removal still to be made is an intervention to plan: with the date not in
+    the future, the elements present today are those without ``removed_on``,
+    as the constraint of the tag number assumes.
     """
     if element.removed_on is not None:
+        if element.removed_on > timezone.localdate():
+            raise api_error(
+                "removal_date_in_future",
+                "The removal date cannot be in the future.",
+                field="removed_on",
+            )
         check_available(
             element.removal_cause,
             organization,

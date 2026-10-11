@@ -418,6 +418,10 @@ class LifeCycleTests(InventoryTestCase):
         before_planting = self.remove(
             tree, removed_on="2009-01-01", removal_cause=str(self.cause.pk)
         )
+        tomorrow = timezone.localdate() + datetime.timedelta(days=1)
+        in_the_future = self.remove(
+            tree, removed_on=str(tomorrow), removal_cause=str(self.cause.pk)
+        )
         removed = self.remove(
             tree,
             removed_on="2024-05-01",
@@ -436,6 +440,9 @@ class LifeCycleTests(InventoryTestCase):
         self.assertEqual(
             before_planting.data["removed_on"][0]["code"],
             "element_removed_before_planted",
+        )
+        self.assertEqual(
+            in_the_future.data["removed_on"]["code"], "removal_date_in_future"
         )
         self.assertEqual(removed.status_code, 200, removed.content)
         self.assertEqual(removed.data["removed_on"], "2024-05-01")

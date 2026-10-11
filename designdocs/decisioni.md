@@ -525,6 +525,7 @@ Stati possibili:
   - la composizione si scrive con l'elemento e sostituisce l'elenco intero; senza `composition` resta com'è. Nello storico di dominio fa parte dei valori dell'elemento;
   - gli attributi della classe si controllano quando cambiano gli attributi o la classe: una modifica di altri dati non dipende da un attributo diventato obbligatorio dopo;
   - rimozione e ripristino hanno action proprie, con una motivazione facoltativa nello storico. La scrittura dell'elemento non tocca data e causa della rimozione. Rimuovere un elemento già rimosso ne corregge data e causa;
+  - la data di rimozione non è futura: una rimozione ancora da fare è un intervento da pianificare. Così gli elementi presenti oggi sono quelli senza data di rimozione, come assume il vincolo del cartellino;
   - un elemento prende il posto (`replaces`) solo di un elemento rimosso dello stesso committente, senza tornare a sé lungo la catena delle sostituzioni. Un elemento a cui è subentrato un elemento presente non si ripristina;
   - un elemento con la data di posa stimata, o senza data, è presente dall'inizio della gestione della sua area (§4.3 di [04-modello-dati.md](04-modello-dati.md)); senza data del rilievo, la creazione mette la data del giorno.
 - **Motivazione**: un codice preso dal massimo esistente, come per le zone, tornerebbe a un elemento cancellato (EL-8). Le action rendono esplicito il ciclo di vita (EL-7) e ne separano le regole dalle correzioni dei dati. Il controllo sulla catena delle sostituzioni mantiene leggibile lo storico di una posizione (D-029).

@@ -545,7 +545,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - senza data del rilievo, la creazione mette la data del giorno.
 
 **Ciclo di vita** (EL-7, D-029):
-- `remove/` chiede la data e, per le classi che contano come alberi, la causa (`removal_cause_required`); la data non precede la posa (`element_removed_before_planted`). Su un elemento già rimosso corregge data e causa;
+- `remove/` chiede la data e, per le classi che contano come alberi, la causa (`removal_cause_required`); la data non precede la posa (`element_removed_before_planted`) e non è futura (`removal_date_in_future`). Su un elemento già rimosso corregge data e causa;
 - `restore/` toglie data e causa (`element_not_removed` se l'elemento è presente). Non vale per un elemento a cui è subentrato un elemento presente (`element_replaced`);
 - le due action accettano `reason`, che va nello storico, e `revision`;
 - `replaces` indica un elemento rimosso dello stesso committente (`replaced_element_not_available`, `replaced_element_not_removed`), senza cicli nella catena delle sostituzioni (`replacement_cycle`);
