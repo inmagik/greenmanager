@@ -488,6 +488,10 @@ class LifeCycleTests(InventoryTestCase):
             self.context,
         )
         cycle = self.patch(f"{URL}{old.pk}/", {"replaces": str(new_element.pk)})
+        # The new element is removed too: the old one comes back, still
+        # referred to by its replacement.
+        restored_old = self.post(f"{URL}{old.pk}/restore/", {})
+        delete_restored = self.client.delete(f"{URL}{old.pk}/", **self.header)
 
         self.assertEqual(
             present.data["replaces"]["code"], "replaced_element_not_removed"
@@ -498,8 +502,28 @@ class LifeCycleTests(InventoryTestCase):
             of_another_client.data["replaces"]["code"], "replaced_element_not_available"
         )
         self.assertEqual(restore_old.data["removed_on"]["code"], "element_replaced")
-        self.assertEqual(delete_old.data["code"], "element_has_related_data")
+        self.assertEqual(delete_old.data["code"], "element_already_removed")
         self.assertEqual(cycle.data["replaces"]["code"], "replacement_cycle")
+        self.assertEqual(restored_old.status_code, 200, restored_old.content)
+        self.assertEqual(delete_restored.data["code"], "element_has_related_data")
+
+    def test_a_removed_element_is_not_deleted(self):
+        tree = self.make_tree()
+        services.remove_element(
+            tree,
+            {"removed_on": datetime.date(2024, 5, 1), "removal_cause": self.cause},
+            self.context,
+        )
+
+        response = self.client.delete(f"{URL}{tree.pk}/", **self.header)
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(response.data["code"], "element_already_removed")
+        self.assertEqual(response.data["params"]["code"], tree.code)
+        self.assertTrue(Element.objects.filter(pk=tree.pk).exists())
+        self.assertFalse(
+            ChangeRecord.objects.filter(record_id=tree.pk, operation="cancel").exists()
+        )
 
     def test_delete_records_a_cancellation_and_protects_the_area(self):
         hedge = services.create_element(
@@ -521,6 +545,301 @@ class LifeCycleTests(InventoryTestCase):
         record = ChangeRecord.objects.get(record_id=hedge.pk, operation="cancel")
         self.assertEqual(record.client_id, self.own.pk)
         self.assertEqual(record.changes["composition"]["old"][0]["quantity"], 30)
+
+
+class SpatialCheckTests(InventoryTestCase):
+    """Proposed area, warnings and position at the center of the area (AR-5,
+    EL-10). A meter is about 0.000009° of latitude."""
+
+    def setUp(self):
+        super().setUp()
+        # Touches the first area, on its east side.
+        self.east = self.make_area(self.own, "2", 9.001)
+
+    def check(self, **data):
+        return self.post(
+            f"{URL}geometry-check/",
+            {"element_class": str(self.classes["tree"].pk), **data},
+        )
+
+    def warning_codes(self, response):
+        return [warning["code"] for warning in response.data["warnings"]]
+
+    def test_proposed_area(self):
+        small = geo.normalize(
+            parse(square(9.0004, 45.0004, 0.0002)), GeometryType.POLYGON
+        )
+        self.make_area(self.own, "3", 9, geometry=small)
+        self.make_area(self.own, "4", 9, management_end=datetime.date(2021, 1, 1))
+
+        in_both = self.check(geometry=point(9.0005, 45.0005))
+        in_first = self.check(geometry=point(9.0002, 45.0008))
+        nowhere = self.check(geometry=point(9.1, 45.1))
+        line_mostly_east = self.check(
+            element_class=str(self.classes["hedge"].pk),
+            geometry=line((9.0004, 45.0009), (9.0018, 45.0009)),
+        )
+        polygon_mostly_east = self.check(
+            element_class=str(self.classes["lawn"].pk),
+            geometry=square(9.0008, 45.0001, 0.0005),
+        )
+        of_the_client = self.check(
+            geometry=point(9.0002, 45.0008), client=str(self.own.pk)
+        )
+        foreign_client = self.check(
+            geometry=point(9.0002, 45.0008), client=str(self.foreign.pk)
+        )
+
+        # The smallest of the areas that contain the point; the fourth area is
+        # no longer managed, the one of the other organization is not editable.
+        self.assertEqual(in_both.status_code, 200, in_both.content)
+        self.assertEqual(in_both.data["suggested_area"]["code"], "3")
+        self.assertEqual(in_first.data["suggested_area"]["code"], "1")
+        self.assertIsNone(nowhere.data["suggested_area"])
+        self.assertEqual(nowhere.data["warnings"], [])
+        self.assertEqual(line_mostly_east.data["suggested_area"]["code"], "2")
+        self.assertAlmostEqual(
+            float(line_mostly_east.data["length_m"]), 110.4, delta=0.5
+        )
+        self.assertEqual(self.warning_codes(line_mostly_east), ["element_outside_area"])
+        self.assertEqual(polygon_mostly_east.data["suggested_area"]["code"], "2")
+        self.assertIsNotNone(polygon_mostly_east.data["surface_m2"])
+        self.assertEqual(of_the_client.data["suggested_area"]["code"], "1")
+        self.assertEqual(foreign_client.data["client"]["code"], "client_not_available")
+
+    def test_element_outside_its_area(self):
+        inside = self.post(URL, self.tree_data())
+        on_the_border = self.post(URL, self.tree_data(geometry=point(9.001, 45.0002)))
+        outside = self.post(URL, self.tree_data(geometry=point(9.0015, 45.0008)))
+        url = f"{URL}{outside.data['id']}/"
+
+        detail = self.client.get(url, **self.header)
+        listed = self.client.get(URL, **self.header)
+        flagged = self.client.get(URL, {"outside_area": True}, **self.header)
+        not_flagged = self.client.get(URL, {"outside_area": False}, **self.header)
+        moved = self.patch(url, {"area": str(self.east.pk)})
+
+        self.assertEqual(inside.data["warnings"], [])
+        self.assertEqual(on_the_border.data["warnings"], [])
+        [warning] = outside.data["warnings"]
+        self.assertEqual(warning["code"], "element_outside_area")
+        self.assertEqual(warning["params"]["area"], "1 Area 1")
+        self.assertEqual(detail.data["warnings"], [warning])
+        self.assertTrue(detail.data["outside_area"])
+        self.assertEqual(
+            {
+                element["code"]: element["outside_area"]
+                for element in listed.data["results"]
+            },
+            {"1": False, "2": False, "3": True},
+        )
+        self.assertEqual([e["code"] for e in flagged.data["results"]], ["3"])
+        self.assertEqual([e["code"] for e in not_flagged.data["results"]], ["1", "2"])
+        self.assertEqual(moved.data["warnings"], [])
+        self.assertFalse(moved.data["outside_area"])
+
+    def test_trees_very_close(self):
+        existing = self.make_tree()
+        removed = self.make_tree(geometry=parse(point(9.0007, 45.0005)))
+        services.remove_element(
+            removed,
+            {"removed_on": datetime.date(2024, 5, 1), "removal_cause": self.cause},
+            self.context,
+        )
+        self.make_tree(
+            area=self.foreign_area, geometry=parse(point(9.0005, 45.0005135))
+        )
+
+        # 1.5 m north and 2.5 m south of the existing tree.
+        near = self.post(URL, self.tree_data(geometry=point(9.0005, 45.0005135)))
+        far = self.post(URL, self.tree_data(geometry=point(9.0005, 45.0004775)))
+        near_the_removed = self.post(
+            URL, self.tree_data(geometry=point(9.0007, 45.0005))
+        )
+        bench = self.post(
+            URL,
+            self.tree_data(
+                element_class=str(self.classes["bench"].pk),
+                species=None,
+                geometry=point(9.0005, 45.0005),
+            ),
+        )
+        near_url = f"{URL}{near.data['id']}/"
+        detail = self.client.get(near_url, **self.header)
+        renamed = self.patch(near_url, {"notes": "Due alberi vicini"})
+        # 1 m south of the existing tree, 2.5 m from the near one.
+        moved = self.patch(
+            f"{URL}{far.data['id']}/", {"geometry": point(9.0005, 45.000491)}
+        )
+
+        [warning] = near.data["warnings"]
+        self.assertEqual(warning["code"], "element_near_tree")
+        self.assertEqual(
+            warning["params"], {"elements": existing.code, "distance": "2"}
+        )
+        self.assertEqual(far.data["warnings"], [])
+        self.assertEqual(near_the_removed.data["warnings"], [])
+        self.assertEqual(bench.data["warnings"], [])
+        # The surveyor saved the tree: the detail and other changes do not
+        # warn again.
+        self.assertEqual(detail.data["warnings"], [])
+        self.assertEqual(renamed.data["warnings"], [])
+        self.assertEqual(moved.data["warnings"][0]["params"]["elements"], existing.code)
+
+    def test_trees_very_close_when_the_class_or_the_status_change(self):
+        provisional = self.make_tree(location_source="area_center", geometry=None)
+        # 1 m north of the point on the surface of the area.
+        x, y = provisional.geometry.coords
+        existing = self.make_tree(geometry=parse(point(x, y + 0.000009)))
+        # 0.9 m north of the existing tree, 1.9 m from the provisional one.
+        bench = services.create_element(
+            {
+                "area": self.area,
+                "element_class": self.classes["bench"],
+                "geometry": parse(point(x, y + 0.000017)),
+            },
+            self.context,
+        )
+
+        became_tree = self.patch(
+            f"{URL}{bench.pk}/",
+            {
+                "element_class": str(self.classes["tree"].pk),
+                "species": str(self.tilia.pk),
+            },
+        )
+        verified = self.patch(
+            f"{URL}{provisional.pk}/",
+            {"location_source": "map", "location_status": "verified"},
+        )
+
+        self.assertEqual(became_tree.status_code, 200, became_tree.content)
+        # The provisional tree is not a surveyed position.
+        self.assertEqual(
+            became_tree.data["warnings"][0]["params"]["elements"], existing.code
+        )
+        self.assertEqual(verified.status_code, 200, verified.content)
+        self.assertEqual(verified.data["warnings"][0]["code"], "element_near_tree")
+        self.assertEqual(
+            verified.data["warnings"][0]["params"]["elements"],
+            f"{existing.code}, {bench.code}",
+        )
+
+    def test_geometry_check(self):
+        tree = self.make_tree()
+        # Saved outside every area.
+        self.make_tree(geometry=parse(point(9.1, 45.1)))
+        foreign_tree = self.make_tree(area=self.foreign_area)
+        count = Element.objects.count()
+
+        hedge = self.check(
+            element_class=str(self.classes["hedge"].pk),
+            geometry=line((9.0002, 45.0002), (9.0008, 45.0002)),
+        )
+        chosen_area = self.check(
+            geometry=point(9.0005, 45.0005135), area=str(self.east.pk)
+        )
+        same_tree = self.check(geometry=point(9.0005, 45.0005135), element=str(tree.pk))
+        wrong_type = self.check(geometry=square(9, 45))
+        foreign_area = self.check(
+            geometry=point(9.0005, 45.0005), area=str(self.foreign_area.pk)
+        )
+        foreign_element = self.check(
+            geometry=point(9.0005, 45.0005), element=str(foreign_tree.pk)
+        )
+        # 1 m from the tree outside every area: its client is known only when
+        # the check names it.
+        without_client = self.check(geometry=point(9.1, 45.100009))
+        with_client = self.check(
+            geometry=point(9.1, 45.100009), client=str(self.own.pk)
+        )
+        self.client.force_authenticate(self.reader)
+        reader = self.check(geometry=point(9.0005, 45.0005))
+
+        self.assertEqual(hedge.status_code, 200, hedge.content)
+        self.assertAlmostEqual(float(hedge.data["length_m"]), 47.3, delta=0.5)
+        self.assertIsNone(hedge.data["surface_m2"])
+        self.assertEqual(hedge.data["suggested_area"]["code"], "1")
+        self.assertEqual(hedge.data["warnings"], [])
+        self.assertEqual(chosen_area.data["suggested_area"]["code"], "1")
+        self.assertEqual(
+            self.warning_codes(chosen_area),
+            ["element_outside_area", "element_near_tree"],
+        )
+        self.assertEqual(chosen_area.data["warnings"][0]["params"]["area"], "2 Area 2")
+        self.assertEqual(same_tree.data["warnings"], [])
+        self.assertEqual(
+            wrong_type.data["geometry"]["code"], "geometry_type_not_allowed"
+        )
+        self.assertEqual(foreign_area.data["area"]["code"], "area_not_available")
+        self.assertEqual(
+            foreign_element.data["element"]["code"], "element_not_available"
+        )
+        self.assertIsNone(without_client.data["suggested_area"])
+        self.assertEqual(without_client.data["warnings"], [])
+        self.assertEqual(self.warning_codes(with_client), ["element_near_tree"])
+        self.assertEqual(reader.status_code, 403, reader.content)
+        self.assertEqual(Element.objects.count(), count)
+
+    def test_position_at_the_center_of_the_area(self):
+        data = self.tree_data(location_source="area_center", surveyed_on="2024-01-01")
+        del data["geometry"]
+        without_geometry = {**data, "location_source": "map"}
+
+        created = self.post(URL, data)
+        second = self.post(URL, data)
+        missing = self.post(URL, without_geometry)
+        hedge = self.post(
+            URL,
+            self.tree_data(
+                element_class=str(self.classes["hedge"].pk),
+                geometry=line((9, 45), (9.001, 45)),
+                location_source="area_center",
+            ),
+        )
+        url = f"{URL}{created.data['id']}/"
+        # The point follows the area: the geometry sent does not count.
+        moved = self.patch(
+            url, {"area": str(self.east.pk), "geometry": point(9.0002, 45.0002)}
+        )
+        verified = self.patch(
+            url,
+            {
+                "location_source": "gps",
+                "location_status": "verified",
+                "geometry": point(9.0015, 45.0005),
+            },
+        )
+        verified_with_date = self.patch(
+            f"{URL}{second.data['id']}/",
+            {
+                "location_source": "map",
+                "location_status": "verified",
+                "geometry": point(9.0002, 45.0002),
+                "surveyed_on": "2025-03-01",
+            },
+        )
+
+        self.assertEqual(created.status_code, 201, created.content)
+        self.assertEqual(created.data["location_status"], "provisional")
+        self.assertTrue(self.area.geometry.covers(parse(created.data["geometry"])))
+        self.assertEqual(created.data["warnings"], [])
+        # Same point, but provisional positions are not near trees.
+        self.assertEqual(second.data["geometry"], created.data["geometry"])
+        self.assertEqual(second.data["warnings"], [])
+        self.assertEqual(missing.data["geometry"]["code"], "geometry_required")
+        self.assertEqual(
+            hedge.data["location_source"]["code"], "area_center_point_only"
+        )
+        self.assertEqual(moved.status_code, 200, moved.content)
+        self.assertTrue(self.east.geometry.covers(parse(moved.data["geometry"])))
+        self.assertEqual(moved.data["location_status"], "provisional")
+        self.assertEqual(verified.status_code, 200, verified.content)
+        self.assertEqual(verified.data["location_status"], "verified")
+        self.assertEqual(verified.data["geometry"]["coordinates"], [9.0015, 45.0005])
+        # The verification is a survey: today, unless the change gives a date.
+        self.assertEqual(verified.data["surveyed_on"], str(timezone.localdate()))
+        self.assertEqual(verified_with_date.data["surveyed_on"], "2025-03-01")
 
 
 class FilterTests(InventoryTestCase):
@@ -604,12 +923,18 @@ class ElementAdminTests(InventoryTestCase):
         }
 
         refused = self.client.post(url, {**data, "species": ""})
-        saved = self.client.post(url, data)
+        # Date and cause of the removal change only with the actions of the API.
+        saved = self.client.post(
+            url,
+            {**data, "removed_on": "2024-05-01", "removal_cause": self.cause.pk},
+        )
 
         self.assertEqual(refused.status_code, 200)
         self.assertContains(refused, "The class of the element needs a species.")
         self.assertEqual(saved.status_code, 302, saved.content)
         tree.refresh_from_db()
         self.assertEqual(tree.tag_number, "7")
+        self.assertIsNone(tree.removed_on)
+        self.assertIsNone(tree.removal_cause)
         record = ChangeRecord.objects.get(record_id=tree.pk, operation="update")
         self.assertEqual(record.source, "system")

@@ -417,7 +417,7 @@ Python 3.14. Fonte: `server/requirements.txt` e `requirements_prod.txt` di botta
 
 ## 8. App di dominio
 
-Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta aggiunge le sue app. Decisioni D-041–D-051.
+Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta aggiunge le sue app. Decisioni D-041–D-052.
 
 ### 8.1 App
 
@@ -442,7 +442,7 @@ Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR della fetta
 | `serializers.py` | `TrackedModelSerializer`: autori della creazione e dell'ultima modifica (`created_by_label`, `updated_by_label`) e `revision`, che in una modifica è la revisione letta dal client; `pop_revision`; `GeoJSONGeometryField`, una geometria come oggetto GeoJSON, normalizzata per tipo (senza tipo, quando dipende da altri dati come la classe dell'elemento, la normalizzano i servizi); `GeoJSONQuerySerializer`, i parametri `bbox` e `srid` |
 | `views.py` | `ChangeContextMixin`; `ClientScopedViewSetMixin` (§8.8); `AuditHistoryActionMixin`, action `history`; `ChoicesActionMixin`, action `choices` con il `choice_serializer_class` della view; `GeoJSONActionMixin`, action `geojson` (§4.4) |
 | `admin.py` | `ChangeRecord` in sola lettura; `ServiceAdminMixin`, per i modelli che si salvano solo con i servizi: il form mostra gli errori delle regole, salvataggio e cancellazione chiamano i servizi. Una modifica blocca il record e controlla che la revisione sia quella con cui si è aperto il form. Una cancellazione rifiutata dai servizi si mostra come messaggio, e la cancellazione multipla è atomica; `ServiceBackedAdminMixin`, la sua variante per i dati operativi, che scrive il `ChangeRecord` con origine `system` |
-| `geo.py` | geometrie (D-049): `parse_geojson`, `normalize` per tipo (punto, linea, poligono), `geodesic_measures` (superficie, perimetro e lunghezza sull'ellissoide) |
+| `geo.py` | geometrie (D-049): `parse_geojson`, `normalize` per tipo (punto, linea, poligono), `geodesic_measures` (superficie, perimetro e lunghezza sull'ellissoide); `geodesic`, le stesse misure come espressione di una query (es. per l'area proposta, §8.7) |
 | `schema.py` | descrizione del campo GeoJSON e della FeatureCollection nello schema OpenAPI |
 | `audit.py` | `register_audit`: registra un modello in django-auditlog senza i campi di tracciamento |
 | `permissions.py` | `any_permission(*codici)`: classe di permesso soddisfatta da uno dei codici |
@@ -532,26 +532,38 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 ### 8.7 Censimento: `inventory`
 
-`api/inventory/elements/`, con `history/`, `choices/` e `geojson/`, più `remove/` e `restore/` sul singolo elemento. I controlli spaziali (area proposta, elemento fuori dalla sua area, alberi vicini, `geometry-check/`, posizione al centro dell'area) arrivano con la PR2c.
+`api/inventory/elements/`, con `history/`, `choices/`, `geojson/` e `geometry-check/`, più `remove/` e `restore/` sul singolo elemento.
 
 **Elementi** (EL-1, EL-3, EL-5, EL-7, EL-8; D-051):
 - l'area, che l'organizzazione deve poter modificare (`area_not_available`), dà il committente. Un elemento cambia area solo dentro lo stesso committente (`area_of_another_client`);
 - il codice lo dà il server da `ClientSequence`, ed è in sola lettura. Liste e `ordering=code` lo ordinano in ordine naturale. Il cartellino è univoco tra gli elementi presenti (`element_tag_number_not_unique`);
 - classe e specie sono voci disponibili per l'organizzazione di gestione, e quelle già salvate restano valide;
-- la geometria si normalizza per il tipo della classe (`geometry_type_not_allowed`). Le linee hanno `length_m`, i poligoni `surface_m2`, sull'ellissoide;
+- la geometria è obbligatoria (`geometry_required`), salvo la posizione al centro dell'area, e si normalizza per il tipo della classe (`geometry_type_not_allowed`). Le linee hanno `length_m`, i poligoni `surface_m2`, sull'ellissoide;
 - specie e composizione seguono `species_mode` della classe: `species_required`, `species_not_allowed`, `composition_not_allowed`, `species_and_composition`;
 - la composizione sostituisce l'elenco intero: una specie una volta (`composition_species_duplicated`), con quantità o percentuale (`composition_quantity_required`), percentuali fino a 100 (`composition_percentage_over_100`). Una specie nuova dev'essere disponibile;
 - gli attributi si controllano con `validate_attributes` (§8.4) quando cambiano gli attributi o la classe;
 - senza data del rilievo, la creazione mette la data del giorno.
 
+**Posizione** (EL-10, D-052):
+- con `location_source=area_center` il server mette il punto sulla superficie dell'area (`ST_PointOnSurface`) e la posizione è provvisoria. Vale solo per le classi a punto (`area_center_point_only`). Il punto si ricalcola a ogni salvataggio, quindi segue l'area: con questa origine una geometria e lo stato `verified` inviati non contano, anche dall'admin. Per posizionare l'elemento si cambia l'origine (es. `gps` o `map`);
+- la verifica di una posizione provvisoria (passaggio a `verified`) mette la data del giorno in `surveyed_on`, salvo che la modifica ne indichi un'altra.
+
+**Controlli spaziali** (AR-5, scenario 4.2; D-052). Sono avvisi, come quelli delle aree (D-050):
+- `element_outside_area`: il perimetro dell'area non copre la geometria; un elemento sul bordo è dentro. Compare in `warnings` del dettaglio e delle risposte di scrittura, e nella lista come flag `outside_area`, con il filtro omonimo. Il flag, una sottoquery spaziale, si calcola solo nella lista e quando si filtra;
+- `element_near_tree`: un albero presente dello stesso committente a meno di 2 m, sull'ellissoide (`near(geometria, metri)` del QuerySet), con i codici degli alberi vicini. Contano solo le posizioni verificate. L'avviso compare quando l'albero riceve una posizione: in `geometry-check/` e nelle risposte della creazione e delle modifiche che cambiano geometria, classe o stato della posizione. Il dettaglio non lo ripete;
+- `geometry-check/` riceve la classe e la geometria; facoltativi l'elemento che si modifica, l'area scelta nel form e il committente. Restituisce lunghezza o superficie, l'area proposta (`suggested_area`) e gli avvisi, senza salvare:
+  - l'area proposta è quella gestita oggi che contiene il punto, o la parte maggiore della linea o del poligono, sull'ellissoide; tra aree equivalenti, la più piccola. Si cerca tra le aree del committente o, senza committente, tra quelle che l'organizzazione può modificare;
+  - gli avvisi riguardano l'area scelta (senza, quella dell'elemento) o, in mancanza, quella proposta. Gli alberi vicini sono quelli del committente di quell'area o del committente indicato: senza area né committente non si confrontano;
+  - l'elemento che si modifica dà il committente e resta fuori dagli alberi vicini. Area, committente ed elemento che l'organizzazione non può usare danno `area_not_available`, `client_not_available` ed `element_not_available`.
+
 **Ciclo di vita** (EL-7, D-029):
 - `remove/` chiede la data e, per le classi che contano come alberi, la causa (`removal_cause_required`); la data non precede la posa (`element_removed_before_planted`) e non è futura (`removal_date_in_future`). Su un elemento già rimosso corregge data e causa;
 - `restore/` toglie data e causa (`element_not_removed` se l'elemento è presente). Non vale per un elemento a cui è subentrato un elemento presente (`element_replaced`);
-- le due action accettano `reason`, che va nello storico, e `revision`;
+- le due action accettano `reason`, che va nello storico, e `revision`. Data e causa della rimozione cambiano solo con le action: la scrittura dell'elemento non le tocca, e nell'admin sono in sola lettura;
 - `replaces` indica un elemento rimosso dello stesso committente (`replaced_element_not_available`, `replaced_element_not_removed`), senza cicli nella catena delle sostituzioni (`replacement_cycle`);
-- un elemento si elimina solo se è stato inserito per errore e nessun dato lo usa (`element_has_related_data`).
+- un elemento si elimina solo se è presente, è stato inserito per errore e nessun dato lo usa (`element_has_related_data`). Un elemento rimosso non si elimina (`element_already_removed`): resta nello storico, e la sua rimozione si corregge con `remove/` o si annulla con `restore/`.
 
-**Filtri**: `client`, `area`, `zone`, `element_class`, `category`, `species`, `location_status`, `removed` e `present_on`, cioè gli elementi presenti a una data (§4.3 di [04-modello-dati.md](../04-modello-dati.md)). La lista non restituisce la geometria.
+**Filtri**: `client`, `area`, `zone`, `element_class`, `category`, `species`, `location_status`, `removed`, `present_on`, cioè gli elementi presenti a una data (§4.3 di [04-modello-dati.md](../04-modello-dati.md)), e `outside_area`. La lista non restituisce la geometria.
 
 **Storico**: il `ChangeRecord` dell'elemento contiene la composizione. Nello storico tecnico la composizione ha voci proprie (`CompositionItem`), e la geometria non c'è, come per le aree. L'admin mostra la composizione in sola lettura: cambia dall'API, che la controlla per intero.
 
@@ -564,7 +576,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 | `catalogs.WRITE_CATALOGS` | gestione delle voci dei cataloghi dell'organizzazione. La lettura non chiede permessi |
 | `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | lettura e gestione dei committenti |
 | `territory.READ_AREAS`, `territory.WRITE_AREAS` | lettura e gestione delle zone e delle aree; `geometry-check/` chiede la scrittura |
-| `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | lettura e gestione degli elementi; `remove/` e `restore/` chiedono la scrittura |
+| `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | lettura e gestione degli elementi; `remove/`, `restore/` e `geometry-check/` chiedono la scrittura |
 
 **Accesso ai dati del patrimonio** (D-044).
 - Il QuerySet del modello ha `visible_to(org)` ed `editable_by(org)`, comuni ai dati di un committente in `parties.ClientDataQuerySet`. `ClientScopedViewSetMixin` li applica alle letture e alle scritture.
