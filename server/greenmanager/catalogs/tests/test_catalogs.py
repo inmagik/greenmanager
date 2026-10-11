@@ -707,6 +707,35 @@ class ElementClassApiTests(APITestCase):
         # The retired attribute already in the class stays.
         self.assertEqual(kept.status_code, 200, kept.content)
 
+    def test_attribute_of_another_organization_is_refused_without_its_name(self):
+        element_class = ElementClass.objects.create(
+            code="kiosk",
+            name="Chiosco",
+            category="furniture",
+            geometry_type="point",
+            quantity_unit="count",
+            species_mode="none",
+            organization=self.org,
+        )
+        # Not through the API: in the MVP the attributes are system entries.
+        foreign = AttributeDefinition.objects.create(
+            code="color", name="Colore", data_type="text", organization=make_tenant("X")
+        )
+        self.client.force_authenticate(self.writer)
+
+        response = self.client.patch(
+            f"/api/catalogs/element-classes/{element_class.pk}/",
+            {"class_attributes": [{"attribute": str(foreign.pk)}]},
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(
+            response.data["class_attributes"]["code"], "catalog_entry_not_available"
+        )
+        self.assertNotIn("params", response.data["class_attributes"])
+
     def test_attributes_are_system_entries_in_the_mvp(self):
         self.client.force_authenticate(self.writer)
 
