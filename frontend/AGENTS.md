@@ -32,7 +32,7 @@ frontend/src/
 ├── hooks/                    useHasPermission, useTenant, useUrlParams
 ├── i18n/it/                  traduzioni, un file per modulo
 ├── pages/                    accesso, password, profilo, home
-└── modules/<modulo>/         api/, components/, pages/, menu.tsx, navigation.tsx,
+└── modules/<modulo>/         api/, components/, hooks/, pages/, menu.tsx, navigation.tsx,
                               permissions.ts, types.ts
 ```
 
@@ -44,15 +44,17 @@ Un modulo nuovo compare nel menu e nelle rotte senza toccare file centrali: i pl
   - identificatori in inglese;
   - i testi visibili stanno nelle traduzioni di `src/i18n/it/`, mai nel codice;
   - nell'MVP l'interfaccia è solo in italiano.
-- **Moduli di dominio**: seguono i pattern di §4–§5 di `frontend.md`.
+- **Moduli di dominio**: seguono i pattern di §4–§5 di `frontend.md`; elenco e parti comuni sono in §9.
   - Dai moduli dei progetti di riferimento (`datasets`, `anagrafica`) si prendono i pattern, mai il codice.
   - Un modulo ha lo stesso nome dell'app Django corrispondente.
 - **Data fetching**: hook di `@inmagik/react-crud` in `api/<risorsa>.ts`. Gli header `Authorization` e `X-Tenant-ID` li aggiunge `DataProvider`.
 - **Permessi**:
   - i codici in `permissions.ts` sono quelli dei `fm_permissions.py` del server;
+  - una voce di menu dichiara il suo `permission`, e la `DoubleNavbar` la mostra solo a chi lo ha;
   - le azioni di scrittura stanno in `CheckPermission`;
   - il controllo vero è sempre quello del server.
-- **Errori del server**: si traducono con `translateApiError` e le chiavi `serverErrors.<code>`.
+- **Errori del server**: si traducono con `translateApiError` e le chiavi `serverErrors.<code>`. Il file di traduzioni di un modulo ha i suoi codici sotto `serverErrors`, da aggiungere all'unione in `src/i18n/it/index.ts`.
+- **Revisione**: i form di modifica dei dati di dominio mandano la `revision` letta; un `409 revision_conflict` mostra `RevisionConflictAlert`, e il form, con la revisione come `key`, riparte dal record ricaricato (§9.2 di `frontend.md`).
 - **Stile**: Prettier senza punto e virgola, virgolette doppie, riga di 120 caratteri. Import con l'alias `@/` fuori dal modulo, relativi dentro il modulo.
 - **Componenti condivisi** (`components/`, `auth/`, `general/`, moduli `users` e `tenants`): vengono dai progetti di riferimento. Si modificano solo se serve, e ogni differenza va annotata in `frontend.md`.
 - Non eseguire `build_image.sh`: pubblica l'immagine sul registry.
