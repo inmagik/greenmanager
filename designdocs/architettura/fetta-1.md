@@ -64,14 +64,14 @@ Aggiornato al 2026-10-11.
 | PR2b | elementi, composizione, ciclo di vita (backend) | PR2a | unita, [#11](https://github.com/inmagik/greenmanager/pull/11) |
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
 | PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
-| PR3a | parti comuni e committenti (frontend) | — | in revisione, [#23](https://github.com/inmagik/greenmanager/pull/23); issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
+| PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
 | PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
 | PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e con la PR3a il primo modulo di dominio, `parties`. Fino alle PR3b–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e il primo modulo di dominio, `parties` (PR3a). Fino alle PR3b–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -109,6 +109,13 @@ Aggiornato al 2026-10-11.
 - Nome della voce in `catalog_entry_not_available` solo se l'organizzazione la vede, anche per gli attributi delle classi.
 - Riferimenti: §8.2, §8.4 e §8.6.
 
+**PR3a: parti comuni e committenti** ([#23](https://github.com/inmagik/greenmanager/pull/23); issue [#13](https://github.com/inmagik/greenmanager/issues/13); D-053).
+- Parti comuni: voci di menu con permesso, traduzioni comuni e `serverErrors` dei moduli, riepilogo dell'ultima modifica, conflitto di revisione con *Ricarica*.
+- Modulo `parties`: lista, dettaglio, form, azioni (crea, modifica, disattiva, elimina), storico tecnico.
+- `ClientSelect` e `useClientFilter`, per le PR3c e PR3d.
+- Prova nel browser da utente non staff, anche a larghezza smartphone.
+- Riferimenti: §9 di [frontend.md](frontend.md).
+
 ## 5. PR da fare
 
 ### Regole delle PR del frontend
@@ -119,31 +126,6 @@ Valgono per le PR3 e PR4:
 - i codici degli errori e degli avvisi del server si traducono con `serverErrors.<code>`: ogni PR aggiunge quelli che le servono;
 - prima di ogni commit `yarn lint` e `yarn build` devono passare;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
-
-### PR3a. Parti comuni e committenti
-
-Issue [#13](https://github.com/inmagik/greenmanager/issues/13). Parte da `main`.
-
-**Parti comuni**:
-- `permission?` in `MenuItem` (`src/declarations.d.ts`), per mostrare una voce del menu solo a chi ha il permesso;
-- traduzioni comuni in `src/i18n/it/common.ts`: `navigation.*`, `fields.*` (autore, date, revisione), `serverErrors.*` comuni (es. `revision_conflict`, `client_not_available`);
-- conflitto di revisione: un `409 revision_conflict` mostra un messaggio e propone di ricaricare il record.
-
-**Modulo `parties`** (`src/modules/parties/`):
-- `api/clients.ts`, con gli hook di `@inmagik/react-crud` su `api/parties/clients/`, come `modules/tenants/api/tenants.ts`;
-- `ClientsList`, `ClientDetail`, `ClientForm`, con le azioni crea, modifica, disattiva (`active`) ed elimina (`client_has_related_data` se ha dati);
-- `ClientSelect`, per scegliere il committente nei form;
-- `useClientFilter`: il committente come filtro, nell'URL, con l'ultimo valore ricordato in localStorage. Lo usano le liste di zone, aree ed elementi;
-- storico con il componente esistente `src/components/AuditHistoryModal`, sull'action `history/`;
-- `i18n/it/parties.ts`, registrato in `src/i18n/it/index.ts`;
-- permessi `parties.READ_CLIENTS` e `parties.WRITE_CLIENTS`.
-
-**Documenti**:
-- in [frontend.md](frontend.md), una sezione nuova "Moduli di dominio" (T3), con i moduli, il committente come filtro e la relazione tra la modale dello storico e `ChangeRecord`;
-- decisione D-053, sul committente come filtro, sullo storico e sui conflitti di revisione nell'interfaccia;
-- `frontend/AGENTS.md`, se cambiano le regole.
-
-**Verifica**: il menu mostra "Committenti" solo con `READ_CLIENTS`. Si crea, si modifica e si disattiva un committente; uno con aree non si elimina, e l'errore è tradotto. La modale mostra lo storico.
 
 ### PR3b. Cataloghi
 
@@ -176,6 +158,10 @@ Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR
   - prima del salvataggio, `geometry-check/` dà misure e avvisi.
 - `WarningsAlert` in `src/components/`: mostra l'elenco `warnings` di una risposta, tradotto con `serverErrors.<code>` e `params`. Lo usa anche la PR3d.
 - `@types/geojson`; `i18n/it/territory.ts`; permessi `territory.READ_AREAS` e `territory.WRITE_AREAS`.
+- **Dalla PR3a**: `ClientSelect` e `useClientFilter` hanno qui i primi consumatori. Dal riepilogo della revisione di Copilot sulla PR3a:
+  - quando `useClientFilter` cambia il filtro da solo (committente ricordato rimesso nell'URL, committente non più visibile scartato), la lista deve tornare a pagina 1: oggi resta la pagina dell'URL;
+  - `choices/` dei committenti chiede `parties.READ_CLIENTS`: chi legge zone e aree senza quel permesso avrebbe un errore nel filtro. Da decidere: aprire `choices/` a chi ha un permesso di lettura dei dati del patrimonio (servono permessi in alternativa, che `ActionPermission` oggi non ha), oppure mostrare il filtro solo con `READ_CLIENTS`;
+  - domanda 5 di [frontend.md](frontend.md): il server accetta dati nuovi per un committente disattivato.
 
 **Verifica**: si crea una zona e un'area con una geometria multiparte da file, e si vede la superficie calcolata. Un'area sovrapposta a un'altra mostra l'avviso e compare nel filtro "da sistemare".
 
