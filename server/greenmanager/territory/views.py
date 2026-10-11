@@ -1,5 +1,6 @@
 import django_filters as FS
 from auth_core.utils import ActionPermission
+from core.errors import api_error
 from core.serializers import pop_revision
 from core.views import (
     AuditHistoryActionMixin,
@@ -176,6 +177,10 @@ class AreaViewSet(AssetViewSet):
         area = None
         if data.get("area") is not None:
             area = self.get_queryset().filter(pk=data["area"]).first()
+            if area is None:
+                raise api_error(
+                    "area_not_available", "The area is not available.", field="area"
+                )
         proposed = {
             field: data[field]
             for field in services.PROPOSED_AREA_FIELDS

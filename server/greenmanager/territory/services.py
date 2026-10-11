@@ -255,8 +255,8 @@ def check_area_geometry(client_id, geometry, context, area=None, **proposed):
 
     ``proposed`` are the values of the form that matter to the overlaps
     (``PROPOSED_AREA_FIELDS``): the period of the management and whether the
-    area is fictitious. ``area`` is the area being changed: it gives the values
-    the form does not send, and stays out of the overlaps.
+    area is fictitious. ``area`` is the area being changed, of the same client:
+    it gives the values the form does not send, and stays out of the overlaps.
     """
     clients = Client.objects.editable_by(context.organization)
     if not clients.filter(pk=client_id).exists():
@@ -264,7 +264,9 @@ def check_area_geometry(client_id, geometry, context, area=None, **proposed):
             "client_not_available", "The client is not available.", field="client"
         )
     if area is not None and area.client_id != client_id:
-        area = None
+        raise api_error(
+            "area_not_available", "The area is not available.", field="area"
+        )
     values = {field: getattr(area, field, None) for field in PROPOSED_AREA_FIELDS}
     values.update(proposed)
     measures = geo.geodesic_measures(geometry)

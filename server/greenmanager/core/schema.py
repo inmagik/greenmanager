@@ -12,6 +12,13 @@ GEOJSON_GEOMETRY = {
     "required": ["type", "coordinates"],
 }
 
+# The geometries of the geojson action are in the srid of the request.
+GEOJSON_RESPONSE_GEOMETRY = {
+    **GEOJSON_GEOMETRY,
+    "description": "Geometria GeoJSON, con le coordinate nel sistema di "
+    "riferimento del parametro srid (WGS84 se manca).",
+}
+
 GEOJSON_FEATURE_COLLECTION = {
     "type": "object",
     "properties": {
@@ -23,7 +30,7 @@ GEOJSON_FEATURE_COLLECTION = {
                 "properties": {
                     "type": {"type": "string", "enum": ["Feature"]},
                     "id": {"type": "string"},
-                    "geometry": GEOJSON_GEOMETRY,
+                    "geometry": GEOJSON_RESPONSE_GEOMETRY,
                     "properties": {"type": "object", "additionalProperties": True},
                 },
             },

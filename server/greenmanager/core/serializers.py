@@ -82,7 +82,8 @@ class GeoJSONQuerySerializer(serializers.Serializer):
 
     bbox = serializers.CharField(
         required=False,
-        help_text="Porzione di mappa: minx,miny,maxx,maxy in WGS84.",
+        help_text="Porzione di mappa: minx,miny,maxx,maxy in WGS84, con le "
+        "longitudini tra -180 e 180 e le latitudini tra -90 e 90.",
     )
     srid = serializers.ChoiceField(
         choices=geo.OUTPUT_SRIDS,
@@ -96,11 +97,14 @@ class GeoJSONQuerySerializer(serializers.Serializer):
             minx, miny, maxx, maxy = (float(part) for part in value.split(","))
         except ValueError:
             minx = miny = maxx = maxy = 0
-        if minx >= maxx or miny >= maxy:
+        # Within the limits of WGS84: the comparisons are false for NaN, and the
+        # limits leave out the infinities.
+        if not (-180 <= minx < maxx <= 180 and -90 <= miny < maxy <= 90):
             raise serializers.ValidationError(
                 error_payload(
                     "bbox_invalid",
-                    "The bbox must be minx,miny,maxx,maxy, with min below max.",
+                    "The bbox must be minx,miny,maxx,maxy in WGS84, with min "
+                    "below max.",
                 )
             )
         bbox = Polygon.from_bbox((minx, miny, maxx, maxy))

@@ -89,12 +89,24 @@ def check_available(entry, organization, *, field, previous_id=None):
         return
     model = type(entry)
     if not model.objects.available_for(organization).filter(pk=entry.pk).exists():
-        raise api_error(
-            "catalog_entry_not_available",
-            "The catalog entry is not available.",
-            {"name": entry.name},
-            field=field,
+        raise not_available_error(
+            entry, organization, "The catalog entry is not available.", field=field
         )
+
+
+def not_available_error(entry, organization, detail, *, field):
+    """
+    ``catalog_entry_not_available`` for ``entry``, with its name only if
+    ``organization`` sees the entry: whoever knows the UUID of an entry of
+    another organization does not read its name.
+    """
+    visible = type(entry).objects.visible_to(organization).filter(pk=entry.pk)
+    return api_error(
+        "catalog_entry_not_available",
+        detail,
+        {"name": entry.name} if visible.exists() else None,
+        field=field,
+    )
 
 
 # First key of the advisory locks of the species names (any constant of the
@@ -354,13 +366,11 @@ def unhide_entry(entry, organization):
 def check_class_attribute(element_class, attribute, *, field="class_attributes"):
     """A new attribute of a class must be available to the organization of the
     class. An attribute already in the class stays even if hidden or retired."""
-    available = AttributeDefinition.objects.available_for(element_class.organization)
+    organization = element_class.organization
+    available = AttributeDefinition.objects.available_for(organization)
     if not available.filter(pk=attribute.pk).exists():
-        raise api_error(
-            "catalog_entry_not_available",
-            "The attribute is not available.",
-            {"name": attribute.name},
-            field=field,
+        raise not_available_error(
+            attribute, organization, "The attribute is not available.", field=field
         )
 
 

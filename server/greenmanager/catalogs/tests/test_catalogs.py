@@ -593,6 +593,8 @@ class SpeciesApiTests(APITestCase):
         self.assertEqual(kept.status_code, 200, kept.content)
         self.assertEqual(refused.status_code, 400, refused.content)
         self.assertEqual(refused.data["parent"]["code"], "catalog_entry_not_available")
+        # A hidden system entry is visible to the organization: the error names it.
+        self.assertEqual(refused.data["parent"]["params"], {"name": self.genus.name})
 
     def test_parent_of_another_organization_is_refused(self):
         other = make_tenant("Other")
@@ -608,6 +610,8 @@ class SpeciesApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400, response.content)
         self.assertEqual(response.data["parent"]["code"], "catalog_entry_not_available")
+        # The UUID of an entry of another organization does not tell its name.
+        self.assertNotIn("params", response.data["parent"])
 
 
 class ElementClassApiTests(APITestCase):
