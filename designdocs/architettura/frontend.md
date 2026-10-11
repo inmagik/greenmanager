@@ -288,7 +288,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 - **Menu**: una voce dichiara il suo `permission`, e la `DoubleNavbar` la mostra solo a chi lo ha nell'organizzazione corrente (§3).
 - **Traduzioni**:
   - in `common.ts`, oltre alle chiavi di §6: `fields.*` dei campi di tracciamento (autore, date, revisione), `tracking.*` per il riepilogo dell'ultima modifica, `revisionConflict.*`, e i codici di errore usati da più moduli (`revision_conflict`, `client_not_available`, `client_immutable`);
-  - il file di un modulo ha le sue chiavi sotto il nome del modulo, più una chiave `serverErrors` con i codici di errore suoi (es. `client_has_related_data` in `parties.ts`). `i18n/it/index.ts` unisce i `serverErrors` di tutti i file.
+  - il file di un modulo ha le sue chiavi sotto il nome del modulo, più una chiave `serverErrors` con i codici di errore suoi (es. `client_has_related_data` in `parties.ts`). `i18n/it/index.ts` unisce i `serverErrors` di `common.ts` e dei moduli: un modulo nuovo vi aggiunge i suoi, oltre a registrare il file.
 - **Tracciamento** (`utils/tracking.ts`):
   - `TrackedRecord` è il tipo dei campi di tracciamento che il server restituisce per ogni dato di dominio (D-042);
   - `lastEditDetails(record)` scrive chi ha creato e modificato il record, quando, e la revisione: è il testo dell'"ultima modifica" nell'intestazione del dettaglio (`Header`).
@@ -298,6 +298,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
   - *Ricarica* rilegge il record. Il form ha come `key` la revisione, quindi riparte dai valori nuovi; le modifiche non salvate si perdono, e l'avviso lo dice;
   - la modifica in modale legge il dettaglio del record all'apertura, così manda l'ultima revisione e non quella della riga della lista;
   - le azioni che cambiano un solo campo (es. disattiva) non mandano la revisione: non sovrascrivono gli altri dati;
+  - nel dettaglio, *Modifica* resta disabilitato mentre il record si ricarica, per esempio subito dopo un salvataggio: il form deve partire dalla revisione nuova;
   - nel dettaglio, durante la modifica, il menu delle azioni è nascosto: un'azione cambierebbe la revisione e ricaricherebbe il form, perdendo le modifiche.
 
 ### 9.3 Committente come filtro
@@ -323,7 +324,7 @@ Vedi D-043 e D-053.
 ### 9.5 Committenti: `parties`
 
 `api/parties/clients/` (§8.5 di [backend.md](backend.md)).
-- **Lista**: ricerca per nome, codice fiscale o codice ISTAT; filtri per stato e per tipo; ordinamento per nome e per ultima modifica. Nessuna selezione multipla: il server non ha un'eliminazione multipla dei committenti.
+- **Lista**: ricerca per nome, codice fiscale o codice ISTAT; filtri per stato e per tipo; ordinamento per nome e per ultima modifica. Un errore di caricamento si mostra sopra la tabella. Nessuna selezione multipla: il server non ha un'eliminazione multipla dei committenti.
 - **Dettaglio** (`/parties/clients/:id`), senza schede: il form in sola lettura, i pulsanti *Storico* e *Modifica*, il menu con disattiva o riattiva ed elimina. Un committente disattivato ha un avviso con *Riattiva*.
 - **Form**: denominazione e tipo obbligatori; codice ISTAT di 5 o 6 cifre, codice fiscale o partita IVA, recapiti, sistema di riferimento per l'export CAM, note. `active` non è nel form: cambia con le azioni disattiva e riattiva.
 - **Eliminazione**: solo per un committente inserito per errore. Uno con dati collegati non si elimina (`client_has_related_data`): l'errore tradotto invita a disattivarlo.

@@ -1,8 +1,10 @@
+import { AlertError } from "@/components/AlertError"
 import { CheckPermission } from "@/components/CheckPermission"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
 import { TableEmptyState, createTable } from "@/components/Table"
 import { useUrlParams } from "@/hooks/useUrlParams"
+import { translateApiError } from "@/utils"
 import { Badge, Box, Button, Group, Pagination, Select, Text, TextInput } from "@mantine/core"
 import { useDebouncedValue } from "@mantine/hooks"
 import dayjs from "dayjs"
@@ -34,11 +36,12 @@ export function ClientsList() {
       ordering: ordering || undefined,
       search: debouncedSearch || undefined,
       active: status === "active" ? "true" : status === "inactive" ? "false" : undefined,
-      kind: (kind as ClientKind) || undefined,
+      // A kind that is not in the list (an edited URL) is ignored: the server would refuse it.
+      kind: CLIENT_KINDS.includes(kind as ClientKind) ? (kind as ClientKind) : undefined,
     }),
     [page, ordering, debouncedSearch, status, kind]
   )
-  const { data, isLoading } = useClients(filters)
+  const { data, isLoading, error } = useClients(filters)
   const pages = Math.ceil((data?.count ?? 0) / (data?.page_size || 20))
   const createAction = (
     <CheckPermission permission={PARTIES_PERMISSIONS.WRITE_CLIENTS}>
@@ -89,12 +92,22 @@ export function ClientsList() {
             onChange={(value) => mergeParams({ kind: value ?? "", page: 1 })}
           />
           {hasFilters && (
-            <Button variant="subtle" size="xs" color="gray" onClick={() => setParams({ page: "1" })}>
+            <Button
+              variant="subtle"
+              size="xs"
+              color="gray"
+              onClick={() => setParams(ordering ? { page: "1", ordering } : { page: "1" })}
+            >
               {t("common.reset")}
             </Button>
           )}
         </Group>
       </Box>
+      {error && (
+        <Box px="sm" pb="xs">
+          <AlertError title={t("parties.loadError")} message={translateApiError(error, t("common.unexpectedError"))} />
+        </Box>
+      )}
       <Table
         data={data?.results ?? []}
         loading={isLoading}

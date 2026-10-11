@@ -21,7 +21,6 @@ const translations = {
     noResults: "Nessun risultato",
     actionFailed: "Operazione non riuscita",
     lastEdit: "Ultima modifica",
-    reload: "Ricarica",
   },
   notFound: {
     title: "Pagina non trovata",

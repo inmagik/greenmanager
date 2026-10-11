@@ -22,13 +22,14 @@ export function ClientSelect({ value, onChange, activeOnly = false, error, ...pr
     <Select
       searchable
       placeholder={t("parties.select.placeholder")}
+      aria-label={props.label ? undefined : t("parties.select.label")}
       nothingFoundMessage={t("common.noResults")}
       rightSection={isLoading ? <Loader size="xs" /> : undefined}
       {...props}
       data={options}
       value={value}
       onChange={(newValue) => onChange(newValue)}
-      error={error ?? (isError ? t("parties.select.loadError") : undefined)}
+      error={error ?? (isError ? t("parties.loadError") : undefined)}
     />
   )
 }

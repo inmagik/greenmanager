@@ -22,7 +22,7 @@ export function ClientDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [editable, setEditable] = useState(false)
-  const { data: client, error, refetch } = useClient(id)
+  const { data: client, error, refetch, isFetching } = useClient(id)
   const { mutateAsync: updateClient } = useUpdateClient()
 
   if (error) return <QueryErrorPage error={error} />
@@ -53,7 +53,8 @@ export function ClientDetail() {
               {t("history.open")}
             </Button>
             <CheckPermission permission={PARTIES_PERMISSIONS.WRITE_CLIENTS}>
-              <Button leftSection={<TbPencil />} disabled={editable} onClick={() => setEditable(true)}>
+              {/* Disabled while the client reloads, after a save: the form must start from the new revision. */}
+              <Button leftSection={<TbPencil />} disabled={editable || isFetching} onClick={() => setEditable(true)}>
                 {t("common.edit")}
               </Button>
             </CheckPermission>

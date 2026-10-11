@@ -8,6 +8,7 @@ export default {
     dangerZone: "Zona riservata",
     searchPlaceholder: "Cerca per nome, codice fiscale o ISTAT...",
     results: "Visualizzati {{shown}} committenti su {{total}}",
+    loadError: "Impossibile caricare i committenti",
     emptyTitle: "Non c'è ancora nessun committente",
     emptyDescription:
       "Il committente possiede o ha in carico il verde: zone, aree ed elementi appartengono sempre a un committente.",
@@ -36,7 +37,6 @@ export default {
       label: "Committente",
       placeholder: "Scegli un committente",
       inactiveOption: "{{name}} (disattivato)",
-      loadError: "Impossibile caricare i committenti",
     },
     kinds: {
       public_body: "Ente pubblico",
