@@ -115,7 +115,8 @@ def place_at_area_center(element):
     ``area_center`` the point is on the surface of the area of the element
     (``ST_PointOnSurface``), computed again at each save, and the position is
     provisional. To place the element elsewhere, the source changes too (e.g.
-    to ``gps`` or ``map``): until then a geometry sent does not count.
+    to ``gps`` or ``map``): until then a geometry or a verified status sent do
+    not count.
     """
     if element.location_source != LocationSource.AREA_CENTER:
         return
@@ -624,7 +625,9 @@ def check_element_geometry(
     form sends none, the area, and it stays out of the near trees. ``area`` is
     the area chosen in the form; ``client`` limits the proposal to the areas of
     a client, otherwise it is among the areas the organization can edit. The
-    warnings are about the chosen area or, without one, the proposed one.
+    warnings are about the chosen area or, without one, the proposed one; the
+    near trees are those of its client, and without area or client there are
+    none to compare.
     """
     organization = context.organization
     if element is not None:
@@ -660,15 +663,12 @@ def check_element_geometry(
     geometry = normalized_geometry(geometry, element_class)
     suggested = suggest_area(geometry, areas)
     target = area or suggested
-    trees = Element.objects.editable_by(organization)
     if target is not None:
-        trees = trees.filter(client_id=target.client_id)
-    elif client is not None:
-        trees = trees.filter(client=client)
+        client = target.client
     warnings = outside_area_warnings(geometry, target)
-    if element is None or element.removed_on is None:
+    if client is not None and (element is None or element.removed_on is None):
         warnings += near_tree_warnings(
-            trees,
+            Element.objects.filter(client=client),
             element_class,
             geometry,
             exclude=element.pk if element is not None else None,

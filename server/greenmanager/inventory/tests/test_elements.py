@@ -686,8 +686,50 @@ class SpatialCheckTests(InventoryTestCase):
         self.assertEqual(renamed.data["warnings"], [])
         self.assertEqual(moved.data["warnings"][0]["params"]["elements"], existing.code)
 
+    def test_trees_very_close_when_the_class_or_the_status_change(self):
+        provisional = self.make_tree(location_source="area_center", geometry=None)
+        # 1 m north of the point on the surface of the area.
+        x, y = provisional.geometry.coords
+        existing = self.make_tree(geometry=parse(point(x, y + 0.000009)))
+        # 0.9 m north of the existing tree, 1.9 m from the provisional one.
+        bench = services.create_element(
+            {
+                "area": self.area,
+                "element_class": self.classes["bench"],
+                "geometry": parse(point(x, y + 0.000017)),
+            },
+            self.context,
+        )
+
+        became_tree = self.patch(
+            f"{URL}{bench.pk}/",
+            {
+                "element_class": str(self.classes["tree"].pk),
+                "species": str(self.tilia.pk),
+            },
+        )
+        verified = self.patch(
+            f"{URL}{provisional.pk}/",
+            {"location_source": "map", "location_status": "verified"},
+        )
+
+        self.assertEqual(became_tree.status_code, 200, became_tree.content)
+        # The provisional tree is not a surveyed position.
+        self.assertEqual(
+            became_tree.data["warnings"][0]["params"]["elements"], existing.code
+        )
+        self.assertEqual(verified.status_code, 200, verified.content)
+        self.assertEqual(verified.data["warnings"][0]["code"], "element_near_tree")
+        self.assertEqual(
+            verified.data["warnings"][0]["params"]["elements"],
+            f"{existing.code}, {bench.code}",
+        )
+
     def test_geometry_check(self):
         tree = self.make_tree()
+        # Saved outside every area.
+        self.make_tree(geometry=parse(point(9.1, 45.1)))
+        foreign_tree = self.make_tree(area=self.foreign_area)
         count = Element.objects.count()
 
         hedge = self.check(
@@ -701,6 +743,15 @@ class SpatialCheckTests(InventoryTestCase):
         wrong_type = self.check(geometry=square(9, 45))
         foreign_area = self.check(
             geometry=point(9.0005, 45.0005), area=str(self.foreign_area.pk)
+        )
+        foreign_element = self.check(
+            geometry=point(9.0005, 45.0005), element=str(foreign_tree.pk)
+        )
+        # 1 m from the tree outside every area: its client is known only when
+        # the check names it.
+        without_client = self.check(geometry=point(9.1, 45.100009))
+        with_client = self.check(
+            geometry=point(9.1, 45.100009), client=str(self.own.pk)
         )
         self.client.force_authenticate(self.reader)
         reader = self.check(geometry=point(9.0005, 45.0005))
@@ -721,6 +772,12 @@ class SpatialCheckTests(InventoryTestCase):
             wrong_type.data["geometry"]["code"], "geometry_type_not_allowed"
         )
         self.assertEqual(foreign_area.data["area"]["code"], "area_not_available")
+        self.assertEqual(
+            foreign_element.data["element"]["code"], "element_not_available"
+        )
+        self.assertIsNone(without_client.data["suggested_area"])
+        self.assertEqual(without_client.data["warnings"], [])
+        self.assertEqual(self.warning_codes(with_client), ["element_near_tree"])
         self.assertEqual(reader.status_code, 403, reader.content)
         self.assertEqual(Element.objects.count(), count)
 

@@ -1,5 +1,6 @@
 import django_filters as FS
 from catalogs.models import ElementClass
+from core.errors import api_error
 from core.serializers import pop_revision
 from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
@@ -176,6 +177,12 @@ class ElementViewSet(AssetViewSet):
         element = None
         if data.get("element") is not None:
             element = self.get_queryset().filter(pk=data["element"]).first()
+            if element is None:
+                raise api_error(
+                    "element_not_available",
+                    "The element is not available.",
+                    field="element",
+                )
         result = services.check_element_geometry(
             data["element_class"],
             data["geometry"],

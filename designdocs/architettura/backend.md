@@ -545,7 +545,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - senza data del rilievo, la creazione mette la data del giorno.
 
 **Posizione** (EL-10, D-052):
-- con `location_source=area_center` il server mette il punto sulla superficie dell'area (`ST_PointOnSurface`) e la posizione è provvisoria. Vale solo per le classi a punto (`area_center_point_only`). Il punto si ricalcola a ogni salvataggio, quindi segue l'area: con questa origine una geometria inviata non conta, e per posizionare l'elemento si cambia l'origine (es. `gps` o `map`);
+- con `location_source=area_center` il server mette il punto sulla superficie dell'area (`ST_PointOnSurface`) e la posizione è provvisoria. Vale solo per le classi a punto (`area_center_point_only`). Il punto si ricalcola a ogni salvataggio, quindi segue l'area: con questa origine una geometria e lo stato `verified` inviati non contano, anche dall'admin. Per posizionare l'elemento si cambia l'origine (es. `gps` o `map`);
 - la verifica di una posizione provvisoria (passaggio a `verified`) mette la data del giorno in `surveyed_on`, salvo che la modifica ne indichi un'altra.
 
 **Controlli spaziali** (AR-5, scenario 4.2; D-052). Sono avvisi, come quelli delle aree (D-050):
@@ -553,7 +553,8 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - `element_near_tree`: un albero presente dello stesso committente a meno di 2 m, sull'ellissoide (`near(geometria, metri)` del QuerySet), con i codici degli alberi vicini. Contano solo le posizioni verificate. L'avviso compare quando l'albero riceve una posizione: in `geometry-check/` e nelle risposte della creazione e delle modifiche che cambiano geometria, classe o stato della posizione. Il dettaglio non lo ripete;
 - `geometry-check/` riceve la classe e la geometria; facoltativi l'elemento che si modifica, l'area scelta nel form e il committente. Restituisce lunghezza o superficie, l'area proposta (`suggested_area`) e gli avvisi, senza salvare:
   - l'area proposta è quella gestita oggi che contiene il punto, o la parte maggiore della linea o del poligono, sull'ellissoide; tra aree equivalenti, la più piccola. Si cerca tra le aree del committente o, senza committente, tra quelle che l'organizzazione può modificare;
-  - gli avvisi riguardano l'area scelta (senza, quella dell'elemento) o, in mancanza, quella proposta. L'elemento che si modifica dà il committente e resta fuori dagli alberi vicini.
+  - gli avvisi riguardano l'area scelta (senza, quella dell'elemento) o, in mancanza, quella proposta. Gli alberi vicini sono quelli del committente di quell'area o del committente indicato: senza area né committente non si confrontano;
+  - l'elemento che si modifica dà il committente e resta fuori dagli alberi vicini. Area, committente ed elemento che l'organizzazione non può usare danno `area_not_available`, `client_not_available` ed `element_not_available`.
 
 **Ciclo di vita** (EL-7, D-029):
 - `remove/` chiede la data e, per le classi che contano come alberi, la causa (`removal_cause_required`); la data non precede la posa (`element_removed_before_planted`) e non è futura (`removal_date_in_future`). Su un elemento già rimosso corregge data e causa;
