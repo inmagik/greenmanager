@@ -48,7 +48,7 @@ Le chiavi esterne verso queste entità si aggiungono dopo, con le loro app e una
 | Geometrie, misure ed endpoint GeoJSON | D-049 | §8.2 e §8.6 |
 | Controlli topologici come avvisi | D-050 | §8.6 |
 | Elementi: codice, cartellino, composizione, ciclo di vita | D-051 | §8.7 |
-| Controlli spaziali degli elementi | D-052, con la PR2c ([#12](https://github.com/inmagik/greenmanager/pull/12)) | §8.7 |
+| Controlli spaziali degli elementi | D-052 | §8.7 |
 
 Le decisioni del frontend arrivano con le PR3 e PR4. Il numero si assegna quando si scrivono; quelli indicati più sotto sono provvisori.
 
@@ -61,7 +61,7 @@ Aggiornato al 2026-10-11.
 | PR1 | basi, cataloghi, committente (backend) | — | unita, [#8](https://github.com/inmagik/greenmanager/pull/8) |
 | PR2a | basi geometriche, zone e aree (backend) | PR1 | unita, [#9](https://github.com/inmagik/greenmanager/pull/9) |
 | PR2b | elementi, composizione, ciclo di vita (backend) | PR2a | unita, [#11](https://github.com/inmagik/greenmanager/pull/11) |
-| PR2c | controlli spaziali degli elementi (backend) | PR2b | aperta, [#12](https://github.com/inmagik/greenmanager/pull/12) |
+| PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
 | PR3a | parti comuni e committenti (frontend) | — | da fare, issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
 | PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
@@ -69,7 +69,7 @@ Aggiornato al 2026-10-11.
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo con la PR2c, in revisione. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2c unite. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in tre, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10).
 
@@ -111,7 +111,7 @@ Valgono per tutte:
 
 ### PR3a. Parti comuni e committenti
 
-Issue [#13](https://github.com/inmagik/greenmanager/issues/13). Parte da `main`: non dipende dalla PR2c.
+Issue [#13](https://github.com/inmagik/greenmanager/issues/13). Parte da `main`.
 
 **Parti comuni**:
 - `permission?` in `MenuItem` (`src/declarations.d.ts`), per mostrare una voce del menu solo a chi ha il permesso;
@@ -170,7 +170,7 @@ Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR
 
 ### PR3d. Elementi
 
-Issue [#16](https://github.com/inmagik/greenmanager/issues/16). Dipende dalla PR3c e dall'unione della PR2c ([#12](https://github.com/inmagik/greenmanager/pull/12)).
+Issue [#16](https://github.com/inmagik/greenmanager/issues/16). Dipende dalla PR3c. Usa le API della PR2c ([#12](https://github.com/inmagik/greenmanager/pull/12)), già unita.
 
 - **Lista**:
   - filtri `area`, `zone`, `element_class`, `category`, `species`, `location_status`, `removed`, `present_on` e `outside_area`;
