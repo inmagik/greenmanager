@@ -46,8 +46,8 @@ class AssetViewSet(
     GeoJSONActionMixin,
     ModelViewSet,
 ):
-    """Base of the viewsets of zones and areas: the writes go through
-    ``create_service``, ``update_service`` and ``delete_service``."""
+    """Base of the viewsets of the asset data (zones, areas, elements): the writes
+    go through ``create_service``, ``update_service`` and ``delete_service``."""
 
     permission_classes = [ActionPermission]
     action_permissions = {

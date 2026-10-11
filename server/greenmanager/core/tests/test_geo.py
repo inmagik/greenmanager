@@ -119,3 +119,27 @@ class GeodesicMeasuresTests(TestCase):
         self.assertAlmostEqual(
             float(both["perimeter_m"]), 2 * float(one["perimeter_m"]), delta=0.1
         )
+
+    def test_length_of_lines_and_sum_of_the_parts(self):
+        # One degree along the equator and one along a meridian, on the WGS84
+        # ellipsoid: about 111.32 km and 110.57 km.
+        equator = {"type": "LineString", "coordinates": [[0, 0], [1, 0]]}
+        meridian = {"type": "LineString", "coordinates": [[0, 0], [0, 1]]}
+        both = {
+            "type": "MultiLineString",
+            "coordinates": [equator["coordinates"], meridian["coordinates"]],
+        }
+
+        def length(geojson):
+            line = geo.normalize(geo.parse_geojson(geojson), GeometryType.LINE)
+            return geo.geodesic_measures(line)
+
+        one = length(equator)
+        two = length(both)
+
+        self.assertAlmostEqual(float(one["length_m"]), 111319.49, delta=0.1)
+        self.assertAlmostEqual(
+            float(length(meridian)["length_m"]), 110574.39, delta=0.1
+        )
+        self.assertAlmostEqual(float(two["length_m"]), 221893.88, delta=0.1)
+        self.assertEqual((one["area_m2"], one["perimeter_m"]), (0, 0))

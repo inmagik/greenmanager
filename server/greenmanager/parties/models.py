@@ -1,5 +1,5 @@
 from core.audit import register_audit
-from core.models import TrackedModel
+from core.models import TrackedModel, UUIDModel
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -107,6 +107,35 @@ class Client(TrackedModel):
 
     def __str__(self):
         return self.name
+
+
+class ClientSequence(UUIDModel):
+    """
+    Counter of the readable codes of a client, one per ``key`` (e.g. the codes of
+    the elements, EL-8). A value is given once: a code stays unused even if its
+    record is deleted (``services.next_sequence_value``).
+    """
+
+    client = models.ForeignKey(
+        Client,
+        verbose_name="committente",
+        on_delete=models.CASCADE,
+        related_name="sequences",
+    )
+    key = models.CharField("chiave", max_length=50)
+    last_value = models.PositiveIntegerField("ultimo valore", default=0)
+
+    class Meta:
+        verbose_name = "contatore"
+        verbose_name_plural = "contatori"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["client", "key"], name="parties_client_sequence_uniq"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.client} · {self.key}: {self.last_value}"
 
 
 register_audit(Client)
