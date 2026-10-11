@@ -13,8 +13,9 @@
 | questo file | componenti, progetti di riferimento, cosa si copia e cosa si scarta |
 | [backend.md](backend.md) | progetto Django: struttura, settings, app core, pattern delle app di dominio, ambiente, versioni |
 | [frontend.md](frontend.md) | SPA React: struttura, provider, moduli, data fetching, pattern UI di base, versioni |
+| [fetta-1.md](fetta-1.md) | prima fetta verticale: perimetro, sequenza delle PR e avanzamento, PR da fare, verifica |
 
-I pattern dell'interfaccia per sezione (T2) e la corrispondenza tra entità del dominio e app (T3) arrivano nei passi successivi.
+I pattern dell'interfaccia per sezione (T2) e la corrispondenza tra entità del dominio e app (T3) si scrivono con la prima fetta verticale (D-040): T3 in §8 di [backend.md](backend.md) e in [frontend.md](frontend.md), T2 in `frontend-pattern.md`.
 
 ## 1. Componenti
 

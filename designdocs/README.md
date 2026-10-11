@@ -25,8 +25,8 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager e,
 | 4. Modello dati | [04-modello-dati.md](04-modello-dati.md) | completato |
 | 5. Consolidamento | [spec.md](spec.md) | da iniziare, in parallelo allo sviluppo (D-040) |
 | T1. Stack e scaffold di riferimento | [architettura/README.md](architettura/README.md), [backend.md](architettura/backend.md), [frontend.md](architettura/frontend.md) | completato |
-| T2. Pattern dell'interfaccia | `architettura/frontend-pattern.md` | da iniziare, con la prima fetta verticale |
-| T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | in corso, con la prima fetta verticale: basi, cataloghi, committenti, zone, aree ed elementi nel backend (§8 di backend.md) |
+| T2. Pattern dell'interfaccia | `architettura/frontend-pattern.md` | da iniziare, con la mappa della prima fetta verticale (PR4a e PR4b di [fetta-1.md](architettura/fetta-1.md)) |
+| T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | in corso, con la prima fetta verticale: backend fatto, salvo la PR2c in revisione (§8 di backend.md); frontend da fare. Piano e avanzamento in [fetta-1.md](architettura/fetta-1.md) |
 | T4. Scaffold | codice in `server/` e `frontend/` | completato |
 
 ## I passi della specifica del dominio
@@ -83,6 +83,7 @@ Il binario procede in parallelo alla specifica del dominio. Dopo la revisione de
    - contenuto: cataloghi (`Species`, `ElementClass`), committente (`Client`), zone e aree, elementi su mappa;
    - T2 parte dalle feature e dagli scenari dello Step 3, T3 dal modello dati dello Step 4;
    - i loro documenti registrano le scelte fatte nella fetta;
+   - il piano della fetta, con la sequenza delle PR e il loro stato, è in [architettura/fetta-1.md](architettura/fetta-1.md);
 4. lo Step 5 procede in parallelo e non blocca lo sviluppo.
 
 ### T1. Stack e scaffold di riferimento
