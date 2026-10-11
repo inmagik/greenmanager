@@ -49,6 +49,8 @@ class ElementAdmin(AssetAdmin):
         "client",
         "length_m",
         "surface_m2",
+        "removed_on",
+        "removal_cause",
         *AssetAdmin.readonly_fields,
     )
     inlines = (CompositionItemInline,)
