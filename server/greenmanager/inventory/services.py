@@ -425,6 +425,13 @@ def delete_element(element, context):
     """Delete an element entered by mistake, with a cancellation in the history.
     An element that is no longer there is removed instead (``remove_element``)."""
     element = lock_element(element, context)
+    # Replacements still report the existing protected-relation error below.
+    if element.removed_on is not None and not element.replaced_by.exists():
+        raise api_error(
+            "element_already_removed",
+            "A removed element must stay in the history; correct its removal instead.",
+            {"code": element.code},
+        )
     record_id = element.pk
     before = element_snapshot(element)
     try:
