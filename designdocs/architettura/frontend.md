@@ -1,10 +1,11 @@
 # Frontend
 
-> **Stato**: completato · **Passo**: T1 del binario tecnico · Metodologia in [README.md](../README.md)
+> **Stato**: completato per T1; §9 in corso con T3 e la prima fetta verticale · **Passo**: T1 e T3 del binario tecnico · Metodologia in [README.md](../README.md)
 
 - **Obiettivo**: descrivere la SPA React di GreenManager: struttura, provider, moduli, data fetching, pattern UI di base, versioni.
 - **Fonte**: `admin/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura, componenti e pattern; [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036, D-038). Commit e regole di copia in [README.md](README.md).
-- **Fuori da questo documento**: i pattern per le singole sezioni dell'interfaccia (mappa, uso in campo, mappa pubblica…), che sono il passo T2; l'elenco dei moduli di dominio, che si definisce in T3.
+- **Moduli di dominio**: elenco, parti comuni e regole sono in §9, che cresce con la prima fetta verticale (T3, D-040).
+- **Fuori da questo documento**: i pattern per le singole sezioni dell'interfaccia (mappa, uso in campo, mappa pubblica…), che sono il passo T2.
 
 ## 1. Struttura
 
@@ -81,7 +82,7 @@ Voce di menu:
 | `parent` | `null` per una sezione (icona nella barra principale), l'`id` della sezione per una voce |
 | `icon` | icona di `react-icons/tb` |
 | `priority` | ordine, crescente |
-| `permission` | permesso richiesto; le voci senza permesso si filtrano con `hasPermission` |
+| `permission` | facoltativo: la `DoubleNavbar` mostra la voce solo a chi ha il permesso nell'organizzazione corrente (`hasPermission`) |
 
 ## 4. Moduli
 
@@ -154,7 +155,7 @@ Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pes
 - Il primo tab mostra il form in `layout="page"` e in sola lettura; il bottone *Modifica* dell'header lo rende modificabile.
 - Con modifiche non salvate, `BlockNavigation` chiede conferma prima di lasciare la pagina.
 - L'header può mostrare l'ultima modifica (`lastEditDetails`), dai campi di django-auditlog (§3.4 di [backend.md](backend.md)).
-- Lo storico completo delle modifiche del record si apre con `AuditHistoryModal`, copiato da bottaro-pesatura. Il rapporto con lo storico del dominio (`ChangeRecord`, D-034) si decide in T3 (domanda 3 di [backend.md](backend.md#domande-aperte)).
+- Lo storico completo delle modifiche del record si apre con `AuditHistoryModal`, copiato da bottaro-pesatura. Il rapporto con lo storico del dominio (`ChangeRecord`, D-034) è in §9.4 (D-053).
 
 ### 5.6 Permessi nell'interfaccia
 
@@ -261,10 +262,76 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 - **Quinta revisione della PR dello scaffold**:
   - le liste con selezione la svuotano a ogni cambio di ricerca, ordinamento o pagina, e le azioni multiple mandano solo i record elencati nella conferma: in data-lab potevano eliminare organizzazioni o togliere ruoli a utenti non più visibili;
   - le righe e i contenuti a tutta larghezza di `Table` occupano `headers.length` colonne: con una in più la griglia ne creava una implicita, e la tabella si allargava rispetto all'intestazione.
-- **Prima fetta verticale (T3)**: nel dettaglio dell'utente i permessi diretti si cambiano solo dallo staff, come nel server (D-045). Per gli altri il form dei permessi li mostra in sola lettura, con una nota che rimanda ai ruoli.
+- **Prima fetta verticale (T3)**:
+  - nel dettaglio dell'utente i permessi diretti si cambiano solo dallo staff, come nel server (D-045). Per gli altri il form dei permessi li mostra in sola lettura, con una nota che rimanda ai ruoli;
+  - la voce di menu ha il campo `permission` anche nel tipo (`declarations.d.ts`), e la `DoubleNavbar` filtra le voci con `hasPermission`. Prima ogni `menu.tsx` filtrava le proprie, come fa ancora `users`;
+  - `i18n/it/index.ts` unisce le chiavi `serverErrors` dei file dei moduli a quelle di `common.ts`, che l'unione semplice degli oggetti sovrascriverebbe (§9.2).
+
+## 9. Moduli di dominio
+
+Si scrive in T3, insieme alla prima fetta verticale (D-040): ogni PR del frontend aggiunge i suoi moduli. Decisione D-053.
+
+### 9.1 Moduli
+
+Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](backend.md)).
+
+| Modulo | Risorse e rotte | Permessi | Arriva con |
+|---|---|---|---|
+| `parties` | committenti, `/parties/clients` | `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | PR3a |
+| `catalogs` | cataloghi | lettura per ogni membro, `catalogs.WRITE_CATALOGS` | PR3b |
+| `territory` | zone e aree | `territory.READ_AREAS`, `territory.WRITE_AREAS` | PR3c |
+| `inventory` | elementi | `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | PR3d |
+| `map` | mappa, `/map` | quelli dei layer mostrati | PR4a |
+
+### 9.2 Parti comuni
+
+- **Menu**: una voce dichiara il suo `permission`, e la `DoubleNavbar` la mostra solo a chi lo ha nell'organizzazione corrente (§3).
+- **Traduzioni**:
+  - in `common.ts`, oltre alle chiavi di §6: `fields.*` dei campi di tracciamento (autore, date, revisione), `tracking.*` per il riepilogo dell'ultima modifica, `revisionConflict.*`, e i codici di errore usati da più moduli (`revision_conflict`, `client_not_available`, `client_immutable`);
+  - il file di un modulo ha le sue chiavi sotto il nome del modulo, più una chiave `serverErrors` con i codici di errore suoi (es. `client_has_related_data` in `parties.ts`). `i18n/it/index.ts` unisce i `serverErrors` di tutti i file.
+- **Tracciamento** (`utils/tracking.ts`):
+  - `TrackedRecord` è il tipo dei campi di tracciamento che il server restituisce per ogni dato di dominio (D-042);
+  - `lastEditDetails(record)` scrive chi ha creato e modificato il record, quando, e la revisione: è il testo dell'"ultima modifica" nell'intestazione del dettaglio (`Header`).
+- **Conflitto di revisione** (D-042, D-053):
+  - il form di modifica manda la `revision` del record che ha letto;
+  - se nel frattempo il record è cambiato, il server risponde `409 revision_conflict`: il form lo riconosce con `isRevisionConflict` e mostra `RevisionConflictAlert`, un avviso con il pulsante *Ricarica*;
+  - *Ricarica* rilegge il record. Il form ha come `key` la revisione, quindi riparte dai valori nuovi; le modifiche non salvate si perdono, e l'avviso lo dice;
+  - la modifica in modale legge il dettaglio del record all'apertura, così manda l'ultima revisione e non quella della riga della lista;
+  - le azioni che cambiano un solo campo (es. disattiva) non mandano la revisione: non sovrascrivono gli altri dati;
+  - nel dettaglio, durante la modifica, il menu delle azioni è nascosto: un'azione cambierebbe la revisione e ricaricherebbe il form, perdendo le modifiche.
+
+### 9.3 Committente come filtro
+
+Vedi D-053. I dati del patrimonio (zone, aree, elementi) appartengono a un committente, e un'organizzazione ne gestisce più di uno.
+- `ClientSelect` (`modules/parties/components/`) sceglie un committente tra quelli dell'action `choices/`, con la ricerca nel testo. Con `activeOnly` mostra solo i committenti attivi: si usa nei form dei dati nuovi. Un committente disattivato è segnato nell'opzione.
+- `useClientFilter` (`modules/parties/hooks/`) dà il committente scelto come filtro di una lista, e la funzione per cambiarlo:
+  - il valore sta nel parametro `client` dell'URL, che le API delle liste accettano come filtro: la lista si ricarica e si condivide;
+  - l'ultimo valore si ricorda nel browser (localStorage), per organizzazione. Una lista aperta senza il parametro riparte da quel valore, e lo scrive nell'URL;
+  - il valore è unico per le liste di zone, aree ed elementi: chi lavora su un committente lo ritrova passando da una lista all'altra;
+  - un committente che non è più tra le scelte (eliminato, o di un'altra organizzazione) si scarta;
+  - cambiare committente riporta la lista a pagina 1.
+
+### 9.4 Storico nell'interfaccia
+
+Vedi D-043 e D-053.
+- La modale dello storico (`AuditHistoryModal`) legge l'action `history/` del record: lo storico tecnico di django-auditlog.
+  - I nomi dei campi sono i `verbose_name` dei modelli, in italiano, e i valori delle scelte sono le etichette.
+  - I campi di tracciamento restano fuori (`register_audit`), e così la geometria di aree ed elementi: superficie, perimetro e lunghezza ne mostrano le modifiche (§8.6 di [backend.md](backend.md)).
+- L'intestazione del dettaglio mostra autore, date e revisione dai campi di tracciamento (`lastEditDetails`), che sono colonne del record e non voci di django-auditlog (D-042).
+- `ChangeRecord`, lo storico di dominio con motivazione e origine, nella fetta non ha un'interfaccia né un endpoint (domanda 4).
+
+### 9.5 Committenti: `parties`
+
+`api/parties/clients/` (§8.5 di [backend.md](backend.md)).
+- **Lista**: ricerca per nome, codice fiscale o codice ISTAT; filtri per stato e per tipo; ordinamento per nome e per ultima modifica. Nessuna selezione multipla: il server non ha un'eliminazione multipla dei committenti.
+- **Dettaglio** (`/parties/clients/:id`), senza schede: il form in sola lettura, i pulsanti *Storico* e *Modifica*, il menu con disattiva o riattiva ed elimina. Un committente disattivato ha un avviso con *Riattiva*.
+- **Form**: denominazione e tipo obbligatori; codice ISTAT di 5 o 6 cifre, codice fiscale o partita IVA, recapiti, sistema di riferimento per l'export CAM, note. `active` non è nel form: cambia con le azioni disattiva e riattiva.
+- **Eliminazione**: solo per un committente inserito per errore. Uno con dati collegati non si elimina (`client_has_related_data`): l'errore tradotto invita a disattivarlo.
+- L'organizzazione di gestione non è nel form: la cambia solo lo staff (`managing_organization_staff_only`), e il caso (K2, §4.7 di [04-modello-dati.md](../04-modello-dati.md)) non serve alla fetta.
 
 ## Domande aperte
 
 1. **Lingue dell'interfaccia.** Solo italiano nell'MVP, mantenendo la struttura di i18next per aggiungerne altre, o anche l'inglese, già tradotto nelle parti copiate? → **chiusa** alla revisione: solo italiano; il selettore della lingua resta nascosto finché le lingue sono una (§6).
 2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → rinviata a T2, da chiudere nella prima fetta verticale (D-040)
 3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2
+4. **Storico di dominio nell'interfaccia.** `ChangeRecord` ha motivazione, organizzazione e origine di ogni modifica, e il committente consulta le modifiche di un periodo (CE-4, TR-6). Serve un endpoint con i filtri (committente, periodo, entità, record) e una pagina, o una scheda nei dettagli accanto allo storico tecnico? → rinviata oltre la prima fetta (D-053)

@@ -21,6 +21,7 @@ const translations = {
     noResults: "Nessun risultato",
     actionFailed: "Operazione non riuscita",
     lastEdit: "Ultima modifica",
+    reload: "Ricarica",
   },
   notFound: {
     title: "Pagina non trovata",
@@ -32,6 +33,8 @@ const translations = {
     description: "Non hai i permessi per vedere questa pagina.",
   },
   history: {
+    title: "Storico delle modifiche",
+    open: "Storico",
     loadError: "Impossibile caricare la cronologia",
     loadErrorMessage: "Si è verificato un errore durante il caricamento.",
     empty: "Nessuna modifica registrata",
@@ -92,6 +95,22 @@ const translations = {
     description: "Descrizione",
     status: "Stato",
     actions: "Azioni",
+    notes: "Note",
+    createdAt: "Creazione",
+    createdBy: "Autore",
+    updatedAt: "Ultima modifica",
+    updatedBy: "Autore dell'ultima modifica",
+    revision: "Revisione",
+  },
+  tracking: {
+    created: "Creato il {{date}} da {{author}}.",
+    updated: "Modificato il {{date}} da {{author}}.",
+    revision: "Revisione {{revision}}.",
+    system: "sistema",
+  },
+  revisionConflict: {
+    title: "Dati cambiati nel frattempo",
+    reload: "Ricarica",
   },
   serverErrors: {
     tenant_has_related_data: "L'organizzazione {{name}} non può essere eliminata perché contiene dati correlati.",
@@ -106,9 +125,14 @@ const translations = {
     cannot_change_own_account: "Non puoi disattivare o eliminare il tuo account.",
     unknown_permission: "Permessi sconosciuti: {{permissions}}.",
     invalid_token: "Il link non è valido o è scaduto. Richiedine uno nuovo.",
+    revision_conflict:
+      "Qualcun altro ha modificato questi dati dopo che li hai aperti. Ricarica per vedere la versione aggiornata: le modifiche non salvate andranno perse.",
+    client_not_available: "Il committente non esiste o non è gestito da questa organizzazione.",
+    client_immutable: "Il committente non si cambia dopo la creazione.",
   },
   navigation: {
     tenants: "Organizzazioni",
+    parties: "Committenti",
     users: "Utenti",
     "users:users": "Utenti",
     "users:roles": "Ruoli",

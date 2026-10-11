@@ -12,6 +12,8 @@ declare module "virtual:menu" {
     parent: string | null
     icon: React.ElementType
     priority: number
+    // Shown only to the users with the permission in the current tenant.
+    permission?: string | { oneOf: string[] } | { allOf: string[] }
   }
   export function getMenuConfig(user: User): MenuItem[]
 }

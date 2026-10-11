@@ -49,8 +49,9 @@ Le chiavi esterne verso queste entità si aggiungono dopo, con le loro app e una
 | Controlli topologici come avvisi | D-050 | §8.6 |
 | Elementi: codice, cartellino, composizione, ciclo di vita | D-051 | §8.7 |
 | Controlli spaziali degli elementi | D-052 | §8.7 |
+| Committente come filtro, storico e conflitti di revisione nell'interfaccia | D-053 | §9 di [frontend.md](frontend.md) |
 
-Le decisioni del frontend arrivano con le PR3 e PR4. Il numero si assegna quando si scrivono; quelli indicati più sotto sono provvisori.
+I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend arrivano con le PR3 e PR4: il numero si assegna quando si scrivono, e quelli indicati più sotto per le PR4 sono provvisori.
 
 ## 3. Sequenza e avanzamento
 
@@ -63,14 +64,14 @@ Aggiornato al 2026-10-11.
 | PR2b | elementi, composizione, ciclo di vita (backend) | PR2a | unita, [#11](https://github.com/inmagik/greenmanager/pull/11) |
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
 | PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
-| PR3a | parti comuni e committenti (frontend) | — | da fare, issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
+| PR3a | parti comuni e committenti (frontend) | — | in corso, issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
 | PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
 | PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend contiene ancora solo lo scaffold (T4): i moduli `users` e `tenants`. Fino alla PR3 i dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e con la PR3a il primo modulo di dominio, `parties`. Fino alle PR3b–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -139,7 +140,7 @@ Issue [#13](https://github.com/inmagik/greenmanager/issues/13). Parte da `main`.
 
 **Documenti**:
 - in [frontend.md](frontend.md), una sezione nuova "Moduli di dominio" (T3), con i moduli, il committente come filtro e la relazione tra la modale dello storico e `ChangeRecord`;
-- decisione nuova, numero provvisorio D-053, sul committente come filtro e sullo storico nell'interfaccia;
+- decisione D-053, sul committente come filtro, sullo storico e sui conflitti di revisione nell'interfaccia;
 - `frontend/AGENTS.md`, se cambiano le regole.
 
 **Verifica**: il menu mostra "Committenti" solo con `READ_CLIENTS`. Si crea, si modifica e si disattiva un committente; uno con aree non si elimina, e l'errore è tradotto. La modale mostra lo storico.
@@ -299,7 +300,7 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
 
 ## Domande aperte
 
-1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-052 sono ipotesi. In particolare:
+1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-053 sono ipotesi. In particolare:
    - le scelte di D-051 (codice come testo, data di rimozione non futura, attributi controllati solo quando cambiano);
    - la composizione non obbligatoria per le classi che la prevedono;
    - le scelte di D-052 (2 m tra gli alberi, avviso dei vicini solo quando l'albero riceve una posizione, punto al centro dell'area che segue l'area).

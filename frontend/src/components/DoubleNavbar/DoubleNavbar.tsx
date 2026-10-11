@@ -8,7 +8,7 @@ import { useAuth } from "../../auth/auth"
 import classes from "./DoubleNavbar.module.css"
 import { useTranslation } from "react-i18next"
 import { LanguageSelector } from "@/components/LanguageSelector"
-import { useTenantUser } from "@/hooks/useHasPermission"
+import { hasPermission, useTenantUser } from "@/hooks/useHasPermission"
 import { supportedLanguages } from "@/i18n"
 
 const hasLanguageChoice = supportedLanguages.length > 1
@@ -24,7 +24,9 @@ export function DoubleNavbar() {
   const tenantUser = useTenantUser()
 
   const menuConfig = useMemo(() => {
-    const config = tenantUser ? getMenuConfig(tenantUser) : []
+    const config = tenantUser
+      ? getMenuConfig(tenantUser).filter((item) => hasPermission(tenantUser, item.permission))
+      : []
     const landmarks: MenuItem[] = []
     const links: Record<string, MenuItem[]> = {}
     for (const item of config) {
