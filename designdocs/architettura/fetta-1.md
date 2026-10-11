@@ -64,7 +64,7 @@ Aggiornato al 2026-10-11.
 | PR2b | elementi, composizione, ciclo di vita (backend) | PR2a | unita, [#11](https://github.com/inmagik/greenmanager/pull/11) |
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
 | PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
-| PR3a | parti comuni e committenti (frontend) | — | in corso, issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
+| PR3a | parti comuni e committenti (frontend) | — | in revisione, [#23](https://github.com/inmagik/greenmanager/pull/23); issue [#13](https://github.com/inmagik/greenmanager/issues/13) |
 | PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
 | PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
