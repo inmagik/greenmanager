@@ -90,9 +90,11 @@ const roles = {
   },
   fields: { permissions: "Permessi", userCount: "Numero di utenti" },
   permissionIncludedIn: "Questo permesso è incluso nel ruolo",
+  directPermissionsStaffOnly:
+    "I permessi si assegnano con i ruoli. I permessi diretti valgono in tutte le organizzazioni dell'utente e li cambia solo lo staff.",
   permissionInfo: "Informazioni sul permesso {{name}}",
   // Groups of permissions, by Django app (fm_permissions.py); without a key, the app name.
-  modules: { auth_core: "Utenti e ruoli" },
+  modules: { auth_core: "Utenti e ruoli", catalogs: "Cataloghi", parties: "Committenti" },
 } as const
 const profile = {
   breadcrumb: "Profilo utente",

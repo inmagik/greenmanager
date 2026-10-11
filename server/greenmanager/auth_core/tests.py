@@ -1,4 +1,5 @@
 import threading
+from unittest import mock
 
 from axes.models import AccessAttempt
 from django.conf import settings
@@ -10,6 +11,7 @@ from tenants.models import Tenant, TenantMembership
 
 from .models import Role
 from .permission_manager import PermissionManager
+from .serializers import UserSerializer
 
 
 class UsersApiTests(APITestCase):
@@ -109,7 +111,7 @@ class UsersApiTests(APITestCase):
         self.assertEqual(response.status_code, 403, response.content)
         self.assertFalse(self.admin.roles.filter(pk=role.pk).exists())
 
-    def test_role_manager_can_assign_roles_and_permissions(self):
+    def test_role_manager_can_assign_roles(self):
         self.admin.permissions.append("auth_core.WRITE_ROLES")
         self.admin.save(update_fields=["permissions"])
         role = Role.objects.create(tenant=self.tenant, name="Operators")
@@ -118,10 +120,7 @@ class UsersApiTests(APITestCase):
 
         response = self.client.patch(
             f"/api/core/auth/users/{user.pk}/",
-            {
-                "roles": [role.pk],
-                "permissions": ["auth_core.READ_USERS"],
-            },
+            {"roles": [role.pk]},
             format="json",
             **self.tenant_header,
         )
@@ -129,6 +128,71 @@ class UsersApiTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.content)
         user.refresh_from_db()
         self.assertEqual(list(user.roles.values_list("pk", flat=True)), [role.pk])
+
+    def test_only_staff_assigns_direct_permissions(self):
+        self.admin.permissions.append("auth_core.WRITE_ROLES")
+        self.admin.save(update_fields=["permissions"])
+        user = get_user_model().objects.create_user(email="user@example.com")
+        TenantMembership.objects.create(tenant=self.tenant, user=user, is_default=True)
+        url = f"/api/core/auth/users/{user.pk}/"
+        payload = {"permissions": ["auth_core.READ_USERS"]}
+
+        as_role_manager = self.client.patch(
+            url, payload, format="json", **self.tenant_header
+        )
+        self.admin.is_staff = True
+        self.admin.save(update_fields=["is_staff"])
+        as_staff = self.client.patch(url, payload, format="json", **self.tenant_header)
+
+        self.assertEqual(as_role_manager.status_code, 403, as_role_manager.content)
+        self.assertEqual(as_role_manager.data["code"], "direct_permissions_staff_only")
+        self.assertEqual(as_staff.status_code, 200, as_staff.content)
+        user.refresh_from_db()
+        self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
+
+    def test_update_checks_the_privileges_on_the_stored_user(self):
+        self.admin.permissions.append("auth_core.WRITE_ROLES")
+        self.admin.save(update_fields=["permissions"])
+        user = get_user_model().objects.create_user(email="user@example.com")
+        TenantMembership.objects.create(tenant=self.tenant, user=user, is_default=True)
+        validate = UserSerializer.validate
+
+        def validate_then_staff_changes(serializer, attrs):
+            # A staff user changes the direct permissions after the validation.
+            attrs = validate(serializer, attrs)
+            get_user_model().objects.filter(pk=user.pk).update(
+                permissions=["auth_core.READ_USERS"]
+            )
+            return attrs
+
+        with mock.patch.object(UserSerializer, "validate", validate_then_staff_changes):
+            response = self.client.patch(
+                f"/api/core/auth/users/{user.pk}/",
+                {"full_name": "Utente", "permissions": []},
+                format="json",
+                **self.tenant_header,
+            )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertEqual(response.data["code"], "direct_permissions_staff_only")
+        user.refresh_from_db()
+        self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
+
+    def test_staff_assigns_direct_permissions_without_role_permission(self):
+        self.admin.is_staff = True
+        self.admin.save(update_fields=["is_staff"])
+        user = get_user_model().objects.create_user(email="user@example.com")
+        TenantMembership.objects.create(tenant=self.tenant, user=user, is_default=True)
+
+        response = self.client.patch(
+            f"/api/core/auth/users/{user.pk}/",
+            {"roles": [], "permissions": ["auth_core.READ_USERS"]},
+            format="json",
+            **self.tenant_header,
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        user.refresh_from_db()
         self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
 
     def test_superuser_manages_users_and_roles_without_permissions(self):
@@ -355,10 +419,8 @@ class TenantScopedUsersTests(APITestCase):
             **self.tenant_header,
         )
 
-        self.assertEqual(response.status_code, 400, response.content)
-        self.assertEqual(
-            response.data["permissions"]["code"], "user_shared_with_other_tenants"
-        )
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertEqual(response.data["code"], "direct_permissions_staff_only")
         self.shared.refresh_from_db()
         self.assertEqual(self.shared.permissions, [])
 

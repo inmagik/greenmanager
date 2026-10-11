@@ -15,6 +15,8 @@ import { PickRolesForm } from "./PickRolesForm"
 import { CheckPermission } from "@/components/CheckPermission"
 import { AUTH_CORE_PERMISSIONS } from "../permissions"
 import { useTranslation } from "react-i18next"
+import { useAuth } from "@/auth/auth"
+import { useHasPermission } from "@/hooks/useHasPermission"
 
 type Form = {
   permissions: string[]
@@ -30,6 +32,12 @@ type Props = {
 
 export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubmit }: Props) {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  // The direct permissions hold in every organization of the user: only staff users change them.
+  const canChangeDirectPermissions = !!(user?.is_staff || user?.is_superuser)
+  // The roles need the role-write permission, staff users included.
+  const canChangeRoles = useHasPermission(AUTH_CORE_PERMISSIONS.WRITE_ROLES)
+  const rolesReadonly = readonly || !canChangeRoles
   const [isLoading, setIsLoading] = useState(false)
 
   // Local data
@@ -83,7 +91,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                 <Button
                   size="xs"
                   leftSection={<TbPlus />}
-                  disabled={readonly}
+                  disabled={rolesReadonly}
                   onClick={() => {
                     const modalId = modals.open({
                       title: t("users.detail.assignRoles"),
@@ -110,7 +118,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                     <Pill
                       key={role.id}
                       size="sm"
-                      withRemoveButton={!readonly}
+                      withRemoveButton={!rolesReadonly}
                       removeButtonProps={{
                         onClick: () =>
                           form.setFieldValue(
@@ -118,7 +126,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                             form.values.roles.filter((item) => item.id !== role.id)
                           ),
                       }}
-                      disabled={readonly}
+                      disabled={rolesReadonly}
                     >
                       {role.name}
                     </Pill>
@@ -131,6 +139,11 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
             <Group justify="space-between">
               <Text size="md">{t("roles.fields.permissions")}</Text>
             </Group>
+            {!canChangeDirectPermissions && (
+              <Text size="sm" c="dimmed">
+                {t("roles.directPermissionsStaffOnly")}
+              </Text>
+            )}
             <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }}>
               {Object.entries(groupedPermissions).map(([module, permissions]) => (
                 <Box key={module} bg="gray.0" p="sm" bdrs="sm" bd="1px solid gray.2">
@@ -159,7 +172,7 @@ export function RolesPermissionsForm({ initialValues, readonly, onCancel, onSubm
                             size="xs"
                             aria-label={permission.name}
                             checked={isActive}
-                            disabled={readonly || !!itComesFromRole}
+                            disabled={readonly || !!itComesFromRole || !canChangeDirectPermissions}
                             onChange={() => {
                               if (isActive) {
                                 form.setFieldValue(
