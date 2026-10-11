@@ -1,5 +1,5 @@
 """Rules of the census elements (§3.4 of 04-modello-dati.md; EL-1, EL-3, EL-5, EL-7,
-EL-8)."""
+EL-8, EL-10, AR-5)."""
 
 from decimal import Decimal
 
@@ -8,7 +8,7 @@ from catalogs.models import ElementClass
 from catalogs.services import check_available
 from core import geo
 from core.enums import GeometryType
-from core.errors import api_error, check_revision, validate_model
+from core.errors import api_error, check_revision, error_payload, validate_model
 from core.models import ChangeRecord
 from core.services import (
     json_value,
@@ -18,22 +18,30 @@ from core.services import (
     snapshot,
     stamp,
 )
+from django.contrib.gis.db.models.functions import Intersection, PointOnSurface
+from django.contrib.gis.geos import MultiLineString, Point
 from django.db import transaction
 from django.db.models.deletion import ProtectedError, RestrictedError
 from django.utils import timezone
+from parties.models import Client
 from parties.services import next_sequence_value
 from rest_framework import serializers
 from territory.models import Area
 from territory.services import stored_id
 
-from .models import CompositionItem, Element
+from .models import CompositionItem, Element, code_order
 
 Operation = ChangeRecord.Operation
 SpeciesMode = ElementClass.SpeciesMode
+LocationSource = Element.LocationSource
+LocationStatus = Element.LocationStatus
 
 # Counter of the element codes of a client (parties.ClientSequence).
 CODE_SEQUENCE = "element"
 MAX_PERCENTAGE = Decimal(100)
+# A new tree closer than this to a present tree may be the same tree, surveyed
+# twice (scenario 4.2): meters on the ellipsoid.
+NEAR_TREE_DISTANCE_M = 2
 
 
 def element_snapshot(element):
@@ -80,22 +88,80 @@ def check_area(element, context, before=None):
     return area
 
 
+def normalized_geometry(geometry, element_class):
+    """The geometry as stored for the type of the class, or an API error."""
+    try:
+        return geo.normalize(geometry, element_class.geometry_type)
+    except geo.GeometryError as exc:
+        raise serializers.ValidationError({"geometry": exc.payload})
+
+
+def geometry_measures(geometry, geometry_type):
+    """The length of a line or the surface of a polygon, on the ellipsoid."""
+    measures = geo.geodesic_measures(geometry)
+    return {
+        "length_m": (
+            measures["length_m"] if geometry_type == GeometryType.LINE else None
+        ),
+        "surface_m2": (
+            measures["area_m2"] if geometry_type == GeometryType.POLYGON else None
+        ),
+    }
+
+
+def place_at_area_center(element):
+    """
+    Position at the center of the area (EL-10): with ``location_source``
+    ``area_center`` the point is on the surface of the area of the element
+    (``ST_PointOnSurface``), computed again at each save, and the position is
+    provisional. To place the element elsewhere, the source changes too (e.g.
+    to ``gps`` or ``map``): until then a geometry sent does not count.
+    """
+    if element.location_source != LocationSource.AREA_CENTER:
+        return
+    if element.element_class.geometry_type != GeometryType.POINT:
+        raise api_error(
+            "area_center_point_only",
+            "Only an element with a point can be placed at the center of its area.",
+            field="location_source",
+        )
+    element.geometry = (
+        Area.objects.filter(pk=element.area_id)
+        .annotate(center=PointOnSurface("geometry"))
+        .values_list("center", flat=True)
+        .get()
+    )
+    element.location_status = LocationStatus.PROVISIONAL
+
+
 def apply_geometry(element):
     """The geometry of the type of the class, and its length or surface."""
     if element.geometry is None:
-        return
-    geometry_type = element.element_class.geometry_type
-    try:
-        element.geometry = geo.normalize(element.geometry, geometry_type)
-    except geo.GeometryError as exc:
-        raise serializers.ValidationError({"geometry": exc.payload})
-    measures = geo.geodesic_measures(element.geometry)
-    element.length_m = (
-        measures["length_m"] if geometry_type == GeometryType.LINE else None
-    )
-    element.surface_m2 = (
-        measures["area_m2"] if geometry_type == GeometryType.POLYGON else None
-    )
+        raise api_error(
+            "geometry_required",
+            "The geometry is required, unless the element is placed at the center "
+            "of its area.",
+            field="geometry",
+        )
+    element.geometry = normalized_geometry(element.geometry, element.element_class)
+    measures = geometry_measures(element.geometry, element.element_class.geometry_type)
+    element.length_m = measures["length_m"]
+    element.surface_m2 = measures["surface_m2"]
+
+
+def check_location(element, before=None):
+    """
+    The verification of a provisional position is a survey in the field (§3.4
+    of 04-modello-dati.md): it gives the date of the survey, today, unless the
+    change sets another one.
+    """
+    if (
+        before is not None
+        and before.get("location_status") == LocationStatus.PROVISIONAL
+        and element.location_status == LocationStatus.VERIFIED
+        and json_value(element.surveyed_on) == before.get("surveyed_on")
+    ):
+        element.surveyed_on = timezone.localdate()
 
 
 def check_composition(element, items, organization):
@@ -279,14 +345,17 @@ def prepare_element(
     Rules and derived values of an element, before saving:
     - the area gives the client, which does not change;
     - the class is available to the managing organization of the client (D-027),
-      and the geometry is of its type, with its length or surface;
+      and the geometry is of its type, with its length or surface; at the center
+      of the area, the server gives it (EL-10);
+    - the verification of a provisional position gives the date of the survey;
     - species and composition as the class asks, the attributes of the class
       (``validate_attributes``) when ``check_attributes``;
     - the element it replaces, removal and restoration.
 
     ``composition`` is the new composition (``species``, ``quantity``,
     ``percentage``), ``None`` if it does not change. The code of a new element is
-    given when it is saved (``commit_element``).
+    given when it is saved (``commit_element``). The spatial checks are warnings
+    (``element_warnings``): they do not block the save.
     """
     area = check_area(element, context, before)
     organization = area.client.managing_organization
@@ -296,7 +365,9 @@ def prepare_element(
         field="element_class",
         previous_id=stored_id(before, "element_class"),
     )
+    place_at_area_center(element)
     apply_geometry(element)
+    check_location(element, before)
     check_species(element, organization, before, composition)
     if check_attributes:
         element.attributes = validate_attributes(
@@ -422,14 +493,17 @@ def restore_element(element, data, context, expected_revision=None):
 
 @transaction.atomic
 def delete_element(element, context):
-    """Delete an element entered by mistake, with a cancellation in the history.
-    An element that is no longer there is removed instead (``remove_element``)."""
+    """
+    Delete an element entered by mistake, with a cancellation in the history.
+    An element that is no longer there is removed instead (``remove_element``),
+    and a removed element stays in the history: its removal can be corrected or
+    undone (``restore_element``), not deleted.
+    """
     element = lock_element(element, context)
-    # Replacements still report the existing protected-relation error below.
-    if element.removed_on is not None and not element.replaced_by.exists():
+    if element.removed_on is not None:
         raise api_error(
             "element_already_removed",
-            "A removed element must stay in the history; correct its removal instead.",
+            "A removed element stays in the history: correct its removal instead.",
             {"code": element.code},
         )
     record_id = element.pk
@@ -447,3 +521,160 @@ def delete_element(element, context):
     record_change(
         instance=element, operation=Operation.CANCEL, context=context, before=before
     )
+
+
+# Spatial checks (AR-5, scenario 4.2): warnings, which do not block the save.
+
+
+def suggest_area(geometry, areas):
+    """
+    The area proposed for the position of an element (scenario 4.2): among
+    ``areas`` managed today, the one that contains the point, or most of the
+    line or the polygon, on the ellipsoid. Between areas alike, the smallest
+    one. ``None`` if no area has a part of it.
+    """
+    areas = areas.managed_on(timezone.localdate()).filter(geometry__intersects=geometry)
+    order = ("surface_m2", "number", "sub_number")
+    if isinstance(geometry, Point):
+        return areas.order_by(*order).first()
+    function = "ST_Length" if isinstance(geometry, MultiLineString) else "ST_Area"
+    return (
+        areas.annotate(
+            shared=geo.geodesic(function, Intersection("geometry", geometry))
+        )
+        .filter(shared__gt=0)
+        .order_by("-shared", *order)
+        .first()
+    )
+
+
+def outside_area_warnings(geometry, area):
+    """The perimeter of the area does not cover the geometry (AR-5)."""
+    if (
+        area is None
+        or Area.objects.filter(pk=area.pk, geometry__covers=geometry).exists()
+    ):
+        return []
+    return [
+        error_payload(
+            "element_outside_area",
+            "The element is outside its area.",
+            {"area": str(area)},
+        )
+    ]
+
+
+def near_tree_warnings(elements, element_class, geometry, exclude=None):
+    """
+    A tree closer than ``NEAR_TREE_DISTANCE_M`` to a present tree among
+    ``elements``: it may be the same tree, surveyed twice (scenario 4.2).
+    Provisional positions do not count: they were not surveyed (EL-10).
+    """
+    if not element_class.counts_as_tree or not isinstance(geometry, Point):
+        return []
+    trees = elements.filter(
+        removed_on__isnull=True,
+        element_class__counts_as_tree=True,
+        location_status=LocationStatus.VERIFIED,
+    ).near(geometry, NEAR_TREE_DISTANCE_M)
+    if exclude is not None:
+        trees = trees.exclude(pk=exclude)
+    codes = list(trees.order_by(*code_order()).values_list("code", flat=True))
+    if not codes:
+        return []
+    return [
+        error_payload(
+            "element_near_tree",
+            "A present tree is very close: it may be the same tree.",
+            {"elements": ", ".join(codes), "distance": NEAR_TREE_DISTANCE_M},
+        )
+    ]
+
+
+def element_warnings(element, new_position=False):
+    """
+    The warnings of a saved element: outside its area and, when a present tree
+    gets a new surveyed position (``new_position``: creation, a new geometry or
+    class), near other trees. Two trees close together stay as the surveyor
+    saved them: the detail does not report them again.
+    """
+    warnings = outside_area_warnings(element.geometry, element.area)
+    if (
+        new_position
+        and element.removed_on is None
+        and element.location_status == LocationStatus.VERIFIED
+    ):
+        warnings += near_tree_warnings(
+            Element.objects.filter(client_id=element.client_id),
+            element.element_class,
+            element.geometry,
+            exclude=element.pk,
+        )
+    return warnings
+
+
+def check_element_geometry(
+    element_class, geometry, context, area_id=None, client_id=None, element=None
+):
+    """
+    Measures, proposed area and warnings of the position of an element, before
+    saving it (AR-5, scenario 4.2).
+
+    ``element`` is the element being changed: it gives the client and, if the
+    form sends none, the area, and it stays out of the near trees. ``area`` is
+    the area chosen in the form; ``client`` limits the proposal to the areas of
+    a client, otherwise it is among the areas the organization can edit. The
+    warnings are about the chosen area or, without one, the proposed one.
+    """
+    organization = context.organization
+    if element is not None:
+        client_id = element.client_id
+        area_id = area_id or element.area_id
+    areas = (
+        Area.objects.editable_by(organization)
+        .select_related("client__managing_organization")
+        .defer("geometry")
+    )
+    client = None
+    if client_id is not None:
+        client = Client.objects.editable_by(organization).filter(pk=client_id).first()
+        if client is None:
+            raise api_error(
+                "client_not_available", "The client is not available.", field="client"
+            )
+        areas = areas.filter(client=client)
+    area = None
+    if area_id is not None:
+        area = areas.filter(pk=area_id).first()
+        if area is None:
+            raise api_error(
+                "area_not_available", "The area is not available.", field="area"
+            )
+        client = area.client
+    check_available(
+        element_class,
+        client.managing_organization if client is not None else organization,
+        field="element_class",
+        previous_id=element.element_class_id if element is not None else None,
+    )
+    geometry = normalized_geometry(geometry, element_class)
+    suggested = suggest_area(geometry, areas)
+    target = area or suggested
+    trees = Element.objects.editable_by(organization)
+    if target is not None:
+        trees = trees.filter(client_id=target.client_id)
+    elif client is not None:
+        trees = trees.filter(client=client)
+    warnings = outside_area_warnings(geometry, target)
+    if element is None or element.removed_on is None:
+        warnings += near_tree_warnings(
+            trees,
+            element_class,
+            geometry,
+            exclude=element.pk if element is not None else None,
+        )
+    return {
+        **geometry_measures(geometry, element_class.geometry_type),
+        "suggested_area": suggested,
+        "warnings": warnings,
+    }

@@ -3,10 +3,12 @@ from decimal import Decimal
 from core.audit import register_audit
 from core.models import TrackedModel
 from django.contrib.gis.db import models
+from django.contrib.gis.measure import D
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db.models import F, Q
+from django.db.models import Exists, F, OuterRef, Q
 from django.db.models.functions import Length
 from parties.models import ClientDataQuerySet
+from territory.models import Area
 
 # Stored types of the geometries of the elements (core.geo.normalize): points are
 # simple, lines and polygons multipart (D-035).
@@ -33,6 +35,26 @@ class ElementQuerySet(ClientDataQuerySet):
         )
         return self.filter(planted).filter(
             Q(removed_on__isnull=True) | Q(removed_on__gt=date)
+        )
+
+    def with_outside_area_flag(self):
+        """Annotate ``outside_area``: the perimeter of the area of the element
+        does not cover its geometry (AR-5)."""
+        inside = Area.objects.filter(
+            pk=OuterRef("area"), geometry__covers=OuterRef("geometry")
+        )
+        return self.annotate(outside_area=~Exists(inside))
+
+    def near(self, geometry, distance_m):
+        """
+        Elements within ``distance_m`` meters of ``geometry``, on the ellipsoid.
+
+        The first filter, in degrees, uses the spatial index: up to 89.5° of
+        latitude a degree is longer than a kilometer, so it keeps every element
+        in range.
+        """
+        return self.filter(geometry__dwithin=(geometry, distance_m / 1000)).filter(
+            geometry__distance_lte=(geometry, D(m=distance_m), "spheroid")
         )
 
 

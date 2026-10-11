@@ -14,6 +14,8 @@ from . import services
 from .models import CompositionItem, Element, code_order
 from .serializers import (
     ElementChoiceSerializer,
+    ElementGeometryCheckResultSerializer,
+    ElementGeometryCheckSerializer,
     ElementListSerializer,
     ElementRemoveSerializer,
     ElementRestoreSerializer,
@@ -36,12 +38,18 @@ class ElementFilter(StructuralFilterSet):
     location_status = FS.ChoiceFilter(choices=Element.LocationStatus.choices)
     removed = FS.BooleanFilter(method="filter_removed")
     present_on = FS.DateFilter(method="filter_present_on")
+    outside_area = FS.BooleanFilter(method="filter_outside_area")
 
     def filter_removed(self, queryset, name, value):
         return queryset.filter(removed_on__isnull=not value)
 
     def filter_present_on(self, queryset, name, value):
         return queryset.present_on(value)
+
+    def filter_outside_area(self, queryset, name, value):
+        if "outside_area" not in queryset.query.annotations:
+            queryset = queryset.with_outside_area_flag()
+        return queryset.filter(outside_area=value)
 
 
 class ElementOrderingFilter(OrderingFilter):
@@ -93,9 +101,13 @@ class ElementViewSet(AssetViewSet):
         "location_status",
         "removed_on",
     )
+    read_only_actions = ("geometry_check",)
     action_permissions = {
         **{name: [READ_ELEMENTS] for name in READ_ACTIONS},
-        **{name: [WRITE_ELEMENTS] for name in (*WRITE_ACTIONS, "remove", "restore")},
+        **{
+            name: [WRITE_ELEMENTS]
+            for name in (*WRITE_ACTIONS, "remove", "restore", "geometry_check")
+        },
     }
 
     create_service = staticmethod(services.create_element)
@@ -104,7 +116,11 @@ class ElementViewSet(AssetViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if self.action in ("list", "choices", "geojson"):
+        if self.action == "list":
+            # The flag of the elements outside their area, a spatial subquery,
+            # only where it is shown; the filter adds it where it is asked.
+            return queryset.with_outside_area_flag()
+        if self.action in ("choices", "geojson"):
             return queryset
         # The detail and the writes need the geometry and the composition.
         return (
@@ -123,10 +139,52 @@ class ElementViewSet(AssetViewSet):
             return ElementListSerializer
         return super().get_serializer_class()
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        # The response warns of the trees near the new position.
+        serializer.context["new_position"] = True
+
+    def perform_update(self, serializer):
+        def position(element):
+            return (
+                element.geometry,
+                element.element_class_id,
+                element.location_status,
+            )
+
+        before = position(serializer.instance)
+        super().perform_update(serializer)
+        # A new geometry or class, or a provisional position verified.
+        serializer.context["new_position"] = position(serializer.instance) != before
+
     def element_response(self, element):
         return Response(
             ElementSerializer(element, context=self.get_serializer_context()).data
         )
+
+    @extend_schema(
+        request=ElementGeometryCheckSerializer,
+        responses=ElementGeometryCheckResultSerializer,
+    )
+    @action(detail=False, methods=["post"], url_path="geometry-check")
+    def geometry_check(self, request, *args, **kwargs):
+        """Measures, proposed area and warnings of a position before saving it
+        (AR-5, scenario 4.2)."""
+        serializer = ElementGeometryCheckSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        element = None
+        if data.get("element") is not None:
+            element = self.get_queryset().filter(pk=data["element"]).first()
+        result = services.check_element_geometry(
+            data["element_class"],
+            data["geometry"],
+            self.get_change_context(),
+            area_id=data.get("area"),
+            client_id=data.get("client"),
+            element=element,
+        )
+        return Response(ElementGeometryCheckResultSerializer(result).data)
 
     @extend_schema(request=ElementRemoveSerializer, responses=ElementSerializer)
     @action(detail=True, methods=["post"])
