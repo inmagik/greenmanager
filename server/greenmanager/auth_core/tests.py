@@ -1,4 +1,5 @@
 import threading
+from unittest import mock
 
 from axes.models import AccessAttempt
 from django.conf import settings
@@ -10,6 +11,7 @@ from tenants.models import Tenant, TenantMembership
 
 from .models import Role
 from .permission_manager import PermissionManager
+from .serializers import UserSerializer
 
 
 class UsersApiTests(APITestCase):
@@ -145,6 +147,34 @@ class UsersApiTests(APITestCase):
         self.assertEqual(as_role_manager.status_code, 403, as_role_manager.content)
         self.assertEqual(as_role_manager.data["code"], "direct_permissions_staff_only")
         self.assertEqual(as_staff.status_code, 200, as_staff.content)
+        user.refresh_from_db()
+        self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
+
+    def test_update_checks_the_privileges_on_the_stored_user(self):
+        self.admin.permissions.append("auth_core.WRITE_ROLES")
+        self.admin.save(update_fields=["permissions"])
+        user = get_user_model().objects.create_user(email="user@example.com")
+        TenantMembership.objects.create(tenant=self.tenant, user=user, is_default=True)
+        validate = UserSerializer.validate
+
+        def validate_then_staff_changes(serializer, attrs):
+            # A staff user changes the direct permissions after the validation.
+            attrs = validate(serializer, attrs)
+            get_user_model().objects.filter(pk=user.pk).update(
+                permissions=["auth_core.READ_USERS"]
+            )
+            return attrs
+
+        with mock.patch.object(UserSerializer, "validate", validate_then_staff_changes):
+            response = self.client.patch(
+                f"/api/core/auth/users/{user.pk}/",
+                {"full_name": "Utente", "permissions": []},
+                format="json",
+                **self.tenant_header,
+            )
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertEqual(response.data["code"], "direct_permissions_staff_only")
         user.refresh_from_db()
         self.assertEqual(user.permissions, ["auth_core.READ_USERS"])
 

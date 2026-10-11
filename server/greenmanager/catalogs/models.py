@@ -164,10 +164,24 @@ class ElementClass(ExtensibleCatalog):
     is_planting_site = models.BooleanField("posto d'impianto", default=False)
 
     locked_when_in_use = ("geometry_type", "species_mode")
+    constraint_error_fields = {
+        **ExtensibleCatalog.constraint_error_fields,
+        "planting_site_counts_as_tree": "counts_as_tree",
+    }
 
     class Meta(ExtensibleCatalog.Meta):
         verbose_name = "classe di elemento"
         verbose_name_plural = "classi di elemento"
+        constraints = [
+            *ExtensibleCatalog.Meta.constraints,
+            # Free planting sites and stumps do not count as trees (D-029).
+            models.CheckConstraint(
+                condition=~models.Q(is_planting_site=True, counts_as_tree=True),
+                name="catalogs_elementclass_planting_site_not_tree",
+                violation_error_code="planting_site_counts_as_tree",
+                violation_error_message="A planting site does not count as a tree.",
+            ),
+        ]
 
 
 class AttributeDefinition(ExtensibleCatalog):

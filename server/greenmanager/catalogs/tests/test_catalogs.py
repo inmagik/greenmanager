@@ -760,6 +760,29 @@ class ElementClassApiTests(APITestCase):
         self.assertEqual(explicit.status_code, 201, explicit.content)
         self.assertTrue(explicit.data["is_system"])
 
+    def test_planting_sites_do_not_count_as_trees(self):
+        self.client.force_authenticate(self.writer)
+
+        response = self.client.post(
+            "/api/catalogs/element-classes/",
+            {
+                "name": "Posto libero",
+                "category": "vegetation",
+                "geometry_type": "point",
+                "quantity_unit": "count",
+                "species_mode": "none",
+                "is_planting_site": True,
+                "counts_as_tree": True,
+            },
+            format="json",
+            **self.header,
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(
+            response.data["counts_as_tree"][0]["code"], "planting_site_counts_as_tree"
+        )
+
     def test_choice_attributes_need_values(self):
         self.client.force_authenticate(self.staff)
 
@@ -810,6 +833,24 @@ class CatalogAdminTests(TestCase):
         self.assertIn("code", response.context["adminform"].form.errors)
         self.playground.refresh_from_db()
         self.assertEqual(self.playground.code, "playground")
+
+    def test_code_omitted_is_derived_from_the_name(self):
+        response = self.client.post(
+            "/admin/catalogs/areause/add/",
+            {
+                "code": "",
+                "name": "Spazio sperimentale",
+                "sort_order": 0,
+                "organization": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        entry = AreaUse.objects.get(name="Spazio sperimentale")
+        self.assertEqual(entry.code, "spazio-sperimentale")
+        self.assertEqual(
+            entry.pk, system_entry_id("catalogs.areause", "spazio-sperimentale")
+        )
 
     def test_changes_are_stamped(self):
         response = self.client.post(

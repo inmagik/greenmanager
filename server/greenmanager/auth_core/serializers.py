@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
@@ -201,6 +202,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        self.validate_privileges(attrs)
+        return attrs
+
+    def validate_privileges(self, attrs):
+        """Fields that only some users change: shared account, roles, direct
+        permissions. ``update`` checks them again on the locked user."""
         self.validate_shared_account(attrs)
         if self.roles_change(attrs) and not self.can_manage_privileges():
             raise PermissionDenied(
@@ -210,7 +217,6 @@ class UserSerializer(serializers.ModelSerializer):
                 }
             )
         self.validate_direct_permissions(attrs)
-        return attrs
 
     def validate_direct_permissions(self, attrs):
         """
@@ -262,7 +268,15 @@ class UserSerializer(serializers.ModelSerializer):
         if is_shared_with_other_tenants(instance, self.tenant):
             raise shared_user_error(instance, field=changed[0])
 
+    @transaction.atomic
     def update(self, instance, validated_data):
+        # The user locked and read again: the rules of the protected fields hold
+        # on the stored values, and a concurrent change (e.g. of the direct
+        # permissions by a staff user) is not written back with stale values.
+        instance.refresh_from_db(
+            from_queryset=User.objects.select_for_update(of=("self",))
+        )
+        self.validate_privileges(validated_data)
         roles = validated_data.pop("roles", None)
         instance = super().update(instance, validated_data)
         if roles is not None:

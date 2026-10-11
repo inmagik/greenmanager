@@ -150,6 +150,7 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
   - `grant_to` e `revoke_from` accettano solo utenti del tenant.
 - **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant.
 - **Permessi diretti** (T3, D-045): li cambia solo lo staff, per ogni utente, anche senza `WRITE_ROLES` nel tenant (errore `403 direct_permissions_staff_only`), perché valgono in tutti i tenant dell'utente. Dentro un'organizzazione i permessi si danno con i ruoli. È una differenza rispetto a data-lab e bottaro-pesatura.
+- **Modifica di un utente sotto lock**: `UserSerializer.update` blocca e rilegge l'utente, poi ripete i controlli su account condiviso, ruoli e permessi diretti sui valori salvati. Una modifica contemporanea, per esempio dei permessi diretti da parte dello staff, non viene riscritta con i valori letti prima. In data-lab il salvataggio usava l'istanza letta all'inizio della richiesta.
 - **Il proprio account**: nessuno lo disattiva o lo elimina (errore `cannot_change_own_account`).
 - **Codici dei permessi**: utenti e ruoli accettano solo i codici raccolti da `PermissionManager` (errore `unknown_permission`).
 - **Errori con codice** sollevati in `Serializer.validate()`: stanno sotto il campo (`{"email": {"code": ...}}`). DRF trasforma in liste i valori di un payload al primo livello, e il frontend non ne riconoscerebbe più il codice.
@@ -478,10 +479,11 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - L'admin cambia le voci con gli stessi servizi (`prepare_entry`, `commit_entry`), anche gli attributi delle classi nell'inline. `hidden_by` vi è in sola lettura: si nasconde e si mostra solo con le action dell'API.
 
 **Regole** (D-046), in `services.py`:
-- voci di sistema solo dallo staff; codice delle voci di sistema immutabile;
+- voci di sistema solo dallo staff; codice delle voci di sistema immutabile; un codice che manca, nell'API come nell'admin, si ricava dal nome;
 - nessuna cancellazione di voci in uso;
 - una voce non passa tra il sistema e un'organizzazione (`catalog_scope_immutable`); nei cataloghi senza voci dell'organizzazione, come gli attributi nell'MVP, l'errore è `organization_entries_not_allowed`;
 - campi bloccati quando la voce è in uso (`locked_when_in_use`): tipo di geometria e modalità della specie di una classe, tipo e flag di misura di un attributo;
+- una classe di posto d'impianto non conta come albero (D-029): vincolo del database, errore `planting_site_counts_as_tree`;
 - per i dati di un committente, `check_available(voce, organizzazione di gestione)`. Il valore già salvato resta valido anche se poi la voce è nascosta o ritirata;
 - per le specie:
   - nome e genere vengono dal nome scientifico;

@@ -98,10 +98,13 @@ class FixedCatalogQuerySet(models.QuerySet):
 
 
 class CatalogEntry(TrackedModel):
+    # Optional in the forms: without it, the services derive it from the name.
     code = models.CharField(
         "codice",
         max_length=150,
-        help_text="Codice stabile, usato da import, export e dati iniziali.",
+        blank=True,
+        help_text="Codice stabile, usato da import, export e dati iniziali. Se "
+        "manca, si ricava dal nome.",
     )
     name = models.CharField("nome", max_length=255)
     description = models.TextField("descrizione", blank=True, default="")
