@@ -106,6 +106,7 @@ export default {
       manual: "Coordinate inserite",
     },
     position: {
+      mapLabel: "Mappa della posizione dell'elemento",
       modes: {
         coordinates: "Coordinate",
         area_center: "Centro dell'area",

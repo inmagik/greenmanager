@@ -2,6 +2,7 @@ import { AlertError } from "@/components/AlertError"
 import { CheckPermission } from "@/components/CheckPermission"
 import { FormFooter } from "@/components/FormFooter"
 import { GeometrySummary } from "@/components/Geometry"
+import { MiniMap } from "@/components/Map"
 import { RevisionConflictAlert } from "@/components/RevisionConflictAlert"
 import { areaLabel } from "@/modules/territory/components/areaModals"
 import { notifyApiError, transformErrorsForForm } from "@/utils"
@@ -175,6 +176,11 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
                 </Stack>
               </Alert>
             )}
+            {/* The new position, before the save, next to the saved one. */}
+            <MiniMap
+              label={t("inventory.position.mapLabel")}
+              geometries={[{ geometry: element.geometry }, ...(geometry ? [{ geometry, proposed: true }] : [])]}
+            />
           </Stack>
           {editable && (
             <Stack gap="xs">

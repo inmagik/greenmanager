@@ -1,6 +1,7 @@
 import { AlertError } from "@/components/AlertError"
 import { FormFooter } from "@/components/FormFooter"
 import { GeometryFileInput, GeometrySummary } from "@/components/Geometry"
+import { MiniMap } from "@/components/Map"
 import { RevisionConflictAlert } from "@/components/RevisionConflictAlert"
 import { transformErrorsForForm } from "@/utils"
 import { isRevisionConflict } from "@/utils/tracking"
@@ -73,6 +74,11 @@ export function AreaGeometryPanel({ area, editable, onDone, onReload }: Props) {
             {t("territory.geometry.current")}
           </Text>
           <GeometrySummary geometry={area.geometry} measures={area} />
+          {/* The perimeter read from a file, before the save, next to the saved one. */}
+          <MiniMap
+            label={t("territory.geometry.mapLabel")}
+            geometries={[{ geometry: area.geometry }, ...(geometry ? [{ geometry, proposed: true }] : [])]}
+          />
         </Stack>
         {editable && (
           <Stack gap="xs">

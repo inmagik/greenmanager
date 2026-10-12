@@ -5,14 +5,14 @@
 - **Obiettivo**: descrivere la SPA React di GreenManager: struttura, provider, moduli, data fetching, pattern UI di base, versioni.
 - **Fonte**: `admin/` di [inmagik/data-lab](https://github.com/inmagik/data-lab) per struttura, componenti e pattern; [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) per le versioni (D-036, D-038). Commit e regole di copia in [README.md](README.md).
 - **Moduli di dominio**: elenco, parti comuni e regole sono in §9, che cresce con la prima fetta verticale (T3, D-040).
-- **Fuori da questo documento**: i pattern per le singole sezioni dell'interfaccia (mappa, uso in campo, mappa pubblica…), che sono il passo T2.
+- **Fuori da questo documento**: i pattern per le singole sezioni dell'interfaccia (mappa, uso in campo, mappa pubblica…), che sono il passo T2, in [frontend-pattern.md](frontend-pattern.md).
 
 ## 1. Struttura
 
 ```
 frontend/
 ├── package.json
-├── vite.config.ts            alias @, proxy /api, plugin di menu e rotte
+├── vite.config.ts            alias @, proxy /api e /wms/pcn, plugin di menu e rotte, chunk di MapLibre
 ├── plugins/
 │   ├── menu.ts               genera virtual:menu dai menu.tsx dei moduli
 │   └── navigation.ts         genera virtual:routes dai navigation.tsx dei moduli
@@ -180,6 +180,7 @@ Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pes
 ## 7. Strumenti, build e immagine
 
 - **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000` che conserva l'host del browser: così i link `next` della paginazione restano sul proxy), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
+- **Mappa** (D-057): Vite e nginx inoltrano `/wms/pcn` all'ortofoto del PCN, che è solo in HTTP; nginx tiene in cache le immagini. La build mette MapLibre in un chunk proprio, caricato solo dalla mappa (§1.2 di [frontend-pattern.md](frontend-pattern.md)). Gli sfondi si configurano alla build con `VITE_BASEMAPS` (§1.5).
 - **Vite**: `vite.config.ts` importa i plugin con l'estensione (`./plugins/menu.ts`), come chiede il caricamento nativo della configurazione.
 - **TypeScript** in modalità `strict`, con `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` (import di soli tipi con `import type`).
 - **ESLint**: configurazione piatta con le regole raccomandate di JavaScript, typescript-eslint, react-hooks e react-refresh.
@@ -230,15 +231,17 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 | `postcss-preset-mantine` | ^1.18.0 |
 | `postcss-simple-vars` | ^7.0.1 |
 
-Aggiunta con la prima fetta verticale: `@types/geojson` ^7946.0.16, i tipi delle geometrie GeoJSON (PR3c).
+Aggiunte con la prima fetta verticale:
+- `@types/geojson` ^7946.0.16, i tipi delle geometrie GeoJSON (PR3c);
+- `maplibre-gl` ^6.14.0, la mappa (PR4a, D-057).
 
-- Le librerie della mappa e del disegno delle geometrie si scelgono in T2 (domanda 2). Quelle dei grafici, quando servono, si allineano a `@mantine/charts` ^9.7.0.
+- La libreria della mappa è MapLibre (D-057); quella del disegno, terra-draw, arriva con la PR4b. Le librerie dei grafici, quando servono, si allineano a `@mantine/charts` ^9.7.0.
 - Non si copiano le librerie di data-lab legate a editor di documenti, diagrammi e simulazioni: lexical, reactflow, dagre, dnd-kit, swiper, d3-scale, chroma-js, html-to-image, xlsx. `flag-icons` serve solo al selettore della lingua, se le lingue sono più di una.
 - **Verifica di T4**: i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilano con Mantine 9.7 e TypeScript 6 senza modifiche. Le correzioni fatte nello scaffold sono altre:
   - `yarn.lock` parte da quello di bottaro-pesatura. Con un lockfile nuovo yarn non trova `hashery` 1.x, una dipendenza indiretta di ESLint;
   - `Table` dà a ogni riga come `key` l'`id` del record, o quella di `getRowKey`, così lo stato dei componenti non passa da una riga all'altra quando cambiano ordinamento o pagina;
   - `DataProvider` chiama `setState` in un effetto per svuotare la cache al cambio di organizzazione. È voluto: la regola `react-hooks/set-state-in-effect` è disattivata su quella riga, con il motivo;
-  - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio.
+  - il bundle di produzione supera i 500 kB: la suddivisione in chunk si valuta quando arrivano i moduli di dominio. MapLibre, di circa 1 MB, sta in un chunk lazy (D-057).
 - **Revisione della PR dello scaffold**, correzioni al modulo `users`:
   - disattivazione e riattivazione mandano solo `is_active`; il salvataggio dei dati solo nome ed email, quello di ruoli e permessi solo quei campi, quello di un ruolo solo nome e permessi. In data-lab si mandava l'intero record, che poteva riscrivere valori cambiati nel frattempo;
   - gli errori delle azioni fuori dai form (menu, conferme, eliminazioni multiple, sblocco) si mostrano in una notifica con `notifyApiError` di `utils.tsx`: in data-lab si perdevano. Disattiva ed Elimina sono disabilitati sul proprio account;
@@ -296,7 +299,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 - **Tracciamento** (`utils/tracking.ts`):
   - `TrackedRecord` è il tipo dei campi di tracciamento che il server restituisce per ogni dato di dominio (D-042);
   - `lastEditDetails(record)` scrive chi ha creato e modificato il record, quando, e la revisione: è il testo dell'"ultima modifica" nell'intestazione del dettaglio (`Header`).
-- **Posizione del dispositivo** (`hooks/useCurrentPosition`): una lettura della posizione dal browser, con l'alta precisione e la precisione dichiarata dal dispositivo. Gli errori sono tradotti (`geolocation.errors`): connessione non sicura, browser senza posizione, permesso negato, posizione non disponibile, tempo scaduto. Il browser dà la posizione solo in HTTPS o su localhost. La usano gli elementi (§9.8); la mappa (PR4) la userà per seguire l'utente.
+- **Posizione del dispositivo** (`hooks/useCurrentPosition`): una lettura della posizione dal browser, con l'alta precisione e la precisione dichiarata dal dispositivo. Gli errori sono tradotti (`geolocation.errors`): connessione non sicura, browser senza posizione, permesso negato, posizione non disponibile, tempo scaduto. Il browser dà la posizione solo in HTTPS o su localhost. La usano gli elementi (§9.8). La mappa segue l'utente con `useGeolocation` (§1.7 di [frontend-pattern.md](frontend-pattern.md)), che ne riusa gli errori (`positionError`, `positionUnavailable`).
 - **Conflitto di revisione** (D-042, D-053):
   - il form di modifica manda la `revision` del record che ha letto;
   - se nel frattempo il record è cambiato, il server risponde `409 revision_conflict`: il form lo riconosce con `isRevisionConflict` e mostra `RevisionConflictAlert`, un avviso con il pulsante *Ricarica*;
@@ -385,8 +388,8 @@ Vedi D-043 e D-053.
 - **Aree, dettaglio** (`/territory/areas/:id/:tab`):
   - gli avvisi dell'area (`warnings`) sopra le schede, con `WarningsAlert`; l'intestazione segna l'area fittizia e la gestione conclusa;
   - scheda *Dati*: il form in sola lettura, *Modifica* lo rende modificabile;
-  - scheda *Geometria*: tipo, parti e misure del perimetro salvato. *Sostituisci da file* legge un perimetro nuovo, ne mostra misure e avvisi da `geometry-check/` (con l'area che si modifica, esclusa dalle sovrapposizioni) e lo salva con la revisione;
-  - il pulsante dell'intestazione modifica la scheda aperta; lasciare la scheda chiede conferma e chiude la modifica;
+  - scheda *Geometria*: tipo, parti e misure del perimetro salvato, con la mini mappa (D-057). *Sostituisci da file* legge un perimetro nuovo, ne mostra misure e avvisi da `geometry-check/` (con l'area che si modifica, esclusa dalle sovrapposizioni), tratteggiato nella mini mappa, e lo salva con la revisione;
+  - il pulsante dell'intestazione modifica la scheda aperta; lasciare la scheda chiede conferma e chiude la modifica. *Vedi sulla mappa* apre la mappa sull'area;
   - scheda *Elementi*, per chi legge gli elementi: gli elementi presenti dell'area (§9.8).
 - **Aree, form**:
   - identificazione: committente (solo alla creazione), zona del committente, numero, subalterno, nome;
@@ -414,8 +417,9 @@ Vedi D-043 e D-053.
 - **Dettaglio** (`/inventory/elements/:id/:tab`):
   - sopra le schede, l'avviso dell'elemento rimosso, con data, causa e *Ripristina*, e gli avvisi dell'elemento (`warnings`), cioè *fuori area*;
   - scheda *Dati*: il form in sola lettura, con l'area (per chi legge le aree) e l'elemento sostituito come link;
-  - scheda *Posizione*: coordinate, precisione, stato e origine di un punto; parti e misure di una linea o di un poligono. *Cambia posizione* ne dà una nuova come il form, con `geometry-check/` (con l'elemento, che resta fuori dagli alberi vicini) e l'area proposta: *Usa quest'area* sposta anche l'elemento. Una posizione provvisoria al centro dell'area si verifica rilevandola; una provvisoria con un'altra origine si conferma com'è (*Conferma la posizione*, che manda solo `location_status`);
-  - lo stato di modifica e la chiave dei form sono legati all'id, oltre che alla revisione: il link all'elemento sostituito apre un altro elemento senza smontare la pagina.
+  - scheda *Posizione*: coordinate, precisione, stato e origine di un punto; parti e misure di una linea o di un poligono; la mini mappa, con la posizione nuova tratteggiata prima del salvataggio (D-057). *Cambia posizione* ne dà una nuova come il form, con `geometry-check/` (con l'elemento, che resta fuori dagli alberi vicini) e l'area proposta: *Usa quest'area* sposta anche l'elemento. Una posizione provvisoria al centro dell'area si verifica rilevandola; una provvisoria con un'altra origine si conferma com'è (*Conferma la posizione*, che manda solo `location_status`);
+  - lo stato di modifica e la chiave dei form sono legati all'id, oltre che alla revisione: il link all'elemento sostituito apre un altro elemento senza smontare la pagina;
+  - *Vedi sulla mappa* apre la mappa sull'elemento.
 - **Form** (`ElementForm`), guidato dalla classe:
   - identificazione: committente (solo alla creazione; dà le aree e gli elementi da sostituire), area, classe, cartellino. In modifica la classe cambia solo tra quelle con lo stesso tipo di geometria, perché la posizione resta; se cambiano l'area o la classe, `geometry-check/` controlla la posizione salvata con i valori nuovi, e gli avvisi si vedono prima del salvataggio. Un elemento nuovo per un committente disattivato dà `client_inactive` sul campo dell'area;
   - posizione, solo alla creazione (`PositionInput`): per le classi a punto le coordinate, scritte o lette dal dispositivo (*Usa la mia posizione*, con la precisione), oppure il centro dell'area; per linee e poligoni un file GeoJSON (`GeometryFileInput`). Le coordinate scritte non hanno origine; quelle del dispositivo sono `gps`, con la precisione; il file è `import`;
@@ -426,13 +430,21 @@ Vedi D-043 e D-053.
 - **Azioni** (menu della riga e del dettaglio): rimuovi, con la data (non futura), la causa (obbligatoria per le classi che contano come alberi) e la motivazione; per un elemento rimosso, correggi la rimozione e ripristina, con la motivazione. Come la modifica in modale, la modale legge l'elemento all'apertura e manda la sua revisione: non sovrascrive una rimozione corretta nel frattempo, e un conflitto mostra *Ricarica* (§9.2). Si elimina solo un elemento presente.
 - **Avvisi dopo il salvataggio**: il server dà gli alberi vicini solo nella risposta di una scrittura, e il dettaglio non li ripete (D-052). La creazione, che apre il dettaglio, e i salvataggi dal dettaglio li mostrano in una notifica (`notifyPositionWarnings`); la modifica in modale dalla lista, che si chiude, notifica tutti gli avvisi, come per le aree.
 - **Scheda *Elementi* dell'area** (`AreaElementsPanel`): gli elementi presenti dell'area, con *Nuovo elemento*, che parte da committente e area, e *Apri nella lista*, con i filtri dell'area.
-- **API**: `useElementGeometryCheck` come `useAreaGeometryCheck`, e mentre arriva il risultato di una posizione nuova tiene quello della precedente (`keepPreviousData`): l'area proposta si sceglie da sola solo con il risultato nuovo, e fino ad allora *Usa quest'area* resta in caricamento. Le scritture e le action `remove/` e `restore/` aggiornano tutte le query degli elementi, compresi i controlli delle posizioni.
+- **API**: `useElementsGeoJSON` per la mappa (§9.9); `useElementGeometryCheck` come `useAreaGeometryCheck`, e mentre arriva il risultato di una posizione nuova tiene quello della precedente (`keepPreviousData`): l'area proposta si sceglie da sola solo con il risultato nuovo, e fino ad allora *Usa quest'area* resta in caricamento. Le scritture e le action `remove/` e `restore/` aggiornano tutte le query degli elementi, compresi i controlli delle posizioni.
+
+### 9.9 Mappa: `map`
+
+Vedi D-057. Pattern, componenti e regole della mappa sono in §1 di [frontend-pattern.md](frontend-pattern.md).
+- **Rotta** `/map`, caricata in modo lazy con MapLibre: la apre chi legge le aree o gli elementi, e vede i layer che legge (`MAP_PERMISSION`).
+- **Dati**: `useAreasGeoJSON` e `useElementsGeoJSON`, sulle action `geojson/` con il `bbox` della parte visibile; il committente è il filtro delle liste (§9.3).
+- **Pagina**: pannello dei livelli, clic su una feature, pannello della feature (drawer dal basso su smartphone, colonna a destra su desktop), stato nell'URL.
+- **Link**: `mapLink` (`modules/map/links.ts`), che non carica MapLibre, per *Vedi sulla mappa* nei dettagli di aree ed elementi.
 
 ## Domande aperte
 
 1. **Lingue dell'interfaccia.** Solo italiano nell'MVP, mantenendo la struttura di i18next per aggiungerne altre, o anche l'inglese, già tradotto nelle parti copiate? → **chiusa** alla revisione: solo italiano; il selettore della lingua resta nascosto finché le lingue sono una (§6).
-2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → rinviata a T2, da chiudere nella prima fetta verticale (D-040)
-3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2
+2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → **chiusa** con la PR4a: MapLibre (D-057); il disegno, con terra-draw, arriva con la PR4b
+3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2, in [frontend-pattern.md](frontend-pattern.md)
 4. **Storico di dominio nell'interfaccia.** `ChangeRecord` ha motivazione, organizzazione e origine di ogni modifica, e il committente consulta le modifiche di un periodo (CE-4, TR-6). Serve un endpoint con i filtri (committente, periodo, entità, record) e una pagina, o una scheda nei dettagli accanto allo storico tecnico? → rinviata oltre la prima fetta (D-053)
 5. **Committente disattivato e dati nuovi.** Il form dei dati nuovi propone solo i committenti attivi (`ClientSelect` con `activeOnly`), ma il server accetta zone, aree ed elementi anche per un committente disattivato. Il server deve rifiutarli, per esempio con `client_not_available`, o un committente disattivato deve poter ricevere dati, per esempio da un import? → **chiusa** con la PR3c: il server rifiuta i dati nuovi con `client_inactive`, e quelli esistenti restano modificabili (§9.3, D-055)
 6. **Coordinate scritte a mano.** Il form degli elementi le salva senza origine (`location_source` vuoto), perché possono venire da uno strumento o da un'altra mappa (§9.8). Serve un'origine propria, per esempio `manual` o `instrument` con la precisione dichiarata, per distinguere i rilievi strumentali anche nell'export CAM? → da decidere alla revisione della fetta (D-056)

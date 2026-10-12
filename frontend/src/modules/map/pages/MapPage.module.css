@@ -1,0 +1,10 @@
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.map {
+  flex: 1;
+  min-width: 0;
+}

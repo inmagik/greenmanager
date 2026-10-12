@@ -1,4 +1,5 @@
 import { geometryKey } from "@/components/Geometry"
+import { useGeoJSON } from "@/components/Map"
 import { API_URL } from "@/constants"
 import { useCreate, useData, useDelete, useDetail, useList, usePartialUpdate } from "@inmagik/react-crud"
 import { fetchApi, useDataFetchingAuth, type ApiError } from "@inmagik/react-crud/dist/crud/utils"
@@ -34,6 +35,14 @@ export function useAreaChoices(client: string | null | undefined, zone?: string 
     query: { client, zone: zone || undefined },
     reactQuery: { queryPrefix: [areasEndpoint, "choices"], enabled: !!client },
   })
+}
+
+/** The properties of an area in `geojson/`. */
+export type AreaFeatureProperties = Pick<AreaListItem, "client" | "zone" | "number" | "sub_number" | "name">
+
+/** The areas for the map: in `bbox` (`minx,miny,maxx,maxy`), of `client` if given. */
+export function useAreasGeoJSON(query: { bbox?: string; client?: string | null }, enabled: boolean) {
+  return useGeoJSON<AreaFeatureProperties>(areasEndpoint, query, enabled)
 }
 
 export function useCreateArea() {

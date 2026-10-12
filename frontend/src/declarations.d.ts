@@ -17,3 +17,8 @@ declare module "virtual:menu" {
   }
   export function getMenuConfig(user: User): MenuItem[]
 }
+
+interface ImportMetaEnv {
+  /** The basemaps of the map, as a JSON list (`components/Map/basemaps.ts`); without it, the default ones. */
+  readonly VITE_BASEMAPS?: string
+}

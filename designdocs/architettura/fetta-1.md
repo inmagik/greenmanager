@@ -53,8 +53,9 @@ Le chiavi esterne verso queste entità si aggiungono dopo, con le loro app e una
 | Cataloghi nell'interfaccia | D-054 | §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md) |
 | Zone e aree nell'interfaccia, committente disattivato | D-055 | §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md) |
 | Elementi nell'interfaccia | D-056 | §9.8 di [frontend.md](frontend.md) |
+| Mappa con MapLibre | D-057 | §1 di [frontend-pattern.md](frontend-pattern.md), §9.9 di [frontend.md](frontend.md) |
 
-I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend arrivano con le PR3 e PR4: il numero si assegna quando si scrivono, e quelli indicati più sotto per le PR4 sono provvisori.
+I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend arrivano con le PR3 e PR4: il numero si assegna quando si scrivono, e quello indicato più sotto per la PR4b è provvisorio.
 
 ## 3. Sequenza e avanzamento
 
@@ -174,8 +175,8 @@ Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalle PR
   - stato della mappa nell'URL.
 - Pulsante "Vedi sulla mappa" nei dettagli di aree ed elementi.
 - **Documenti**:
-  - decisione nuova, numero provvisorio D-057: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
-  - prima parte di `frontend-pattern.md` (T2): mappa, layer e basemap.
+  - decisione D-057: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
+  - prima parte di [frontend-pattern.md](frontend-pattern.md) (T2): mappa, layer e basemap.
 
 **Verifica**:
 - `yarn build` mette MapLibre nel chunk della mappa;
@@ -214,9 +215,9 @@ Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalla PR
 
 ## 6. Rischi da verificare
 
-1. **terra-draw**: multiparte e buchi, adapter con maplibre-gl 6, trascinamento dei vertici sui dispositivi mobili. È lo spike all'inizio della PR4b.
-2. **Ortofoto WMS**: CORS, HTTP o HTTPS, EPSG:3857. Se serve, un proxy in `nginx.conf`.
-3. **Vite 8 (Rolldown)**: controllare nell'output della build che MapLibre stia nel chunk lazy.
+1. **terra-draw**: multiparte e buchi, adapter con maplibre-gl 6, trascinamento dei vertici sui dispositivi mobili. È lo spike all'inizio della PR4b. L'adapter dichiara `maplibre-gl` dalla versione 4 in su.
+2. **Ortofoto WMS** → verificato con la PR4a (§1.5 di [frontend-pattern.md](frontend-pattern.md)). Il PCN ha CORS ed EPSG:3857, ma solo HTTP, ed è lento e a volte in errore: passa dal proxy `/wms/pcn` di nginx e di Vite, con la cache delle sole immagini. Un'ortofoto regionale in HTTPS con CORS, come l'AGEA 2020 dell'Emilia-Romagna, si configura con `VITE_BASEMAPS` senza proxy.
+3. **Vite 8 (Rolldown)** → verificato con la PR4a: MapLibre sta nel chunk `maplibre`, caricato solo da `MapPage` e `MiniMap` con `import()`; il worker di MapLibre 6 è un file a parte, con `setWorkerUrl`.
 
 I rischi del backend (GeoDjango con `geom_type` nei vincoli, sovrapposizioni con `OuterRef`, schema OpenAPI del campo GeoJSON) sono chiusi con le PR2a–PR2c.
 
@@ -253,7 +254,7 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
 
 ## Domande aperte
 
-1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-056 sono ipotesi. In particolare:
+1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-057 sono ipotesi. In particolare:
    - le scelte di D-051 (codice come testo, data di rimozione non futura, attributi controllati solo quando cambiano);
    - la composizione non obbligatoria per le classi che la prevedono;
    - le scelte di D-052 (2 m tra gli alberi, avviso dei vicini solo quando l'albero riceve una posizione, punto al centro dell'area che segue l'area).

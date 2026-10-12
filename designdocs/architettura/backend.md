@@ -535,7 +535,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 ### 8.7 Censimento: `inventory`
 
-`api/inventory/elements/`, con `history/`, `choices/`, `geojson/` e `geometry-check/`, più `remove/` e `restore/` sul singolo elemento.
+`api/inventory/elements/`, con `history/`, `choices/`, `geojson/` e `geometry-check/`, più `remove/` e `restore/` sul singolo elemento. Le feature di `geojson/` hanno come proprietà committente, area, classe, specie, codice, cartellino, stato della posizione e data della rimozione, più la categoria della classe (`category`), con cui la mappa colora gli elementi (D-057).
 
 **Elementi** (EL-1, EL-3, EL-5, EL-7, EL-8; D-051):
 - l'area, che l'organizzazione deve poter modificare (`area_not_available`), dà il committente. Un elemento cambia area solo dentro lo stesso committente (`area_of_another_client`). Un elemento nuovo vuole un committente attivo: l'errore `client_inactive` è sul campo `area`, e il committente resta bloccato come nella creazione di un'area (§8.6). Ripristino e cambio di area dentro lo stesso committente sono modifiche, e restano permessi (D-055);
