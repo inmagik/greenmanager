@@ -58,7 +58,7 @@ export function CatalogFieldInput({ catalog, field, form, entry, readonly }: Pro
           label={label}
           description={props.description}
           readOnly={readonly}
-          disabled={locked}
+          disabled={readonly || locked}
           mt="md"
           {...form.getInputProps(field.name, { type: "checkbox" })}
         />
