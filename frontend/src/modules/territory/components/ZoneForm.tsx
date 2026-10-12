@@ -44,6 +44,16 @@ export function ZoneForm({
   const schema = yup.object({
     client: yup.string().nullable().required().label(t("territory.fields.client")),
     name: yup.string().trim().required().max(255).label(t("fields.name")),
+    // The server gives the next code to a zone without one: on a saved zone it would change the code.
+    code: zone
+      ? yup
+          .mixed()
+          .test(
+            "required",
+            t("validation.required", { field: t("territory.fields.zoneCode") }),
+            (value) => value !== ""
+          )
+      : yup.mixed(),
   })
   const form = useForm<FormValues>({
     mode: "controlled",
@@ -109,8 +119,9 @@ export function ZoneForm({
               />
             )}
             <NumberInput
+              withAsterisk={!readonly && !!zone}
               label={t("territory.fields.zoneCode")}
-              description={readonly ? undefined : t("territory.fields.zoneCodeDescription")}
+              description={readonly || zone ? undefined : t("territory.fields.zoneCodeDescription")}
               allowDecimal={false}
               allowNegative={false}
               min={0}

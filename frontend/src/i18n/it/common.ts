@@ -136,6 +136,8 @@ const translations = {
       severalPoints: "Il file contiene {{count}} punti: qui ne serve uno.",
       outOfRange: "Le coordinate non sono longitudini e latitudini: il file deve essere in WGS84 (EPSG:4326).",
       crs: "Il file è nel sistema di riferimento {{crs}}: serve WGS84 (EPSG:4326). Riesportalo, per esempio da QGIS.",
+      crsUnknown:
+        "Il sistema di riferimento del file non si riconosce: serve WGS84 (EPSG:4326). Riesportalo, per esempio da QGIS.",
       tooLarge: "Il file supera {{max}} MB.",
     },
   },

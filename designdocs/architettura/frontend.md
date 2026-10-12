@@ -375,7 +375,7 @@ Vedi D-043 e D-053.
 - **Zone**:
   - lista con il committente come filtro (§9.3) e la ricerca per nome; ordinamento per codice, nome e ultima modifica;
   - dettaglio con il form in sola lettura, *Storico*, *Modifica*, il menu con l'eliminazione, e *Aree della zona*, che apre la lista delle aree filtrata per committente e zona;
-  - form con committente (solo alla creazione: poi non cambia), codice facoltativo, che il server assegna se manca, e nome. Il perimetro ufficiale della zona, facoltativo, non è nel form: arriva con la mappa;
+  - form con committente (solo alla creazione: poi non cambia), codice e nome. Il codice è facoltativo alla creazione, e se manca il server assegna il successivo; in modifica è obbligatorio, perché un codice vuoto riceverebbe il successivo. Il perimetro ufficiale della zona, facoltativo, non è nel form: arriva con la mappa;
   - una zona con aree non si elimina (`zone_has_areas`).
 - **Aree, lista**:
   - filtri: committente, zona del committente (solo con un committente scelto), ricerca per numero o nome, *da sistemare* (`has_overlaps`). *Reimposta* lascia il committente, che ha il suo filtro;
@@ -391,10 +391,10 @@ Vedi D-043 e D-053.
   - perimetro, solo alla creazione: `GeometryFileInput`, poi `geometry-check/` con committente, periodo di gestione e flag di area fittizia del form, quindi gli avvisi cambiano con quei valori;
   - classificazioni con `CatalogSelect` (§9.6): una voce nascosta o ritirata dopo il salvataggio resta, segnata *non disponibile*;
   - gestione: inizio e fine, codice ISTAT del comune (se manca, quello del committente), codice del toponimo, livello di censimento, data del rilievo, esclusione dalla mappa pubblica, note;
-  - la creazione apre il dettaglio dell'area nuova, con gli avvisi del server.
-- **Avvisi** (`components/WarningsAlert`): mostra l'elenco `warnings` di una risposta, tradotto con `serverErrors.<code>` e i `params`, come gli errori (D-050). Non mostra nulla se l'elenco è vuoto. Lo usano anche gli elementi (PR3d).
+  - la creazione apre il dettaglio dell'area nuova, con gli avvisi del server. La modifica dalla modale della lista, che si chiude al salvataggio, li mostra in una notifica (`notifyWarnings`).
+- **Avvisi** (`components/WarningsAlert`): `WarningsAlert` mostra l'elenco `warnings` di una risposta, tradotto con `serverErrors.<code>` e i `params`, come gli errori (D-050), e non mostra nulla se l'elenco è vuoto; `notifyWarnings` lo mostra in una notifica, dove il form si chiude. Li usano anche gli elementi (PR3d).
 - **Geometria senza mappa** (`components/Geometry`), condivisa con gli elementi:
-  - `readGeometryFile(file, tipo)` legge un file GeoJSON (una geometria, una feature o una FeatureCollection, fino a 10 MB). Più linee o poligoni diventano una geometria multiparte; un punto dev'essere uno. Rifiuta, con un messaggio tradotto, un file che non è GeoJSON, senza geometrie, con geometrie di altro tipo, con un `crs` diverso da WGS84 o con coordinate fuori dai limiti di longitudine e latitudine;
+  - `readGeometryFile(file, tipo)` legge un file GeoJSON (una geometria, una feature o una FeatureCollection, fino a 10 MB). Più linee o poligoni diventano una geometria multiparte; un punto dev'essere uno. Rifiuta, con un messaggio tradotto, un file che non è GeoJSON, senza geometrie o con una geometria vuota, con geometrie di altro tipo, con un `crs` che non è WGS84 (CRS84 o EPSG 4326, in tutte le forme del nome) o con coordinate fuori dai limiti di longitudine e latitudine;
   - `GeometryFileInput`: il campo del file, con l'errore di lettura;
   - `GeometrySummary`: tipo, parti (con i buchi dei poligoni), superficie e perimetro, o lunghezza, dalle misure del server;
   - `formatSurface` e `formatLength` scrivono le misure nella lingua corrente, con gli ettari da un ettaro in su.

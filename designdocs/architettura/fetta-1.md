@@ -142,7 +142,7 @@ Valgono per le PR3 e PR4:
 
 Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR3a e PR3b.
 
-- **Zone**: lista con il filtro per committente, dettaglio, form; il codice è facoltativo, e se manca lo assegna il server. Dal dettaglio, *Aree della zona* apre la lista delle aree filtrata.
+- **Zone**: lista con il filtro per committente, dettaglio, form; il codice è facoltativo alla creazione, e se manca lo assegna il server. Dal dettaglio, *Aree della zona* apre la lista delle aree filtrata.
 - **Aree**:
   - lista con il committente e la zona come filtri, il segno *da sistemare* (`has_overlaps`) e il filtro omonimo;
   - dettaglio con le schede Dati e Geometria, e gli avvisi sopra le schede. La scheda Elementi arriva con la PR3d;
@@ -159,6 +159,7 @@ Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR
   - domanda 5 di [frontend.md](frontend.md), chiusa: il server rifiuta zone, aree ed elementi nuovi per un committente disattivato (`client_inactive`), e quelli esistenti restano modificabili (D-055).
 - **Dalla PR3b**: le classificazioni nascoste dopo il salvataggio restano nel form, segnate *non disponibile*, e il salvataggio le conserva. Le caselle in sola lettura dei form dei cataloghi sono di nuovo abilitate (`disabled={locked}`).
 - **Server**: `client_inactive` nei servizi di `territory` e `inventory`; `choices/` dei committenti con `any_permission`; test.
+- **Revisione prima della PR** (`pr-reviewer`): codice della zona obbligatorio in modifica, che vuoto riceverebbe il successivo; avvisi in una notifica dopo la modifica dalla modale della lista; geometrie vuote rifiutate dal file, e WGS84 riconosciuto in tutte le forme del nome.
 - **Documenti**: §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md), decisione D-055, glossario.
 
 **Verifica**: si crea una zona e un'area con una geometria multiparte da file, e si vede la superficie calcolata. Un'area sovrapposta a un'altra mostra l'avviso e compare nel filtro "da sistemare".

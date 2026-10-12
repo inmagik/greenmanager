@@ -53,6 +53,20 @@ function geometriesOf(value: unknown): Geometry[] {
   }
 }
 
+/** Whether a geometry has no positions, or a part without them (a polygon without rings, a line without points). */
+function isEmpty(geometry: Geometry): boolean {
+  switch (geometry.type) {
+    case "Point":
+      return geometry.coordinates.length < 2
+    case "MultiPolygon":
+      return !geometry.coordinates.length || geometry.coordinates.some((polygon) => !polygon.length)
+    case "GeometryCollection":
+      return !geometry.geometries.length
+    default:
+      return !geometry.coordinates.length
+  }
+}
+
 /** Whether every position is a longitude and a latitude: a file in a projected system has larger numbers. */
 function inWgs84Range(coordinates: unknown): boolean {
   if (!Array.isArray(coordinates)) return true
@@ -69,7 +83,7 @@ function inWgs84Range(coordinates: unknown): boolean {
  */
 export function geometryFromGeoJSON(value: unknown, kind: GeometryKind): Geometry {
   const geometries = geometriesOf(value)
-  if (!geometries.length) throw new GeometryFileError("empty")
+  if (!geometries.length || geometries.some(isEmpty)) throw new GeometryFileError("empty")
   const allowed = TYPES_OF_KIND[kind]
   const others = [...new Set(geometries.map((geometry) => geometry.type).filter((type) => !allowed.includes(type)))]
   if (others.length) throw new GeometryFileError("wrongType", { types: others.join(", "), kind })
@@ -94,8 +108,11 @@ export function geometryFromGeoJSON(value: unknown, kind: GeometryKind): Geometr
   return polygons
 }
 
-// GeoJSON is in WGS84 (RFC 7946); old files may name their system, which must then be WGS84 too.
-const WGS84_NAMES = /(CRS84|EPSG:{1,2}4326)$/i
+// GeoJSON is in WGS84 (RFC 7946); old files may name their system, which must then be WGS84 too: CRS84, or EPSG 4326
+// in any of its forms ("EPSG:4326", "urn:ogc:def:crs:EPSG::4326", "http://www.opengis.net/def/crs/EPSG/0/4326").
+function isWgs84(name: string) {
+  return /CRS84$/i.test(name) || (/EPSG/i.test(name) && /[:/]4326$/.test(name))
+}
 
 /** Read the geometry of `kind` from a GeoJSON file, or throw a `GeometryFileError`. */
 export async function readGeometryFile(file: File, kind: GeometryKind): Promise<Geometry> {
@@ -108,9 +125,9 @@ export async function readGeometryFile(file: File, kind: GeometryKind): Promise<
   }
   if (isRecord(value) && isRecord(value.crs)) {
     const name = isRecord(value.crs.properties) ? value.crs.properties.name : undefined
-    if (typeof name !== "string" || !WGS84_NAMES.test(name)) {
-      throw new GeometryFileError("crs", { crs: typeof name === "string" ? name : "?" })
-    }
+    // A system given otherwise (a link) cannot be checked.
+    if (typeof name !== "string") throw new GeometryFileError("crsUnknown")
+    if (!isWgs84(name)) throw new GeometryFileError("crs", { crs: name })
   }
   return geometryFromGeoJSON(value, kind)
 }

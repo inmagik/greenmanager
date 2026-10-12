@@ -21,11 +21,11 @@ type Props = {
 function structure(geometry: Geometry): { parts: number; holes: number } {
   switch (geometry.type) {
     case "Polygon":
-      return { parts: 1, holes: geometry.coordinates.length - 1 }
+      return { parts: 1, holes: Math.max(geometry.coordinates.length - 1, 0) }
     case "MultiPolygon":
       return {
         parts: geometry.coordinates.length,
-        holes: geometry.coordinates.reduce((holes, polygon) => holes + polygon.length - 1, 0),
+        holes: geometry.coordinates.reduce((holes, polygon) => holes + Math.max(polygon.length - 1, 0), 0),
       }
     case "MultiLineString":
     case "MultiPoint":
