@@ -86,6 +86,9 @@ export type AreaPayload = Pick<
   | "notes"
 > & { client?: string; geometry?: Polygon | MultiPolygon }
 
+/** An area in the selects (`choices/`). */
+export type AreaChoice = Pick<AreaListItem, "id" | "client" | "zone" | "code" | "name">
+
 /** A perimeter to check before saving it, with the values of the form that change the overlaps. */
 export type AreaGeometryCheck = {
   client: string

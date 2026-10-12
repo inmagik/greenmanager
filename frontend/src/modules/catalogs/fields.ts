@@ -16,6 +16,11 @@ export function enumLabel(t: TFunction, name: string, value: string): string {
   return t(`catalogs.enums.${name}.${value}`, { defaultValue: value })
 }
 
+/** The genus in a scientific name, as the server computes it: its first word, without the hybrid sign. */
+export function genusOf(scientificName: string): string {
+  return scientificName.replace(/×/g, " ").trim().split(/\s+/)[0] ?? ""
+}
+
 export function speciesLabel(species: Pick<Species, "scientific_name" | "common_name">): string {
   return species.common_name ? `${species.scientific_name} (${species.common_name})` : species.scientific_name
 }

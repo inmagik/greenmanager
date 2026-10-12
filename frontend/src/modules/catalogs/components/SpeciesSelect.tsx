@@ -24,9 +24,10 @@ type Props = {
  * Choose a species, searching among the available ones: the catalog has thousands of entries, so the options are
  * the first page of the search.
  *
- * A value saved before its entry was hidden or retired stays: it is shown, marked as no longer available.
+ * A value saved before its entry was hidden or retired stays: it is shown, marked as no longer available. The loader
+ * and the error are those of the search.
  */
-export function SpeciesSelect({ value, onChange, ranks, placeholder, ...props }: Props) {
+export function SpeciesSelect({ value, onChange, ranks, placeholder, error, ...props }: Props) {
   const { t } = useTranslation()
   const [search, setSearch] = useState<string | null>(null)
   const [debouncedSearch] = useDebouncedValue(search, 300)
@@ -34,7 +35,7 @@ export function SpeciesSelect({ value, onChange, ranks, placeholder, ...props }:
     () => ({ page: 1, available: "true", search: debouncedSearch || undefined, rank: ranks }),
     [debouncedSearch, ranks]
   )
-  const { data } = speciesApi.useEntries(filters)
+  const { data, isFetching, isError } = speciesApi.useEntries(filters)
   const { data: current } = speciesApi.useEntry(value ?? undefined)
   const options = (data?.results ?? []).map((species) => ({ value: species.id, label: speciesLabel(species) }))
   const caption =
@@ -52,6 +53,8 @@ export function SpeciesSelect({ value, onChange, ranks, placeholder, ...props }:
       options={options}
       defaultCaption={caption || undefined}
       placeholder={placeholder ?? t("catalogs.select.speciesPlaceholder")}
+      loading={isFetching}
+      error={error ?? (isError ? t("catalogs.loadError") : undefined)}
       {...props}
     />
   )

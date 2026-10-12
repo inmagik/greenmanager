@@ -52,6 +52,7 @@ Le chiavi esterne verso queste entità si aggiungono dopo, con le loro app e una
 | Committente come filtro, storico e conflitti di revisione nell'interfaccia | D-053 | §9 di [frontend.md](frontend.md) |
 | Cataloghi nell'interfaccia | D-054 | §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md) |
 | Zone e aree nell'interfaccia, committente disattivato | D-055 | §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md) |
+| Elementi nell'interfaccia | D-056 | §9.8 di [frontend.md](frontend.md) |
 
 I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend arrivano con le PR3 e PR4: il numero si assegna quando si scrivono, e quelli indicati più sotto per le PR4 sono provvisori.
 
@@ -69,7 +70,7 @@ Aggiornato al 2026-10-12.
 | PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
 | PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
-| PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
+| PR3d | elementi (frontend) | PR3c, PR2c | in revisione, [#26](https://github.com/inmagik/greenmanager/pull/26); issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
@@ -195,7 +196,7 @@ Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalla PR
   - stato della mappa nell'URL.
 - Pulsante "Vedi sulla mappa" nei dettagli di aree ed elementi.
 - **Documenti**:
-  - decisione nuova, numero provvisorio D-056: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
+  - decisione nuova, numero provvisorio D-057: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
   - prima parte di `frontend-pattern.md` (T2): mappa, layer e basemap.
 
 **Verifica**:
@@ -227,7 +228,7 @@ Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR
 - **Test**: `vitest`, solo in sviluppo, per `multipart.ts` e gli helper del bbox.
 - **Documenti**:
   - `frontend-pattern.md` completo, con le "Domande aperte": liste, dettaglio e form; mappa, disegno e multiparte; uso in campo; mappa pubblica rinviata; basemap e CORS;
-  - decisione nuova, numero provvisorio D-057: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
+  - decisione nuova, numero provvisorio D-058: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
   - §8 di [frontend.md](frontend.md) e [README.md](README.md) di questa cartella;
   - chiusura della fetta: T2 e T3 completati, in attesa di revisione, in [designdocs/README.md](../README.md); riga **Stato** di [AGENTS.md](../../AGENTS.md); `frontend/AGENTS.md`.
 
@@ -274,7 +275,7 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
 
 ## Domande aperte
 
-1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-055 sono ipotesi. In particolare:
+1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-056 sono ipotesi. In particolare:
    - le scelte di D-051 (codice come testo, data di rimozione non futura, attributi controllati solo quando cambiano);
    - la composizione non obbligatoria per le classi che la prevedono;
    - le scelte di D-052 (2 m tra gli alberi, avviso dei vicini solo quando l'albero riceve una posizione, punto al centro dell'area che segue l'area).

@@ -588,3 +588,24 @@ Stati possibili:
   - la mappa arriva con le PR4: il file permette di provare zone e aree, e resta il modo di importare un perimetro rilevato con altri strumenti (QGIS, GPS). Rifiutare un file misto è più chiaro che importarne una parte senza dirlo; il server controlla comunque la geometria;
   - la geometria è il dato più pesante e quello che cambia gli avvisi: separarla evita di rimandarla a ogni modifica dei dati, come già fa il server, che la esclude dalla lista e dallo storico tecnico.
 - **Alternative scartate**: committente disattivato limitato solo nell'interfaccia; filtro del committente mostrato solo a chi ha `READ_CLIENTS`; import che tiene i poligoni di un file misto e scarta il resto; conversione delle coordinate da altri sistemi di riferimento nel browser; geometria nel form dei dati.
+
+## D-056 — Elementi nell'interfaccia
+
+- **Data**: 2026-10-12 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - il form dell'elemento è guidato dalla classe: il tipo di geometria della posizione, la specie o la composizione secondo `species_mode`, gli attributi della classe con l'input del loro tipo. In modifica la classe cambia solo tra quelle con lo stesso tipo di geometria;
+  - nel dettaglio la posizione ha una scheda propria, come la geometria dell'area (D-055). Prima della mappa, un punto si posiziona con le coordinate, scritte o lette dal dispositivo con la precisione, o al centro dell'area; una linea o un poligono con un file GeoJSON. Le coordinate scritte non hanno origine, quelle del dispositivo sono `gps`;
+  - l'area proposta da `geometry-check/` riempie l'area del form se è vuota; altrimenti il rilevatore la sceglie con un pulsante, anche nella scheda della posizione, dove sposta l'elemento nell'area proposta. Un'area o una classe cambiate nel form dei dati si controllano allo stesso modo, con la posizione salvata;
+  - gli alberi vicini, che il server segnala solo nella risposta di una scrittura (D-052), si mostrano in una notifica dopo il salvataggio; l'avviso *fuori area* resta sopra il dettaglio;
+  - gli attributi si mandano solo quando cambiano o cambia la classe; specie e composizione si mandano sempre, coerenti con la scelta;
+  - rimozione, correzione della rimozione e ripristino sono azioni del menu, con una motivazione. Come la modifica in modale, leggono l'elemento all'apertura e mandano la sua revisione. La lista parte dagli elementi presenti; i rimossi, e i presenti a una data, si vedono con il filtro della presenza;
+  - le zone e le aree da scegliere (`choices/`) le legge anche chi legge gli elementi, come i committenti (D-055).
+- **Motivazione**:
+  - la classe dice cosa si rileva (EL-1, EL-3, EL-5): un form con tutti i campi lascerebbe al server errori che il form evita, come una specie per un arredo. Cambiare tipo di geometria vorrebbe dire rifare anche la posizione;
+  - la posizione è il dato che si rileva in campo, che cambia gli avvisi e che la mappa modificherà (PR4b): separarla dagli altri dati evita di rimandarla a ogni modifica, come per le aree. Le coordinate scritte possono venire da uno strumento o da un'altra mappa: segnarle `gps` le confonderebbe con quelle dello smartphone, che il modello vuole distinguibili (§3.4 di [04-modello-dati.md](04-modello-dati.md));
+  - l'area proposta evita di cercarla in un elenco, ma resta una scelta del rilevatore (D-052): il form non cambia un'area già scelta;
+  - un albero vicino è un possibile doppione, che il rilevatore deve vedere quando salva senza esserne bloccato; il dettaglio non lo ripete;
+  - gli attributi mandati solo quando cambiano rispettano D-051: un attributo diventato obbligatorio dopo il salvataggio non blocca la modifica di altri dati;
+  - chi lavora sul censimento sceglie l'area di un elemento e filtra per zona e area: senza `choices/`, un ruolo con i soli permessi degli elementi non potrebbe crearne. Il dettaglio delle aree resta di chi le legge;
+  - rimozione e ripristino sono passaggi del ciclo di vita (EL-7), distinti dalla modifica dei dati, e la motivazione va nello storico. A differenza della disattivazione del committente (D-053) hanno un form, con data e causa: senza la revisione, la correzione di una rimozione sovrascriverebbe in silenzio quella di un collega. Nel lavoro di ogni giorno si guardano gli elementi presenti; i rimossi restano consultabili.
+- **Alternative scartate**: un form per ogni categoria di classe; cambio di classe verso un altro tipo di geometria; coordinate scritte segnate `gps`; area proposta che sostituisce quella scelta; alberi vicini mostrati solo prima del salvataggio; attributi mandati a ogni salvataggio; rimozione e ripristino senza la revisione, come le azioni di un solo campo; lista con presenti e rimossi insieme.

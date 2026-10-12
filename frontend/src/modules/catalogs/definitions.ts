@@ -10,6 +10,7 @@ import {
   usageIntensitiesApi,
 } from "./api/catalogs"
 import type { CatalogApi } from "./api/createCatalogApi"
+import { genusOf } from "./fields"
 import {
   ATTRIBUTE_DATA_TYPES,
   ELEMENT_CATEGORIES,
@@ -28,7 +29,8 @@ import {
  *   description, if any, is `catalogs.fields.<name>Description`.
  * - The values of an `enum` are labelled `catalogs.enums.<name>.<value>`; `initial` is the value of a new entry, as
  *   the default of the server.
- * - `derived`: computed by the server, shown read-only and never sent.
+ * - `derived`: computed by the server, shown read-only and never sent; `derive` computes it from the values of the form
+ *   as the server does, so that it follows them before the save.
  * - `onlyWhen`: shown only when the values of the form match; otherwise the form sends its empty value.
  * - `speciesParent` and `classAttributes` are the parent of a species and the attributes of a class.
  */
@@ -36,6 +38,7 @@ export type FieldDefinition = {
   name: string
   required?: boolean
   derived?: boolean
+  derive?: (values: Record<string, unknown>) => string
   onlyWhen?: (values: Record<string, unknown>) => boolean
   /** Spans the whole width of the form. */
   wide?: boolean
@@ -92,7 +95,7 @@ export const CATALOGS: Record<string, CatalogDefinition> = {
     nameOrdering: "scientific_name",
     fields: [
       { name: "rank", kind: "enum", options: SPECIES_RANKS, required: true, initial: "species" },
-      { name: "genus", kind: "text", derived: true },
+      { name: "genus", kind: "text", derived: true, derive: (values) => genusOf(String(values.scientific_name ?? "")) },
       { name: "common_name", kind: "text", maxLength: 255 },
       { name: "family", kind: "text", maxLength: 100 },
       // A genus has no parent.

@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next"
 import { formatLength, formatSurface } from "./format"
 
 type Measures = {
-  surface_m2?: string | number
-  perimeter_m?: string | number
+  surface_m2?: string | number | null
+  perimeter_m?: string | number | null
   length_m?: string | number | null
 }
 

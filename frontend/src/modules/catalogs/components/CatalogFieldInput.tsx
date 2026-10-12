@@ -22,7 +22,7 @@ type Props = {
 /** A field of a catalog in its form, as its definition says. Fields locked because the entry is in use are disabled. */
 export function CatalogFieldInput({ catalog, field, form, entry, readonly }: Props) {
   const { t } = useTranslation()
-  if (field.derived && !entry) return null
+  if (field.derived && !entry && !field.derive) return null
   if (field.onlyWhen && !field.onlyWhen(form.values)) return null
 
   const label = fieldLabel(t, catalog, field.name)
@@ -51,7 +51,12 @@ export function CatalogFieldInput({ catalog, field, form, entry, readonly }: Pro
     case "number":
       return <NumberInput {...props} allowDecimal={false} min={field.min} {...form.getInputProps(field.name)} />
     case "text":
-      return <TextInput {...props} {...form.getInputProps(field.name)} />
+      // While editing, a derived value follows the other values of the form; the server computes it again.
+      return field.derive && !readonly ? (
+        <TextInput {...props} value={field.derive(form.values) || "—"} />
+      ) : (
+        <TextInput {...props} {...form.getInputProps(field.name)} />
+      )
     case "boolean":
       return (
         <Checkbox
