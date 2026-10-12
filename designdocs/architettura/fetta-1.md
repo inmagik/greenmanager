@@ -70,7 +70,7 @@ Aggiornato al 2026-10-12.
 | PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
 | PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
-| PR3d | elementi (frontend) | PR3c, PR2c | in corso, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
+| PR3d | elementi (frontend) | PR3c, PR2c | in revisione, [#26](https://github.com/inmagik/greenmanager/pull/26); issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
