@@ -57,6 +57,7 @@ export default {
       name: "Nome",
       code: "Codice",
       codeDescription: "Se manca, si ricava dal nome",
+      codeLockedDescription: "Il codice di una voce di sistema non cambia",
       description: "Descrizione",
       sort_order: "Ordine",
       sort_orderDescription: "Posizione della voce negli elenchi",

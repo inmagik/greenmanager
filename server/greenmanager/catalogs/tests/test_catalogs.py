@@ -575,6 +575,28 @@ class SpeciesApiTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertFalse(self.system.hidden_by.filter(pk=self.org.pk).exists())
 
+    def test_filter_by_one_or_more_ranks(self):
+        Species.objects.create(
+            code="tilia-cordata-greenspire",
+            rank="cultivar",
+            scientific_name="Tilia cordata 'Greenspire'",
+            genus="Tilia",
+            parent=self.system,
+        )
+        url = "/api/catalogs/species/"
+
+        genera = self.client.get(url, {"rank": "genus"}, **self.header)
+        parents = self.client.get(
+            url, {"rank": ["genus", "species", "hybrid"]}, **self.header
+        )
+
+        self.assertEqual(genera.status_code, 200, genera.content)
+        self.assertEqual([row["code"] for row in genera.data["results"]], ["tilia"])
+        self.assertEqual(
+            [row["code"] for row in parents.data["results"]],
+            ["tilia", "tilia-cordata"],
+        )
+
     def test_new_parent_must_be_available_the_stored_one_stays(self):
         own = self.post(
             {"scientific_name": "Tilia americana", "parent": str(self.genus.pk)}

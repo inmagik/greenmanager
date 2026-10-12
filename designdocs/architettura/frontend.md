@@ -335,7 +335,7 @@ Vedi D-043 e D-053.
 
 `api/catalogs/<catalogo>/` (§8.4 di [backend.md](backend.md)). Vedi D-054.
 
-- **Hook**: `createCatalogApi(slug)` dà gli hook di un catalogo, uguali per tutti: lista, dettaglio, `choices/`, scritture, `hide/` e `unhide/`, l'URL dello storico. Le istanze dei sette cataloghi sono in `api/catalogs.ts`.
+- **Hook**: `createCatalogApi(slug)` dà gli hook di un catalogo, uguali per tutti: lista, dettaglio, `choices/`, scritture, `hide/` e `unhide/`, l'URL dello storico. Le istanze dei sette cataloghi sono in `api/catalogs.ts`. Una scrittura invalida le query di tutti i cataloghi, perché una voce è incorporata in altre: gli attributi nelle classi, la voce superiore nelle specie.
 - **Definizioni** (`definitions.ts`), una per catalogo:
   - rotta, chiave delle traduzioni, icona, hook;
   - se il catalogo è estendibile (voci di sistema più quelle delle organizzazioni) o fisso, e se le organizzazioni vi aggiungono voci;
@@ -344,7 +344,7 @@ Vedi D-043 e D-053.
 
   Le definizioni guidano lista, dettaglio, form e menu: ogni catalogo ha la sua voce nella sezione *Cataloghi*.
 - **Specie e classi** usano le stesse pagine, con i loro campi:
-  - specie: il nome scientifico al posto del nome, livello, genere (dal server), nome comune, famiglia, voce superiore, sinonimi, riferimento esterno. La voce superiore si sceglie con `SpeciesSelect`: tra i generi per una specie o un ibrido, tra tutte le specie per una cultivar, con il controllo del livello lasciato al server. Un genere non ha voce superiore. Epiteti e cultivar non sono nel form: restano quelli dell'import;
+  - specie: il nome scientifico al posto del nome, livello, genere (dal server), nome comune, famiglia, voce superiore, sinonimi, riferimento esterno. La voce superiore si sceglie con `SpeciesSelect`: tra i generi per una specie o un ibrido, tra generi, specie e ibridi per una cultivar (il filtro `rank` del server accetta più valori). Un genere non ha voce superiore. Epiteti e cultivar non sono nel form: restano quelli dell'import;
   - classi: categoria, tipo di geometria, unità, modalità della specie, conta come albero, posto d'impianto, e gli attributi della classe, in un editor che li ordina e li segna obbligatori. Un attributo nuovo si sceglie tra quelli disponibili; uno già nella classe resta anche se poi è nascosto o ritirato.
 - **Lista**: ricerca; filtri del catalogo (livello, categoria, tipo…), origine (sistema o organizzazione) e disponibilità (disponibili, non disponibili, nascoste, ritirate); colonne del catalogo, origine e stato. Nessuna selezione multipla: il server non ha un'eliminazione multipla delle voci.
 - **Dettaglio** (`/catalogs/<catalogo>/:id`): il form in sola lettura, *Storico*, *Modifica*, il menu delle azioni. Una voce nascosta o ritirata ha un avviso, con *Mostra* o *Ripristina* per chi può.
@@ -354,14 +354,15 @@ Vedi D-043 e D-053.
   - elimina: una voce in uso non si elimina (`catalog_entry_in_use`), e l'errore tradotto invita a ritirarla o nasconderla.
 - **Permessi** (`useCatalogPermissions`):
   - la lettura è aperta a ogni membro, e le voci di menu non hanno permesso; la scrittura chiede `WRITE_CATALOGS`;
+  - le azioni di scrittura dipendono anche dalla voce (di sistema o no) e dall'utente (staff o no), che `CheckPermission` non esprime: le pagine le mostrano con le funzioni dell'hook, non con `CheckPermission`;
   - le voci di sistema le modificano, ritirano ed eliminano solo gli utenti dello staff; nasconderle è una scelta dell'organizzazione, con `WRITE_CATALOGS`;
   - nei cataloghi senza voci delle organizzazioni (attributi e tipologie ISTAT) solo lo staff crea voci, che sono di sistema. Negli altri, il form di creazione dello staff ha la casella *Voce di sistema*.
 - **Campi bloccati**: il server dà in `locked_fields` i campi che non cambiano perché la voce è in uso (tipo di geometria e modalità della specie di una classe, tipo di dato e flag di misura di un attributo). Il form li disabilita e ne dice il motivo. Anche il codice di una voce di sistema è disabilitato.
 - **Selettori** per i form degli altri moduli:
-  - `CatalogSelect`: le voci disponibili di un catalogo (`choices/`), con gruppi ed esclusioni facoltativi;
+  - `CatalogSelect`: le voci disponibili di un catalogo (`choices/`), con filtri, gruppi ed esclusioni facoltativi;
   - `ElementClassSelect`: le classi, raggruppate per categoria. `onChange` dà anche la classe scelta, con geometria, modalità della specie e attributi, che guidano il form dell'elemento (PR3d);
   - `SpeciesSelect`: cerca tra le specie disponibili sulla lista paginata, perché il catalogo ha migliaia di voci;
-  - un valore già salvato, la cui voce è poi nascosta o ritirata, resta: il selettore lo mostra con la nota *non disponibile*.
+  - un valore già salvato, la cui voce è poi nascosta o ritirata, resta: il selettore lo mostra con la nota *non disponibile*. Un valore disponibile ma fuori dai filtri del selettore si mostra senza la nota.
 
 ## Domande aperte
 

@@ -10,8 +10,8 @@ import type { SpeciesRank } from "../types"
 type Props = {
   value: string | null
   onChange: (value: string | null) => void
-  /** Only the entries of this rank, e.g. the genera as parents of a species. */
-  rank?: SpeciesRank
+  /** Only the entries of these ranks, e.g. the genera as parents of a species. */
+  ranks?: SpeciesRank[]
   label?: React.ReactNode
   description?: React.ReactNode
   withAsterisk?: boolean
@@ -26,13 +26,13 @@ type Props = {
  *
  * A value saved before its entry was hidden or retired stays: it is shown, marked as no longer available.
  */
-export function SpeciesSelect({ value, onChange, rank, placeholder, ...props }: Props) {
+export function SpeciesSelect({ value, onChange, ranks, placeholder, ...props }: Props) {
   const { t } = useTranslation()
   const [search, setSearch] = useState<string | null>(null)
   const [debouncedSearch] = useDebouncedValue(search, 300)
   const filters = useMemo<CatalogFilters>(
-    () => ({ page: 1, available: "true", search: debouncedSearch || undefined, rank }),
-    [debouncedSearch, rank]
+    () => ({ page: 1, available: "true", search: debouncedSearch || undefined, rank: ranks }),
+    [debouncedSearch, ranks]
   )
   const { data } = speciesApi.useEntries(filters)
   const { data: current } = speciesApi.useEntry(value ?? undefined)

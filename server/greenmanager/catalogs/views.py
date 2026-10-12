@@ -186,7 +186,9 @@ TRACKED = ("created_by", "updated_by")
 
 
 class SpeciesFilter(ExtensibleCatalogFilter):
-    rank = FS.ChoiceFilter(choices=Species.Rank.choices)
+    # One or more ranks (?rank=genus&rank=species): the possible parents of an
+    # entry are of several ranks.
+    rank = FS.MultipleChoiceFilter(choices=Species.Rank.choices)
     genus = FS.CharFilter(lookup_expr="iexact")
 
 

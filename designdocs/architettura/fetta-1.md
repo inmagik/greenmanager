@@ -140,7 +140,9 @@ Issue [#14](https://github.com/inmagik/greenmanager/issues/14). Dipende dalla PR
 - Selettori per i form degli altri moduli: `CatalogSelect`, `SpeciesSelect` (`AsyncSelect`, sulle sole voci disponibili), `ElementClassSelect`.
 - La lettura è aperta a ogni membro; la scrittura chiede `catalogs.WRITE_CATALOGS`. Solo lo staff modifica le voci di sistema (`system_entry_read_only`).
 - `i18n/it/catalogs.ts` e i codici di errore dei cataloghi.
-- **Server**: `locked_fields` nelle voci dei cataloghi, i campi bloccati perché la voce è in uso, con l'annotazione `with_in_use()`, che `is_in_use` usa al posto del `Collector` di Django.
+- **Server**:
+  - `locked_fields` nelle voci dei cataloghi, i campi bloccati perché la voce è in uso, con l'annotazione `with_in_use()`, che `is_in_use` usa al posto del `Collector` di Django;
+  - il filtro `rank` delle specie accetta più valori, per le voci superiori possibili di una cultivar.
 - **Documenti**: §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md), decisione D-054.
 
 **Verifica**: si nasconde una voce di sistema, che sparisce dai selettori e resta sui dati già salvati. Si aggiunge una specie propria. Una voce in uso non si elimina.

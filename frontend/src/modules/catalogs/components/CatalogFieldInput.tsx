@@ -3,9 +3,12 @@ import type { UseFormReturnType } from "@mantine/form"
 import { useTranslation } from "react-i18next"
 import type { CatalogDefinition, FieldDefinition } from "../definitions"
 import { enumLabel, fieldDescription, fieldLabel, type ClassAttributeRow } from "../fields"
-import type { CatalogEntry, Species } from "../types"
+import type { CatalogEntry, Species, SpeciesRank } from "../types"
 import { ClassAttributesEditor } from "./ClassAttributesEditor"
 import { SpeciesSelect } from "./SpeciesSelect"
+
+const SPECIES_PARENT_RANKS: SpeciesRank[] = ["genus"]
+const CULTIVAR_PARENT_RANKS: SpeciesRank[] = ["genus", "species", "hybrid"]
 
 type Props = {
   catalog: CatalogDefinition
@@ -67,14 +70,14 @@ export function CatalogFieldInput({ catalog, field, form, entry, readonly }: Pro
         const parent = (entry as Species | undefined)?.parent_data
         return <TextInput {...props} value={parent?.name ?? "—"} />
       }
-      // A species or a hybrid has a genus as parent; a cultivar a genus, a species or a hybrid (checked by the server).
-      const rank = form.values.rank === "cultivar" ? undefined : "genus"
+      // A species or a hybrid has a genus as parent; a cultivar a genus, a species or a hybrid.
+      const ranks = form.values.rank === "cultivar" ? CULTIVAR_PARENT_RANKS : SPECIES_PARENT_RANKS
       const { value, onChange, error } = form.getInputProps(field.name)
       return (
         <SpeciesSelect
           label={label}
           description={props.description}
-          rank={rank}
+          ranks={ranks}
           value={value}
           onChange={onChange}
           error={error}

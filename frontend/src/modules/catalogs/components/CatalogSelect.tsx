@@ -18,7 +18,8 @@ type Props<Choice extends CatalogChoice> = Omit<SelectProps, "data" | "value" | 
 /**
  * Choose an entry of a catalog in a form, among the entries available to the organization (`choices/`).
  *
- * A value saved before its entry was hidden or retired stays valid: it is shown, marked as no longer available.
+ * A value saved before its entry was hidden or retired stays valid: it is shown, marked as no longer available. A
+ * value left out by `filters` or `exclude` is shown too, without the mark if it is available.
  */
 export function CatalogSelect<Choice extends CatalogChoice>({
   api,
@@ -37,7 +38,8 @@ export function CatalogSelect<Choice extends CatalogChoice>({
 
   const options: (ComboboxItem | ComboboxItemGroup<ComboboxItem>)[] = []
   if (missing && current) {
-    options.push({ value: current.id, label: t("catalogs.select.unavailableOption", { name: current.name }) })
+    const label = current.is_available ? current.name : t("catalogs.select.unavailableOption", { name: current.name })
+    options.push({ value: current.id, label })
   }
   const groups = new Map<string, ComboboxItem[]>()
   for (const choice of choices ?? []) {

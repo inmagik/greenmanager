@@ -77,7 +77,7 @@ export function CatalogEntryForm({
         <TextInput
           label={t("catalogs.fields.code")}
           description={
-            readonly ? undefined : codeLocked ? t("serverErrors.catalog_code_immutable") : fieldDescription(t, "code")
+            readonly ? undefined : codeLocked ? t("catalogs.fields.codeLockedDescription") : fieldDescription(t, "code")
           }
           readOnly={readonly}
           disabled={codeLocked}

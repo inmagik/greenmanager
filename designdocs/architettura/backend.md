@@ -477,7 +477,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 **Endpoint** sotto `api/catalogs/`: `species/`, `element-classes/`, `attribute-definitions/`, `urban-green-types/`, `area-uses/`, `usage-intensities/`, `removal-causes/`.
 - Lista, dettaglio, scrittura, `history/` e `choices/` (solo voci disponibili); `hide/` e `unhide/` sui cataloghi estendibili.
-- Filtri: `available`, `retired`, `hidden`, `scope` (`system` o `organization`), più quelli del catalogo (es. `rank` per le specie, `category` per le classi).
+- Filtri: `available`, `retired`, `hidden`, `scope` (`system` o `organization`), più quelli del catalogo (es. `rank` per le specie, anche con più valori, `category` per le classi).
 - `locked_fields`: i campi che non cambiano perché la voce è in uso, perché il frontend li mostri in sola lettura. Liste e dettagli dei cataloghi con campi bloccati annotano `in_use`; `choices/` no.
 - Una voce si crea per l'organizzazione della richiesta; lo staff crea voci di sistema con `is_system: true`, anche nei cataloghi senza voci delle organizzazioni (gli attributi). Solo nei cataloghi fissi ogni voce è di sistema senza chiederlo.
 - `ElementClass` scrive i suoi attributi in `class_attributes`, che sostituisce l'elenco. Un attributo nuovo deve essere disponibile per l'organizzazione della classe; uno già presente resta anche se nascosto o ritirato.
