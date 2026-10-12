@@ -70,11 +70,11 @@ Aggiornato al 2026-10-12.
 | PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
 | PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
-| PR3d | elementi (frontend) | PR3c, PR2c | in revisione, [#26](https://github.com/inmagik/greenmanager/pull/26); issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
+| PR3d | elementi (frontend) | PR3c, PR2c | unita, [#26](https://github.com/inmagik/greenmanager/pull/26) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b) e `territory` (PR3c). Fino alla PR3d gli elementi si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c) e `inventory` (PR3d). Le geometrie, senza mappa, si importano da file o, per i punti, si danno con le coordinate e il GPS: la mappa arriva con le PR4.
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -136,6 +136,15 @@ Aggiornato al 2026-10-12.
 - Prova nel browser da utente non staff con i permessi del territorio e con la sola lettura, anche a larghezza smartphone; due revisioni con `pr-reviewer` e una di Copilot, unita senza autofix. Verificati anche i punti rinviati dalla PR3b: classificazioni nascoste conservate, caselle dei cataloghi con `disabled={locked}`.
 - Riferimenti: §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.8 di [backend.md](backend.md).
 
+**PR3d: elementi** ([#26](https://github.com/inmagik/greenmanager/pull/26); issue [#16](https://github.com/inmagik/greenmanager/issues/16); D-056).
+- Modulo `inventory`: lista con committente, ricerca, presenza e *fuori area*, e gli altri filtri nel pannello *Filtri*; dettaglio con le schede Dati e Posizione; form guidato dalla classe, con specie singola o composizione e gli attributi della classe, mandati solo quando cambiano.
+- Posizione senza mappa: coordinate scritte o lette dal dispositivo (`useCurrentPosition`, con la precisione), centro dell'area, linee e poligoni da file. `geometry-check/` dà misure, area proposta e avvisi; gli alberi vicini, che il server dà solo nelle risposte delle scritture, compaiono in una notifica.
+- Rimozione, correzione della rimozione e ripristino, con la motivazione e la revisione dell'elemento; sostituzione con il link all'elemento sostituito. Scheda *Elementi* nel dettaglio dell'area.
+- Dalle PR3b e PR3c: caricamento ed errore di `SpeciesSelect`, genere che segue il nome scientifico nel form della specie, `client_inactive` sul campo dell'area, form e stato di modifica legati anche all'id.
+- Server: `choices/` di zone e aree aperto a chi legge gli elementi, come per i committenti (D-055).
+- Prova nel browser da utente non staff, con la sola lettura e con i soli permessi degli elementi, anche a larghezza smartphone; due revisioni con `pr-reviewer` e una di Copilot, unita senza autofix.
+- Riferimenti: §9.8 di [frontend.md](frontend.md), §8.6–§8.8 di [backend.md](backend.md).
+
 ## 5. PR da fare
 
 ### Regole delle PR del frontend
@@ -147,40 +156,9 @@ Valgono per le PR3 e PR4:
 - prima di ogni commit `yarn lint` e `yarn build` devono passare;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
 
-### PR3d. Elementi
-
-Issue [#16](https://github.com/inmagik/greenmanager/issues/16). Dipende dalla PR3c. Usa le API della PR2c ([#12](https://github.com/inmagik/greenmanager/pull/12)), già unita.
-
-- **Lista**:
-  - filtri `area`, `zone`, `element_class`, `category`, `species`, `location_status`, `removed`, `present_on` e `outside_area`;
-  - il flag "fuori area";
-  - ordinamento per codice.
-- **Dettaglio**: dati, composizione, attributi, posizione, sostituzione, storico.
-- **`ElementForm`**, guidato dalla classe:
-  - specie singola o `CompositionEditor` secondo `species_mode`;
-  - `AttributesFields` per gli attributi della classe (D-047);
-  - posizione da coordinate, da "Usa la mia posizione" (GPS del browser, con la precisione) o al centro dell'area (`area_center`);
-  - area proposta e avvisi da `geometry-check/`.
-- **Azioni**: rimuovi, con data, causa e motivazione; ripristina, con motivazione.
-- Scheda Elementi nel dettaglio dell'area.
-- `i18n/it/inventory.ts`, con i codici degli errori e degli avvisi (`element_outside_area`, `element_near_tree`); permessi `inventory.READ_ELEMENTS` e `inventory.WRITE_ELEMENTS`.
-- **Dalla PR3c**:
-  - `WarningsAlert` e `notifyWarnings` per gli avvisi; `GeometryFileInput` e `GeometrySummary` per linee e poligoni; `useClientFilter` con `dependentParams` per area e zona;
-  - un elemento nuovo in un'area di un committente disattivato dà `client_inactive` sul campo `area`;
-  - i dettagli tengono lo stato di modifica e il form legati alla sola revisione: se un link porta da un dettaglio a un altro della stessa rotta (es. l'elemento sostituito), senza smontare la pagina, il form mostrerebbe i valori del primo. Con i link della sostituzione, la chiave del form e lo stato di modifica vanno legati anche all'id.
-- **Dalla PR3b**: `ElementClassSelect` e `SpeciesSelect` hanno qui i primi consumatori. Dalla revisione prima della PR3b:
-  - `SpeciesSelect` non mostra né il caricamento né un errore, a differenza di `CatalogSelect`;
-  - nel form di una specie il genere mostrato non segue il nome scientifico finché non si salva; il server lo ricalcola.
-
-**Verifica**:
-- si crea un albero da coordinate e uno con il GPS, e si ricevono l'area proposta e gli avvisi;
-- si crea una siepe con la composizione;
-- si rimuove l'albero con la causa e si controlla lo storico;
-- un albero al centro dell'area resta provvisorio finché non si verifica la posizione.
-
 ### PR4a. Mappa: visualizzazione
 
-Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalla PR3c; gli elementi sulla mappa vogliono anche la PR3d.
+Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalle PR3c e PR3d, unite.
 
 - **Dipendenze**: `maplibre-gl`, con un wrapper nostro, senza `react-map-gl`.
 - **`src/components/Map/`**:
@@ -206,7 +184,7 @@ Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalla PR
 
 ### PR4b. Mappa: disegno e uso in campo
 
-Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR3d e PR4a.
+Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalla PR4a.
 
 - **Spike all'inizio** su terra-draw (`terra-draw`, `terra-draw-maplibre-gl-adapter`):
   - multiparte;
