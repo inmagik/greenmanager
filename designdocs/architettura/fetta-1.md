@@ -72,7 +72,7 @@ Aggiornato al 2026-10-12.
 | PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
 | PR3d | elementi (frontend) | PR3c, PR2c | unita, [#26](https://github.com/inmagik/greenmanager/pull/26) |
-| PR4a | mappa: visualizzazione | PR3c, PR3d | in corso, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
+| PR4a | mappa: visualizzazione | PR3c, PR3d | in revisione, [#27](https://github.com/inmagik/greenmanager/pull/27); issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
 - Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c) e `inventory` (PR3d). Le geometrie, senza mappa, si importano da file o, per i punti, si danno con le coordinate e il GPS: la mappa arriva con le PR4.
