@@ -68,12 +68,12 @@ Aggiornato al 2026-10-12.
 | PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
 | PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
 | PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
-| PR3c | zone e aree (frontend) | PR3a, PR3b | in revisione, [#25](https://github.com/inmagik/greenmanager/pull/25); issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
+| PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
 | PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, i moduli di dominio `parties` (PR3a) e `catalogs` (PR3b), e con la PR3c `territory`. Fino alla PR3d gli elementi si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b) e `territory` (PR3c). Fino alla PR3d gli elementi si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -124,8 +124,16 @@ Aggiornato al 2026-10-12.
 - Selettori per le PR3c e PR3d: `CatalogSelect`, `SpeciesSelect`, `ElementClassSelect`. Un valore salvato la cui voce è poi nascosta o ritirata resta, segnato *non disponibile*.
 - Server: `locked_fields` e `with_in_use()`, che `is_in_use` usa al posto del `Collector`; filtro `rank` delle specie con più valori.
 - Prova nel browser da utente non staff, senza permessi e da staff, anche a larghezza smartphone. Il caso "resta sui dati già salvati" per aree ed elementi si prova con le PR3c e PR3d.
-- Uniti con la PR due autofix di Copilot: un valore selezionato ed escluso resta tra le opzioni di `CatalogSelect`; le caselle in sola lettura sono anche disabilitate (vedi PR3c).
+- Uniti con la PR due autofix di Copilot: un valore selezionato ed escluso resta tra le opzioni di `CatalogSelect`; le caselle in sola lettura sono anche disabilitate, riportate a `disabled={locked}` nella PR3c.
 - Riferimenti: §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md).
+
+**PR3c: zone e aree** ([#25](https://github.com/inmagik/greenmanager/pull/25); issue [#15](https://github.com/inmagik/greenmanager/issues/15); D-055).
+- Modulo `territory`: zone e aree con lista, dettaglio, form e azioni; committente e zona come filtri, aree *da sistemare*. Il dettaglio dell'area ha le schede Dati e Geometria, con gli avvisi sopra.
+- Geometria senza mappa (`components/Geometry`): il perimetro si importa da un file GeoJSON, anche multiparte, controllato fino alle posizioni; `geometry-check/` ne dà misure e avvisi prima del salvataggio. `WarningsAlert` e `notifyWarnings` per gli avvisi.
+- `useClientFilter` torna a pagina 1 anche nei cambi automatici e toglie i filtri che dipendono dal committente.
+- Server: zone, aree ed elementi nuovi rifiutati per un committente disattivato (`client_inactive`), con il committente bloccato alla creazione; `choices/` dei committenti aperto a chi legge aree o elementi; una zona salvata non resta senza codice (`zone_code_required`).
+- Prova nel browser da utente non staff con i permessi del territorio e con la sola lettura, anche a larghezza smartphone; due revisioni con `pr-reviewer` e una di Copilot, unita senza autofix. Verificati anche i punti rinviati dalla PR3b: classificazioni nascoste conservate, caselle dei cataloghi con `disabled={locked}`.
+- Riferimenti: §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.8 di [backend.md](backend.md).
 
 ## 5. PR da fare
 
@@ -137,53 +145,6 @@ Valgono per le PR3 e PR4:
 - i codici degli errori e degli avvisi del server si traducono con `serverErrors.<code>`: ogni PR aggiunge quelli che le servono;
 - prima di ogni commit `yarn lint` e `yarn build` devono passare;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
-
-### PR3c. Zone e aree
-
-Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR3a e PR3b.
-
-- **Zone**: lista con il filtro per committente, dettaglio, form; il codice è facoltativo alla creazione, e se manca lo assegna il server. Dal dettaglio, *Aree della zona* apre la lista delle aree filtrata.
-- **Aree**:
-  - lista con il committente e la zona come filtri, il segno *da sistemare* (`has_overlaps`) e il filtro omonimo;
-  - dettaglio con le schede Dati e Geometria, e gli avvisi sopra le schede. La scheda Elementi arriva con la PR3d;
-  - form con le classificazioni (`CatalogSelect`), il periodo di gestione e il flag di area fittizia. La creazione apre il dettaglio dell'area nuova.
-- **Geometria senza mappa**, in `src/components/Geometry/`:
-  - `GeometryFileInput` legge un file `.geojson`: è l'import di una geometria di AR-2. Più poligoni diventano un'area multiparte; un file con altri tipi o in un altro sistema di riferimento si rifiuta. La mappa arriva con la PR4a;
-  - `GeometrySummary` mostra tipo, numero di parti (con i buchi), superficie e perimetro;
-  - prima del salvataggio, `geometry-check/` dà misure e avvisi, con i valori del form. Nella scheda Geometria, *Sostituisci da file* cambia il perimetro di un'area salvata.
-- `WarningsAlert` in `src/components/`: mostra l'elenco `warnings` di una risposta, tradotto con `serverErrors.<code>` e `params`. Lo usa anche la PR3d.
-- `@types/geojson`; `i18n/it/territory.ts`; permessi `territory.READ_AREAS` e `territory.WRITE_AREAS`. `main.tsx` estende dayjs con `customParseFormat`, per le date scritte a mano.
-- **Dalla PR3a**:
-  - `useClientFilter` torna a pagina 1 anche quando cambia il filtro da solo, e toglie i filtri che dipendono dal committente (`dependentParams`, la zona);
-  - `choices/` dei committenti si apre a chi legge aree o elementi, con `any_permission` (D-055);
-  - domanda 5 di [frontend.md](frontend.md), chiusa: il server rifiuta zone, aree ed elementi nuovi per un committente disattivato (`client_inactive`), e quelli esistenti restano modificabili (D-055).
-- **Dalla PR3b**: le classificazioni nascoste dopo il salvataggio restano nel form, segnate *non disponibile*, e il salvataggio le conserva. Le caselle in sola lettura dei form dei cataloghi sono di nuovo abilitate (`disabled={locked}`).
-- **Server**: `client_inactive` nei servizi di `territory` e `inventory`; `choices/` dei committenti con `any_permission`; test.
-- **Revisioni prima della PR** (`pr-reviewer`, due giri):
-  - codice della zona obbligatorio in modifica, nel form e nel server (`zone_code_required`): vuoto, riceveva il successivo;
-  - avvisi in una notifica dopo la modifica dalla modale della lista;
-  - geometrie vuote, anche in un anello o in una parte, rifiutate dal file; WGS84 riconosciuto in tutte le forme del nome; un file scelto mentre se ne legge un altro lo sostituisce;
-  - la creazione di zone, aree ed elementi blocca il committente, che così non si disattiva nel frattempo;
-  - D-055 precisa che ripristino e cambio di area restano permessi con il committente disattivato.
-- **Revisione di Copilot** (#25):
-  - geometrie del file controllate fino alle posizioni (anelli e parti vuote, coordinate che non sono numeri) e `crs` controllato su ogni oggetto;
-  - una zona nell'URL che non è del committente si scarta dal filtro delle aree;
-  - non corretti, perché non sono errori: `DateInput` di Mantine 9 dà già le date come `YYYY-MM-DD`, anche dal calendario; le scritture delle aree invalidano già tutte le query che iniziano con l'URL delle aree.
-- **Documenti**: §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md), decisione D-055, glossario.
-
-**Verifica**: si crea una zona e un'area con una geometria multiparte da file, e si vede la superficie calcolata. Un'area sovrapposta a un'altra mostra l'avviso e compare nel filtro "da sistemare".
-
-**Prova nel browser** (2026-10-12), da utente non staff con i permessi del territorio, e da uno con la sola `territory.READ_AREAS`:
-- una zona nuova riceve il codice successivo; una zona con aree non si elimina, con l'errore tradotto;
-- un file di soli punti e uno in Gauss-Boaga (`crs` EPSG:3003) si rifiutano con il loro messaggio;
-- un'area da un file con due poligoni, uno con un buco: *Poligono multiparte*, 2 parti con 1 buco, superficie e perimetro da `geometry-check/` prima del salvataggio; il codice ISTAT viene dal committente;
-- un'area sovrapposta mostra l'avviso prima del salvataggio, che sparisce segnando l'area come fittizia; salvata, l'avviso è nel dettaglio e le due aree sono nel filtro *da sistemare*. Sostituito il perimetro dalla scheda Geometria, l'avviso sparisce;
-- conflitto di revisione con *Ricarica*; storico tecnico dell'area;
-- una destinazione d'uso nascosta dopo il salvataggio resta nel form, *non disponibile*, e il salvataggio la conserva;
-- *Aree della zona* filtra per zona; togliere il committente toglie anche la zona;
-- con un committente disattivato, il form dell'area non lo propone e il server rifiuta una zona nuova con `client_inactive`;
-- con la sola lettura del territorio: nessun menu dei committenti né pulsanti di scrittura, ma il filtro del committente funziona. Nell'altra organizzazione non si vede nessuna area, e il committente rimasto nell'URL si scarta con la pagina;
-- lista e dettaglio leggibili a larghezza smartphone.
 
 ### PR3d. Elementi
 
