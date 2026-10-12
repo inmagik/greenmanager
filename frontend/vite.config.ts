@@ -27,7 +27,7 @@ export default defineConfig({
         changeOrigin: false,
         secure: false,
       },
-      // The orthophoto of the Portale Cartografico Nazionale is only on HTTP: through the proxy, as in nginx.conf.
+      // The orthophoto of the Portale Cartografico Nazionale is only on HTTP: through the proxy, as in nginx.conf.template.
       "/wms/pcn": {
         target: "http://wms.pcn.minambiente.it",
         changeOrigin: true,

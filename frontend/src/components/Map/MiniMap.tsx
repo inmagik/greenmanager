@@ -1,6 +1,7 @@
 import type { FeatureCollection, Geometry } from "geojson"
 import type { ExpressionSpecification } from "maplibre-gl"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import type { Bbox } from "./bbox"
 import { geometryBounds } from "./bbox"
 import { MapView } from "./MapView"
 import { useFitBounds } from "./useFitBounds"
@@ -48,7 +49,7 @@ const LAYERS: GeoJSONLayer[] = [
 // Italy, when there is nothing to show.
 const ITALY = { center: [12.5, 42.2] as [number, number], zoom: 5 }
 
-function Geometries({ geometries }: { geometries: MiniMapGeometry[] }) {
+function Geometries({ geometries, initial }: { geometries: MiniMapGeometry[]; initial: Bbox | null }) {
   const data = useMemo<FeatureCollection>(
     () => ({
       type: "FeatureCollection",
@@ -61,7 +62,7 @@ function Geometries({ geometries }: { geometries: MiniMapGeometry[] }) {
     [geometries]
   )
   useGeoJSONLayer("mini-map", { data, layers: LAYERS, slot: "features" })
-  useFitBounds(geometryBounds(geometries.map(({ geometry }) => geometry)))
+  useFitBounds(geometryBounds(geometries.map(({ geometry }) => geometry)), initial)
   return null
 }
 
@@ -70,16 +71,17 @@ function Geometries({ geometries }: { geometries: MiniMapGeometry[] }) {
  * (exported as `MiniMap` by `@/components/Map`).
  */
 export default function MiniMap({ geometries, label, h = 280 }: MiniMapProps) {
-  const bounds = geometryBounds(geometries.map(({ geometry }) => geometry))
+  // The box of the initial view, which MapView reads once.
+  const [initial] = useState(() => geometryBounds(geometries.map(({ geometry }) => geometry)))
   return (
     <MapView
       compact
       h={h}
       label={label}
-      initialView={bounds ? { bounds, maxZoom: 18 } : ITALY}
+      initialView={initial ? { bounds: initial, maxZoom: 18 } : ITALY}
       style={{ borderRadius: "var(--mantine-radius-sm)", overflow: "hidden" }}
     >
-      <Geometries geometries={geometries} />
+      <Geometries geometries={geometries} initial={initial} />
     </MapView>
   )
 }

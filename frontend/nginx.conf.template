@@ -1,3 +1,5 @@
+# A template of the nginx image: at the start ${NGINX_LOCAL_RESOLVERS} becomes the DNS of the container (Dockerfile).
+
 # The orthophoto of the Portale Cartografico Nazionale, only on HTTP: served through the proxy under /wms/pcn, so an
 # application on HTTPS loads it, and kept in a cache, since the service is slow and the images do not change.
 proxy_cache_path /var/cache/nginx/wms levels=1:2 keys_zone=wms:10m max_size=2g inactive=30d use_temp_path=off;
@@ -18,8 +20,12 @@ server {
   gzip on;
 
   location /wms/pcn {
-    proxy_pass http://wms.pcn.minambiente.it/ogc;
-    proxy_set_header Host wms.pcn.minambiente.it;
+    # The name is resolved at each request, not at the start: without DNS, or with the service down, only the
+    # orthophoto fails, and nginx starts.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=300s;
+    set $pcn_host wms.pcn.minambiente.it;
+    proxy_pass http://$pcn_host/ogc$is_args$args;
+    proxy_set_header Host $pcn_host;
     proxy_cache wms;
     proxy_cache_valid 200 30d;
     proxy_no_cache $wms_no_cache;

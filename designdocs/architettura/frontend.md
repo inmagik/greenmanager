@@ -19,7 +19,7 @@ frontend/
 ├── index.html
 ├── tsconfig.json, tsconfig.app.json, tsconfig.node.json
 ├── eslint.config.js, .prettierrc, postcss.config.cjs
-├── Dockerfile, nginx.conf, build_image.sh
+├── Dockerfile, nginx.conf.template, build_image.sh
 └── src/
     ├── main.tsx              stili Mantine, i18n, montaggio di App
     ├── App.tsx               catena dei provider (§2)
@@ -180,13 +180,14 @@ Presi dal modulo `datasets` di data-lab e dal modulo `anagrafica` di bottaro-pes
 ## 7. Strumenti, build e immagine
 
 - **Comandi**: `yarn dev` (Vite su `localhost:5173`, con proxy di `/api` verso `localhost:8000` che conserva l'host del browser: così i link `next` della paginazione restano sul proxy), `yarn build` (`tsc -b` e `vite build`), `yarn lint`.
-- **Mappa** (D-057): Vite e nginx inoltrano `/wms/pcn` all'ortofoto del PCN, che è solo in HTTP; nginx tiene in cache le immagini. La build mette MapLibre in un chunk proprio, caricato solo dalla mappa (§1.2 di [frontend-pattern.md](frontend-pattern.md)). Gli sfondi si configurano alla build con `VITE_BASEMAPS` (§1.5).
+- **Mappa** (D-057): Vite e nginx inoltrano `/wms/pcn` all'ortofoto del PCN, che è solo in HTTP; nginx tiene in cache le immagini e risolve il nome del servizio a ogni richiesta, così parte anche senza DNS. La build mette MapLibre in un chunk proprio, caricato solo dalla mappa (§1.2 di [frontend-pattern.md](frontend-pattern.md)). Gli sfondi si configurano alla build con `VITE_BASEMAPS` (§1.5).
 - **Vite**: `vite.config.ts` importa i plugin con l'estensione (`./plugins/menu.ts`), come chiede il caricamento nativo della configurazione.
 - **TypeScript** in modalità `strict`, con `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax` (import di soli tipi con `import type`).
 - **ESLint**: configurazione piatta con le regole raccomandate di JavaScript, typescript-eslint, react-hooks e react-refresh.
 - **Prettier**: senza punto e virgola, virgolette doppie, virgola finale `es5`, riga di 120 caratteri, indentazione di 2 spazi. È la stessa configurazione in data-lab e bottaro-pesatura.
 - **Lingua del codice**: identificatori in inglese (D-001); i testi visibili stanno nelle traduzioni, non nel codice.
 - **Immagine**: `Dockerfile` su `nginx:1.31.1`, che serve `dist/` con il fallback su `index.html` per le rotte della SPA e senza cache per i file HTML. `build_image.sh` pubblica `docker.inmagik.com/greenmanager/frontend:latest`.
+  - La configurazione è un template dell'immagine (`nginx.conf.template`, D-057): all'avvio `${NGINX_LOCAL_RESOLVERS}` diventa il DNS del container, che il proxy dell'ortofoto usa a ogni richiesta. È l'unica variabile sostituita (`NGINX_ENVSUBST_FILTER`). In data-lab il file era `nginx.conf`, copiato tale e quale.
 
 ## 8. Versioni
 

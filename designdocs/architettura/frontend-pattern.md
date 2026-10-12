@@ -65,14 +65,14 @@ MapLibre 6 cerca il worker accanto al proprio modulo, che il bundle sposta. `map
 
 ### 1.4 Dati: `geojson/` e `bbox`
 
-- `useGeoJSON(endpoint, query, enabled)` chiama `<risorsa>/geojson/` con i filtri della lista. La chiave della query parte dall'URL della risorsa: una scrittura aggiorna anche la mappa. Mentre arriva una box nuova restano le feature della precedente (`keepPreviousData`).
+- `useGeoJSON(endpoint, query, enabled)` chiama `<risorsa>/geojson/` con i filtri della lista. La chiave della query parte dall'URL della risorsa: una scrittura aggiorna anche la mappa. Mentre arriva una box nuova restano le feature della precedente; non quelle di altri filtri, come un altro committente, che resterebbero cliccabili.
 - Le risorse hanno i loro hook: `useAreasGeoJSON` (`territory`) e `useElementsGeoJSON` (`inventory`).
 - **`bbox`**: la parte visibile, allargata a una griglia che dipende dallo zoom (`snapBbox`): il passo è la larghezza di una tile allo zoom intero. I piccoli spostamenti danno la stessa box, e la query non cambia. La box resta nei limiti di WGS84, che il server controlla (`bbox_invalid`).
 - **Soglie**:
   - aree dallo zoom 12, elementi dallo zoom 15;
   - con un committente nel filtro, a ogni zoom. Le aree del committente arrivano tutte insieme, senza `bbox`: la mappa le inquadra quando si sceglie il committente;
   - sotto la soglia il pannello dice di avvicinare la mappa o di scegliere un committente.
-- **Troncamento**: oltre `GEOJSON_MAX_FEATURES` (10.000) il server dà `truncated: true`, e il pannello dice che non tutti i dati sono nella mappa.
+- **Troncamento**: oltre `GEOJSON_MAX_FEATURES` (10.000) il server dà `truncated: true`, e il pannello dice che non tutti i dati sono nella mappa e di avvicinarla. Per le aree di un committente, che arrivano senza `bbox`, avvicinare non serve, e il pannello lo dice in un altro modo.
 - Gli elementi sono i presenti (`removed=false`).
 
 ### 1.5 Sfondi e ortofoto
@@ -101,7 +101,9 @@ MapLibre 6 cerca il worker accanto al proprio modulo, che il bundle sposta. `map
   | Emilia-Romagna, AGEA 2020 | sì | sì | sì | solo il territorio regionale |
 
   Senza CORS un WMS non si usa: MapLibre disegna le immagini con WebGL, che le vuole dello stesso dominio o con CORS. Un servizio solo in HTTP non si carica da un'applicazione in HTTPS (contenuto misto).
-- **Proxy del PCN**: `/wms/pcn` in `vite.config.ts` e in `nginx.conf` inoltra a `http://wms.pcn.minambiente.it/ogc`. nginx tiene in cache per 30 giorni le risposte che sono immagini: un WMS dà gli errori in XML con lo stato 200, e non vanno in cache.
+- **Proxy del PCN**: `/wms/pcn` in `vite.config.ts` e in `nginx.conf.template` inoltra a `http://wms.pcn.minambiente.it/ogc`.
+  - nginx tiene in cache per 30 giorni le risposte che sono immagini: un WMS dà gli errori in XML con lo stato 200, e non vanno in cache.
+  - nginx risolve il nome del servizio a ogni richiesta, con il DNS del container (`resolver`): con un nome scritto nel `proxy_pass`, senza DNS all'avvio non partirebbe nemmeno il resto dell'applicazione.
 - OpenStreetMap chiede di non usare le sue tile per un traffico importante: in produzione serve un fornitore di tile, o tile proprie (domanda 1).
 
 ### 1.6 Pagina della mappa: `map`

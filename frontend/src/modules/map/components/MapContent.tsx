@@ -56,6 +56,11 @@ function drawerHeight(map: MapLibreMap, mobile: boolean) {
   return mobile ? map.getContainer().clientHeight * DRAWER_SHARE : 0
 }
 
+// The areas of a client come without a box: zooming in does not show the ones left out.
+function areasStatus(layer: LayerStatus, client: string | null): LayerStatus {
+  return client && layer === "truncated" ? "tooMany" : layer
+}
+
 function status(
   query: { isFetching: boolean; isError: boolean; data?: { truncated: boolean } },
   shown: boolean,
@@ -182,7 +187,7 @@ export function MapContent({
         onClientChange={onClientChange}
         layers={layers}
         onLayersChange={onLayersChange}
-        areas={canReadAreas ? status(areas, showAreas, areasEnabled) : null}
+        areas={canReadAreas ? areasStatus(status(areas, showAreas, areasEnabled), client) : null}
         elements={canReadElements ? status(elements, showElements, elementsEnabled) : null}
         basemapSwitcher={<BasemapSwitcher value={basemap} onChange={onBasemapChange} />}
       />

@@ -18,6 +18,9 @@ export default {
         areas: "Non tutte le aree sono nella mappa: avvicinala.",
         elements: "Non tutti gli elementi sono nella mappa: avvicinala.",
       },
+      tooMany: {
+        areas: "Il committente ha più aree di quelle che la mappa può mostrare.",
+      },
       error: {
         areas: "Impossibile caricare le aree.",
         elements: "Impossibile caricare gli elementi.",

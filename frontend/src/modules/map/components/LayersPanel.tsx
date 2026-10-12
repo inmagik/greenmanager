@@ -10,8 +10,11 @@ import type { MapLayer } from "../hooks/useMapUrlState"
 import { CATEGORY_COLORS } from "../layers"
 import classes from "./LayersPanel.module.css"
 
-/** The state of a layer: hidden by the user, below its zoom, loading, loaded, loaded only in part, failed. */
-export type LayerStatus = "hidden" | "zoomIn" | "loading" | "ready" | "truncated" | "error"
+/**
+ * The state of a layer: hidden by the user, below its zoom, loading, loaded, loaded only in part (in the box, or
+ * of the client, which zooming in does not help), failed.
+ */
+export type LayerStatus = "hidden" | "zoomIn" | "loading" | "ready" | "truncated" | "tooMany" | "error"
 
 type Props = {
   client: string | null
@@ -31,7 +34,7 @@ function Dot({ color, provisional = false }: { color: string; provisional?: bool
 // The messages of a layer under its checkbox; the loading is a loader next to it.
 function StatusNote({ layer, status }: { layer: MapLayer; status: LayerStatus }) {
   const { t } = useTranslation()
-  if (status === "zoomIn" || status === "truncated" || status === "error") {
+  if (status === "zoomIn" || status === "truncated" || status === "tooMany" || status === "error") {
     return (
       <Text size="xs" c={status === "error" ? "red" : "dimmed"} pl="lg">
         {t(`map.status.${status}.${layer}`)}
