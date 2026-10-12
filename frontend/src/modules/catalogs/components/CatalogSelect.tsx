@@ -33,7 +33,10 @@ export function CatalogSelect<Choice extends CatalogChoice>({
 }: Props<Choice>) {
   const { t } = useTranslation()
   const { data: choices, isLoading, isError } = api.useChoices(filters)
-  const missing = !!value && !!choices && !choices.some((choice) => choice.id === value)
+  const missing =
+    !!value &&
+    !!choices &&
+    (!choices.some((choice) => choice.id === value) || !!exclude?.includes(value))
   const { data: current } = api.useEntry(missing ? value : undefined)
 
   const options: (ComboboxItem | ComboboxItemGroup<ComboboxItem>)[] = []
