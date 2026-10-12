@@ -66,13 +66,13 @@ Aggiornato al 2026-10-12.
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
 | PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
 | PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
-| PR3b | cataloghi (frontend) | PR3a | in revisione, [#24](https://github.com/inmagik/greenmanager/pull/24); issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
+| PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
 | PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, il primo modulo di dominio, `parties` (PR3a), e con la PR3b `catalogs`. Fino alle PR3c–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a) e `catalogs` (PR3b). Fino alle PR3c–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -117,6 +117,15 @@ Aggiornato al 2026-10-12.
 - Prova nel browser da utente non staff, anche a larghezza smartphone.
 - Riferimenti: §9 di [frontend.md](frontend.md).
 
+**PR3b: cataloghi** ([#24](https://github.com/inmagik/greenmanager/pull/24); issue [#14](https://github.com/inmagik/greenmanager/issues/14); D-054).
+- Modulo `catalogs`: una fabbrica di hook per tutti i cataloghi, e una definizione per catalogo che guida lista, dettaglio, form e menu. Specie e classi di elemento usano le stesse pagine, con i loro campi: voce superiore della specie, attributi della classe.
+- Azioni nascondi e mostra, ritira e ripristina, elimina; scrittura in `CheckPermission`, con le regole per voce e per staff in `useCatalogPermissions`.
+- Selettori per le PR3c e PR3d: `CatalogSelect`, `SpeciesSelect`, `ElementClassSelect`. Un valore salvato la cui voce è poi nascosta o ritirata resta, segnato *non disponibile*.
+- Server: `locked_fields` e `with_in_use()`, che `is_in_use` usa al posto del `Collector`; filtro `rank` delle specie con più valori.
+- Prova nel browser da utente non staff, senza permessi e da staff, anche a larghezza smartphone. Il caso "resta sui dati già salvati" per aree ed elementi si prova con le PR3c e PR3d.
+- Uniti con la PR due autofix di Copilot: un valore selezionato ed escluso resta tra le opzioni di `CatalogSelect`; le caselle in sola lettura sono anche disabilitate (vedi PR3c).
+- Riferimenti: §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md).
+
 ## 5. PR da fare
 
 ### Regole delle PR del frontend
@@ -127,35 +136,6 @@ Valgono per le PR3 e PR4:
 - i codici degli errori e degli avvisi del server si traducono con `serverErrors.<code>`: ogni PR aggiunge quelli che le servono;
 - prima di ogni commit `yarn lint` e `yarn build` devono passare;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
-
-### PR3b. Cataloghi
-
-Issue [#14](https://github.com/inmagik/greenmanager/issues/14). Dipende dalla PR3a.
-
-- `api/createCatalogApi.ts`: una fabbrica di hook, uguale per tutti i cataloghi (`api/catalogs/<catalogo>/`), con le action `hide/`, `unhide/` e `choices/`.
-- Lista e dettaglio generici, guidati da una definizione per catalogo (D-054), per tutti e sette i cataloghi. Specie e classi hanno i loro campi nelle stesse pagine:
-  - **specie**: livello, genere e voce superiore, nome scientifico e comune;
-  - **classi di elemento**: tipo di geometria, unità, `species_mode`, `counts_as_tree`, attributi della classe (`class_attributes`). I campi bloccati quando la classe è in uso sono in sola lettura.
-- Badge "sistema" e "organizzazione"; azioni nascondi e mostra sulle voci di sistema, ritira e ripristina; filtri `available`, `scope`, `retired`, `hidden`.
-- Selettori per i form degli altri moduli: `CatalogSelect`, `SpeciesSelect` (`AsyncSelect`, sulle sole voci disponibili), `ElementClassSelect`.
-- La lettura è aperta a ogni membro; la scrittura chiede `catalogs.WRITE_CATALOGS`. Solo lo staff modifica le voci di sistema (`system_entry_read_only`).
-- `i18n/it/catalogs.ts` e i codici di errore dei cataloghi.
-- **Server**:
-  - `locked_fields` nelle voci dei cataloghi, i campi bloccati perché la voce è in uso, con l'annotazione `with_in_use()`, che `is_in_use` usa al posto del `Collector` di Django;
-  - il filtro `rank` delle specie accetta più valori, per le voci superiori possibili di una cultivar.
-- **Documenti**: §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md), decisione D-054.
-
-**Verifica**: si nasconde una voce di sistema, che sparisce dai selettori e resta sui dati già salvati. Si aggiunge una specie propria. Una voce in uso non si elimina.
-
-**Prova nel browser** (2026-10-12), da utente non staff con `WRITE_CATALOGS` e da staff:
-- una destinazione d'uso di sistema nascosta lascia `choices/` e si mostra di nuovo dall'avviso del dettaglio;
-- una specie propria, con il genere come voce superiore; nascosto il genere, il form della specie lo mostra come *non disponibile* e il salvataggio lo conserva;
-- una specie con una cultivar figlia non si elimina, con l'errore tradotto;
-- una classe propria con due attributi, in ordine e uno obbligatorio;
-- da staff, tipo di dato e flag di misura di un attributo in uso sono disabilitati, come il codice di una voce di sistema;
-- le voci proprie di un'organizzazione non si vedono dall'altra; lista leggibile a larghezza smartphone.
-
-Il caso "resta sui dati già salvati" per aree ed elementi si prova con le PR3c e PR3d, che usano `CatalogSelect`, `SpeciesSelect` ed `ElementClassSelect`.
 
 ### PR3c. Zone e aree
 
@@ -176,6 +156,7 @@ Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR
   - quando `useClientFilter` cambia il filtro da solo (committente ricordato rimesso nell'URL, committente non più visibile scartato), la lista deve tornare a pagina 1: oggi resta la pagina dell'URL;
   - `choices/` dei committenti chiede `parties.READ_CLIENTS`: chi legge zone e aree senza quel permesso avrebbe un errore nel filtro. Da decidere: aprire `choices/` a chi ha un permesso di lettura dei dati del patrimonio (servono permessi in alternativa, che `ActionPermission` oggi non ha), oppure mostrare il filtro solo con `READ_CLIENTS`;
   - domanda 5 di [frontend.md](frontend.md): il server accetta dati nuovi per un committente disattivato.
+- **Dalla PR3b**: `CatalogSelect` ha qui i primi consumatori, nel form dell'area. Le classificazioni nascoste o ritirate dopo il salvataggio restano nel form, segnate *non disponibile*: è la verifica della PR3b sui dati già salvati. Un autofix di Copilot sulla PR3b ha reso disabilitate le caselle in sola lettura dei form dei cataloghi (`CatalogFieldInput`), ma `Checkbox` di Mantine con `readOnly` ignora già i clic: nel dettaglio sembrano bloccate come i campi in uso. Da riportare a `disabled={locked}`.
 
 **Verifica**: si crea una zona e un'area con una geometria multiparte da file, e si vede la superficie calcolata. Un'area sovrapposta a un'altra mostra l'avviso e compare nel filtro "da sistemare".
 
@@ -196,6 +177,9 @@ Issue [#16](https://github.com/inmagik/greenmanager/issues/16). Dipende dalla PR
 - **Azioni**: rimuovi, con data, causa e motivazione; ripristina, con motivazione.
 - Scheda Elementi nel dettaglio dell'area.
 - `i18n/it/inventory.ts`, con i codici degli errori e degli avvisi (`element_outside_area`, `element_near_tree`); permessi `inventory.READ_ELEMENTS` e `inventory.WRITE_ELEMENTS`.
+- **Dalla PR3b**: `ElementClassSelect` e `SpeciesSelect` hanno qui i primi consumatori. Dalla revisione prima della PR3b:
+  - `SpeciesSelect` non mostra né il caricamento né un errore, a differenza di `CatalogSelect`;
+  - nel form di una specie il genere mostrato non segue il nome scientifico finché non si salva; il server lo ricalcola.
 
 **Verifica**:
 - si crea un albero da coordinate e uno con il GPS, e si ricevono l'area proposta e gli avvisi;
