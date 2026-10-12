@@ -11,11 +11,12 @@ import { translateApiError } from "@/utils"
 import { Badge, Box, Button, Chip, Group, Pagination, Text, TextInput } from "@mantine/core"
 import { useDebouncedValue } from "@mantine/hooks"
 import dayjs from "dayjs"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { TbPolygon, TbSearch } from "react-icons/tb"
 import { Link } from "react-router-dom"
 import { useAreas, type AreaFilters } from "../api/areas"
+import { useZoneChoices } from "../api/zones"
 import { AreaContextActions } from "../components/AreaContextActions"
 import { CreateAreaAction } from "../components/CreateAreaAction"
 import { ZoneSelect } from "../components/ZoneSelect"
@@ -39,6 +40,22 @@ export function AreasList() {
   const search = params.get("search") || ""
   const zone = params.get("zone") || ""
   const toFix = params.get("has_overlaps") === "true"
+  const { data: zoneChoices } = useZoneChoices(client)
+  // A zone without the client, or of another one (an edited or old link), would empty the list without showing in its
+  // filter: it is dropped from the URL once the zones of the client are known.
+  const zoneKnown = !zone || (!!client && (!zoneChoices || zoneChoices.some((choice) => choice.id === zone)))
+  useEffect(() => {
+    if (zoneKnown) return
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        next.delete("zone")
+        next.delete("page")
+        return next
+      },
+      { replace: true }
+    )
+  }, [zoneKnown, setParams])
   const hasFilters = !!search || !!zone || toFix
   const [debouncedSearch] = useDebouncedValue(search, 300)
   const filters = useMemo<AreaFilters>(
@@ -47,10 +64,10 @@ export function AreasList() {
       ordering: ordering || undefined,
       search: debouncedSearch || undefined,
       client: client || undefined,
-      zone: (client && zone) || undefined,
+      zone: (zoneKnown && zone) || undefined,
       has_overlaps: toFix ? "true" : undefined,
     }),
-    [page, ordering, debouncedSearch, client, zone, toFix]
+    [page, ordering, debouncedSearch, client, zone, zoneKnown, toFix]
   )
   const { data, isLoading, error } = useAreas(filters)
   const pages = Math.ceil((data?.count ?? 0) / (data?.page_size || 20))

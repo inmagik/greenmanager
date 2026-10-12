@@ -165,6 +165,10 @@ Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR
   - geometrie vuote, anche in un anello o in una parte, rifiutate dal file; WGS84 riconosciuto in tutte le forme del nome; un file scelto mentre se ne legge un altro lo sostituisce;
   - la creazione di zone, aree ed elementi blocca il committente, che così non si disattiva nel frattempo;
   - D-055 precisa che ripristino e cambio di area restano permessi con il committente disattivato.
+- **Revisione di Copilot** (#25):
+  - geometrie del file controllate fino alle posizioni (anelli e parti vuote, coordinate che non sono numeri) e `crs` controllato su ogni oggetto;
+  - una zona nell'URL che non è del committente si scarta dal filtro delle aree;
+  - non corretti, perché non sono errori: `DateInput` di Mantine 9 dà già le date come `YYYY-MM-DD`, anche dal calendario; le scritture delle aree invalidano già tutte le query che iniziano con l'URL delle aree.
 - **Documenti**: §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md), decisione D-055, glossario.
 
 **Verifica**: si crea una zona e un'area con una geometria multiparte da file, e si vede la superficie calcolata. Un'area sovrapposta a un'altra mostra l'avviso e compare nel filtro "da sistemare".
