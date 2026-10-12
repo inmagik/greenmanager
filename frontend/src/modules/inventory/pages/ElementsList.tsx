@@ -249,7 +249,8 @@ export function ElementsList() {
               aria-label={t("inventory.filters.category")}
               data={ELEMENT_CATEGORIES.map((value) => ({ value, label: enumLabel(t, "category", value) }))}
               value={category || null}
-              onChange={(value) => mergeParams({ category: value ?? "", page: 1 })}
+              // The classes are those of the category.
+              onChange={(value) => mergeParams({ category: value ?? "", element_class: "", page: 1 })}
             />
             <ElementClassSelect
               size="sm"

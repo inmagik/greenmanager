@@ -2,16 +2,13 @@ import { AuditHistoryModal } from "@/components/AuditHistoryModal"
 import { modals } from "@mantine/modals"
 import type { TFunction } from "i18next"
 import { elementHistoryEndpoint } from "../api/elements"
+import { elementLabel } from "../labels"
 import type { ElementListItem } from "../types"
 import { EditElementForm } from "./EditElementForm"
 import { RemoveElementForm } from "./RemoveElementForm"
 import { RestoreElementForm } from "./RestoreElementForm"
 
 // The modals render outside the router: their content cannot use links or navigation.
-
-export function elementLabel(element: Pick<ElementListItem, "code" | "element_class_data">) {
-  return `${element.code} ${element.element_class_data.name}`
-}
 
 export function openElementEdit(element: ElementListItem, t: TFunction) {
   const modalId = modals.open({

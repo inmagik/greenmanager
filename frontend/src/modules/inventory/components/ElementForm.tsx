@@ -6,9 +6,11 @@ import { ElementClassSelect } from "@/modules/catalogs/components/ElementClassSe
 import { SpeciesSelect } from "@/modules/catalogs/components/SpeciesSelect"
 import { speciesLabel } from "@/modules/catalogs/fields"
 import type { ElementClassChoice, GeometryType, SpeciesMode } from "@/modules/catalogs/types"
+import { useHasPermission } from "@/hooks/useHasPermission"
 import { ClientSelect } from "@/modules/parties/components/ClientSelect"
 import { AreaSelect } from "@/modules/territory/components/AreaSelect"
 import { areaLabel } from "@/modules/territory/components/areaModals"
+import { TERRITORY_PERMISSIONS } from "@/modules/territory/permissions"
 import { transformErrorsForForm } from "@/utils"
 import { isRevisionConflict } from "@/utils/tracking"
 import { ApiError } from "@inmagik/react-crud/dist/crud/utils"
@@ -31,7 +33,7 @@ import { DateInput } from "@mantine/dates"
 import { useForm, type FormErrors } from "@mantine/form"
 import { useDebouncedValue } from "@mantine/hooks"
 import { yupResolver } from "mantine-form-yup-resolver"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { TbDeviceFloppy } from "react-icons/tb"
 import { Link } from "react-router-dom"
@@ -152,6 +154,7 @@ export function ElementForm({
   // The class just chosen: its geometry, species mode and attributes drive the form before its detail loads.
   const [classChoice, setClassChoice] = useState<ElementClassChoice | null>(null)
   const isNew = !element
+  const canReadAreas = useHasPermission(TERRITORY_PERMISSIONS.READ_AREAS)
   const form = useForm<FormValues>({
     mode: "controlled",
     initialValues: {
@@ -273,6 +276,18 @@ export function ElementForm({
   )
   const { setFieldValue } = form
   const chooseArea = useCallback((area: { id: string }) => setFieldValue("area", area.id), [setFieldValue])
+  // A proposal fills an empty area once: an area emptied by the user stays empty until another one is proposed, also
+  // when the check is mounted again (e.g. after coordinates not valid for a moment).
+  const proposedArea = useRef<string | null>(null)
+  const { getValues } = form
+  const fillEmptyArea = useCallback(
+    (area: { id: string }) => {
+      if (proposedArea.current === area.id) return
+      proposedArea.current = area.id
+      if (!getValues().area) setFieldValue("area", area.id)
+    },
+    [getValues, setFieldValue]
+  )
 
   const inputVariant = readonly ? "unstyled" : "default"
   const readonlyProps = { readOnly: readonly, variant: inputVariant }
@@ -365,9 +380,19 @@ export function ElementForm({
                 />
               )}
               {readonly && element ? (
-                <LinkValue label={t("inventory.fields.area")} to={`/territory/areas/${element.area}`}>
-                  {areaLabel(element.area_data)}
-                </LinkValue>
+                // The detail of the area is for those who read the areas.
+                canReadAreas ? (
+                  <LinkValue label={t("inventory.fields.area")} to={`/territory/areas/${element.area}`}>
+                    {areaLabel(element.area_data)}
+                  </LinkValue>
+                ) : (
+                  <TextInput
+                    label={t("inventory.fields.area")}
+                    readOnly
+                    variant="unstyled"
+                    value={areaLabel(element.area_data)}
+                  />
+                )
               ) : (
                 <AreaSelect
                   withAsterisk
@@ -439,7 +464,7 @@ export function ElementForm({
                   client={values.client}
                   area={values.area}
                   onUseArea={chooseArea}
-                  autoFill
+                  onSuggestedArea={fillEmptyArea}
                 />
               )}
             </Section>

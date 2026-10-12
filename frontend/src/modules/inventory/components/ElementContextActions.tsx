@@ -6,13 +6,8 @@ import { TbArchive, TbCalendarEvent, TbDots, TbHistory, TbPencil, TbRestore, TbT
 import { useDeleteElement } from "../api/elements"
 import { INVENTORY_PERMISSIONS } from "../permissions"
 import type { ElementListItem } from "../types"
-import {
-  elementLabel,
-  openElementEdit,
-  openElementHistory,
-  openElementRemoval,
-  openElementRestore,
-} from "./elementModals"
+import { elementLabel } from "../labels"
+import { openElementEdit, openElementHistory, openElementRemoval, openElementRestore } from "./elementModals"
 
 type Props = {
   element: ElementListItem

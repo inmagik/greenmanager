@@ -14,9 +14,10 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useElement, useUpdateElement } from "../api/elements"
 import { ElementContextActions } from "../components/ElementContextActions"
 import { ElementForm } from "../components/ElementForm"
-import { elementLabel, openElementHistory, openElementRestore } from "../components/elementModals"
+import { openElementHistory, openElementRestore } from "../components/elementModals"
 import { ElementPositionPanel } from "../components/ElementPositionPanel"
 import { notifyPositionWarnings } from "../components/elementWarnings"
+import { elementLabel } from "../labels"
 import { INVENTORY_PERMISSIONS } from "../permissions"
 
 const TABS = ["data", "position"] as const

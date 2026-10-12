@@ -372,6 +372,27 @@ class AreaTests(TerritoryTestCase):
         self.assertNotIn('"territory_zone"."geometry"', sql)
         self.assertEqual(len(overlapping.data), 1)
 
+    def test_choices_for_the_readers_of_the_elements(self):
+        # Who reads the elements picks their zone and area in the filters and in
+        # the forms, without reading the areas.
+        self.make_area("1", 9)
+        surveyor = make_user(
+            "surveyor@example.com", self.org, ["inventory.READ_ELEMENTS"]
+        )
+        self.client.force_authenticate(surveyor)
+
+        areas = self.client.get(f"{self.url}choices/", **self.header)
+        zones = self.client.get("/api/territory/zones/choices/", **self.header)
+        listed = self.client.get(self.url, **self.header)
+
+        self.assertEqual(areas.status_code, 200, areas.content)
+        self.assertEqual([area["code"] for area in areas.data], ["1"])
+        self.assertEqual(zones.status_code, 200, zones.content)
+        self.assertEqual(listed.status_code, 403, listed.content)
+        self.client.force_authenticate(make_user("outsider@example.com", self.org))
+        response = self.client.get(f"{self.url}choices/", **self.header)
+        self.assertEqual(response.status_code, 403, response.content)
+
     def test_update_checks_the_revision_and_records_the_geometry(self):
         area = self.make_area("1", 9)
         url = f"{self.url}{area.pk}/"

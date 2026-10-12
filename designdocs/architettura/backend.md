@@ -514,7 +514,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 
 ### 8.6 Territorio: `territory`
 
-`api/territory/zones/` e `api/territory/areas/`, con `history/`, `choices/` e `geojson/`; le aree hanno anche `geometry-check/`.
+`api/territory/zones/` e `api/territory/areas/`, con `history/`, `choices/` e `geojson/`; le aree hanno anche `geometry-check/`. `choices/` lo legge anche chi legge gli elementi, che sceglie zona e area nei filtri e nei form (D-056).
 
 **Zone** (D-019):
 - `code` è univoco per committente; se manca alla creazione, il servizio assegna il successivo, con il committente bloccato (`FOR NO KEY UPDATE`) perché due zone nuove non prendano lo stesso numero. Una zona salvata non resta senza codice (`zone_code_required`);
@@ -578,7 +578,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 |---|---|
 | `catalogs.WRITE_CATALOGS` | gestione delle voci dei cataloghi dell'organizzazione. La lettura non chiede permessi |
 | `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | lettura e gestione dei committenti. `choices/` lo legge anche chi legge aree o elementi (`any_permission`, D-055) |
-| `territory.READ_AREAS`, `territory.WRITE_AREAS` | lettura e gestione delle zone e delle aree; `geometry-check/` chiede la scrittura |
+| `territory.READ_AREAS`, `territory.WRITE_AREAS` | lettura e gestione delle zone e delle aree; `geometry-check/` chiede la scrittura. `choices/` lo legge anche chi legge gli elementi (`any_permission`, D-056) |
 | `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | lettura e gestione degli elementi; `remove/`, `restore/` e `geometry-check/` chiedono la scrittura |
 
 **Accesso ai dati del patrimonio** (D-044).

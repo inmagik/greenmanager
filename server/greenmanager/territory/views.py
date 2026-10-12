@@ -1,6 +1,7 @@
 import django_filters as FS
 from auth_core.utils import ActionPermission
 from core.errors import api_error
+from core.permissions import any_permission
 from core.serializers import pop_revision
 from core.views import (
     AuditHistoryActionMixin,
@@ -32,6 +33,7 @@ from .serializers import (
 
 READ_AREAS = "territory.READ_AREAS"
 WRITE_AREAS = "territory.WRITE_AREAS"
+READ_ELEMENTS = "inventory.READ_ELEMENTS"
 
 READ_ACTIONS = ("list", "retrieve", "history", "choices", "geojson")
 WRITE_ACTIONS = ("create", "update", "partial_update", "destroy")
@@ -54,6 +56,9 @@ class AssetViewSet(
     action_permissions = {
         **{name: [READ_AREAS] for name in READ_ACTIONS},
         **{name: [WRITE_AREAS] for name in WRITE_ACTIONS},
+        # Who reads the elements picks their zone and area in the filters and in
+        # the forms, without reading the areas (D-056).
+        "choices": [any_permission(READ_AREAS, READ_ELEMENTS)],
     }
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 

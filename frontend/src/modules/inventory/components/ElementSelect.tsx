@@ -4,7 +4,7 @@ import dayjs from "dayjs"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useElementSearch, type ElementFilters } from "../api/elements"
-import { elementLabel } from "./elementModals"
+import { elementLabel } from "../labels"
 
 type Props = {
   /** The elements are those of the client: without a client, the select is disabled. */
@@ -24,7 +24,7 @@ type Props = {
  * Choose the removed element whose place an element takes (D-029), searching by code among the removed elements of
  * the client: the options are the first page of the search.
  */
-export function ElementSelect({ client, value, valueCaption, onChange, exclude, ...props }: Props) {
+export function ElementSelect({ client, value, valueCaption, onChange, exclude, error, ...props }: Props) {
   const { t } = useTranslation()
   const [search, setSearch] = useState<string | null>(null)
   const [debouncedSearch] = useDebouncedValue(search, 300)
@@ -32,7 +32,7 @@ export function ElementSelect({ client, value, valueCaption, onChange, exclude, 
     () => ({ page: 1, client: client ?? undefined, removed: "true", search: debouncedSearch || undefined }),
     [client, debouncedSearch]
   )
-  const { data } = useElementSearch(filters)
+  const { data, isFetching, isError } = useElementSearch(filters)
   const options = (data?.results ?? [])
     .filter((element) => element.id !== exclude)
     .map((element) => ({
@@ -53,6 +53,8 @@ export function ElementSelect({ client, value, valueCaption, onChange, exclude, 
       defaultCaption={valueCaption}
       placeholder={t(client ? "inventory.elementSelect.placeholder" : "inventory.elementSelect.noClient")}
       disabled={!client}
+      loading={isFetching}
+      error={error ?? (isError ? t("inventory.loadError") : undefined)}
       {...props}
     />
   )
