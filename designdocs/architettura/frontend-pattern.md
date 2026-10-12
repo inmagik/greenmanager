@@ -79,7 +79,7 @@ MapLibre 6 cerca il worker accanto al proprio modulo, che il bundle sposta. `map
 
 - Uno sfondo è un layer raster da tile (`tiles`, con `{z}/{x}/{y}`) o da un WMS (`wms`), per il quale la mappa chiede un'immagine per tile in EPSG:3857 (`BBOX={bbox-epsg-3857}`).
 - Lo stile contiene tutti gli sfondi; ne è visibile uno. `BasemapSwitcher` cambia la visibilità dei layer, mai lo stile: uno stile nuovo toglierebbe i layer aggiunti. MapLibre non scarica le tile dei layer nascosti.
-- **Configurazione**: `VITE_BASEMAPS`, letta alla build, è una lista JSON di sfondi. Una lista non valida si segnala nella console, e restano quelli predefiniti. Esempio, con un'ortofoto regionale:
+- **Configurazione**: `VITE_BASEMAPS`, letta alla build, è una lista JSON di sfondi. Si controlla ogni campo, con il suo tipo, e gli `id` devono essere unici, perché danno il nome ai layer. Una lista non valida si segnala nella console, e restano gli sfondi predefiniti: un campo sbagliato non rompe la mappa. Esempio, con un'ortofoto regionale:
 
   ```json
   [
@@ -91,7 +91,7 @@ MapLibre 6 cerca il worker accanto al proprio modulo, che il bundle sposta. `map
   ]
   ```
 
-  Campi: `id`; `label`, se manca la traduzione `mapView.basemaps.<id>`; `tiles` o `wms` (`url`, `layers`, `format` con `image/jpeg` predefinito, `version` 1.1.1 o 1.3.0); `attribution`; `maxzoom`, oltre il quale la mappa ingrandisce le tile dell'ultimo zoom. Gli indirizzi possono essere relativi all'applicazione, per un servizio dietro il suo proxy.
+  Campi: `id`; `label`, se manca la traduzione `mapView.basemaps.<id>`; `tiles` o `wms`, non entrambi (`url`, `layers`, `format` con `image/jpeg` predefinito, `version` 1.1.1 o 1.3.0); `attribution`; `maxzoom`, un intero da 0 a 24, oltre il quale la mappa ingrandisce le tile dell'ultimo zoom. Gli indirizzi possono essere relativi all'applicazione, per un servizio dietro il suo proxy.
 - **Predefiniti**: OpenStreetMap, per lo sviluppo, e l'ortofoto 2012 del Portale Cartografico Nazionale (PCN).
 - **Verifica dei servizi** (ottobre 2026):
 

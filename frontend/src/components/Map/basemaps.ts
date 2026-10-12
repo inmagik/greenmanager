@@ -50,12 +50,36 @@ const DEFAULT_BASEMAPS: Basemap[] = [
   },
 ]
 
+const text = (value: unknown) => typeof value === "string" && value.trim() !== ""
+const optional = (value: unknown, check: (value: unknown) => boolean) => value === undefined || check(value)
+
+function isWMS(value: unknown): value is WMS {
+  if (!value || typeof value !== "object") return false
+  const wms = value as Record<string, unknown>
+  return (
+    text(wms.url) &&
+    text(wms.layers) &&
+    optional(wms.format, text) &&
+    optional(wms.version, (version) => version === "1.1.1" || version === "1.3.0")
+  )
+}
+
+// Every field with its type: a wrong one would break the map, instead of giving the default basemaps.
 function isBasemap(value: unknown): value is Basemap {
   if (!value || typeof value !== "object") return false
-  const basemap = value as Basemap
-  const tiles = Array.isArray(basemap.tiles) && basemap.tiles.length > 0
-  const wms = !!basemap.wms && typeof basemap.wms.url === "string" && typeof basemap.wms.layers === "string"
-  return typeof basemap.id === "string" && tiles !== wms
+  const basemap = value as Record<string, unknown>
+  // Tiles or a WMS, not both.
+  const source =
+    basemap.wms === undefined
+      ? Array.isArray(basemap.tiles) && basemap.tiles.length > 0 && basemap.tiles.every(text)
+      : basemap.tiles === undefined && isWMS(basemap.wms)
+  return (
+    text(basemap.id) &&
+    source &&
+    optional(basemap.label, text) &&
+    optional(basemap.attribution, (attribution) => typeof attribution === "string") &&
+    optional(basemap.maxzoom, (zoom) => Number.isInteger(zoom) && (zoom as number) >= 0 && (zoom as number) <= 24)
+  )
 }
 
 function readBasemaps(): Basemap[] {
@@ -63,7 +87,15 @@ function readBasemaps(): Basemap[] {
   if (!configured) return DEFAULT_BASEMAPS
   try {
     const basemaps: unknown = JSON.parse(configured)
-    if (Array.isArray(basemaps) && basemaps.length > 0 && basemaps.every(isBasemap)) return basemaps
+    // The ids name the layers of the map: they are unique.
+    if (
+      Array.isArray(basemaps) &&
+      basemaps.length > 0 &&
+      basemaps.every(isBasemap) &&
+      new Set(basemaps.map((basemap) => basemap.id)).size === basemaps.length
+    ) {
+      return basemaps
+    }
   } catch {
     // Reported below.
   }
