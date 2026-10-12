@@ -4,7 +4,7 @@ import { WarningsAlert } from "@/components/WarningsAlert"
 import { areaLabel } from "@/modules/territory/components/areaModals"
 import { apiErrorMessage } from "@/utils"
 import { Button, Group, Stack, Text } from "@mantine/core"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useElementGeometryCheck } from "../api/elements"
 import type { ElementGeometryCheckResult, ElementGeometryInput } from "../types"
@@ -27,8 +27,9 @@ type Props = {
 }
 
 /**
- * A position not saved yet: its measures, the proposed area and the warnings from `geometry-check/` (D-052). The
- * area stays a choice of the surveyor: the proposal fills it only when it is empty.
+ * A position not saved yet, or a saved one with another area or class: its measures, the proposed area and the
+ * warnings from `geometry-check/` (D-052). The area stays a choice of the surveyor: the proposal fills it only when it
+ * is empty, once.
  */
 export function ElementGeometryCheck({ elementClass, geometry, client, area, element, onUseArea, autoFill }: Props) {
   const { t } = useTranslation()
@@ -38,10 +39,14 @@ export function ElementGeometryCheck({ elementClass, geometry, client, area, ele
   )
   const { data, error, isFetching, isPlaceholderData } = useElementGeometryCheck(check)
   const suggested = check ? data?.suggested_area : undefined
+  // The proposal filled once: an area emptied by the user stays empty until another one is proposed.
+  const filled = useRef<string | null>(null)
 
   useEffect(() => {
     // Not with the result of the position before, still shown while the new one arrives.
-    if (autoFill && !area && suggested && !isPlaceholderData) onUseArea(suggested)
+    if (!autoFill || area || !suggested || isPlaceholderData || filled.current === suggested.id) return
+    filled.current = suggested.id
+    onUseArea(suggested)
   }, [autoFill, area, suggested, isPlaceholderData, onUseArea])
 
   if (!check) {

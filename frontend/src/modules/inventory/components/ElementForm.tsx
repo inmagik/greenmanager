@@ -195,6 +195,8 @@ export function ElementForm({
   const species = speciesInput(speciesMode, values.species_choice)
   // The attributes are sent when they or the class change: a change of other data does not depend on them (D-051).
   const classChanged = !!element && values.element_class !== element.element_class
+  // Another area or class changes the warnings of the saved position: they are checked before saving.
+  const areaChanged = !!element && values.area !== element.area
   const sendAttributes =
     !!classAttributes &&
     (isNew ||
@@ -405,6 +407,16 @@ export function ElementForm({
                 {...form.getInputProps("tag_number")}
               />
             </SimpleGrid>
+            {element && !readonly && values.element_class && (areaChanged || classChanged) && (
+              <ElementGeometryCheck
+                elementClass={values.element_class}
+                geometry={element.geometry}
+                client={element.client}
+                area={values.area}
+                element={element.id}
+                onUseArea={chooseArea}
+              />
+            )}
           </Section>
           {isNew && geometryType && (
             <Section title={t("inventory.sections.position")}>

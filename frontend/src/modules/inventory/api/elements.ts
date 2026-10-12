@@ -77,13 +77,13 @@ export function elementHistoryEndpoint(id: string) {
 }
 
 /**
- * An action of the life cycle (`remove/`, `restore/`). They change only the removal, so they do not send the
- * revision: they do not overwrite the other data (§9.2 of frontend.md).
+ * An action of the life cycle (`remove/`, `restore/`). Send the `revision` of the element the form read: the server
+ * refuses the change if the element changed meanwhile, e.g. a removal corrected by someone else.
  */
 function useElementAction<Data>(action: "remove" | "restore") {
   const client = useQueryClient()
   const headers = useDataFetchingAuth()
-  return useMutation<Element, ApiError, Data & { id: string }>({
+  return useMutation<Element, ApiError, Data & Pick<Element, "id" | "revision">>({
     mutationFn: ({ id, ...data }) =>
       fetchApi(`${elementsEndpoint}/${id}/${action}/`, {
         method: "POST",

@@ -35,13 +35,13 @@ export function openElementRemoval(element: ElementListItem, t: TFunction) {
   const name = elementLabel(element)
   const modalId = modals.open({
     title: t(element.removed_on ? "inventory.correctRemovalTitle" : "inventory.removeTitle", { name }),
-    children: <RemoveElementForm element={element} onDone={() => modals.close(modalId)} />,
+    children: <RemoveElementForm id={element.id} onDone={() => modals.close(modalId)} />,
   })
 }
 
 export function openElementRestore(element: ElementListItem, t: TFunction) {
   const modalId = modals.open({
     title: t("inventory.restoreTitle", { name: elementLabel(element) }),
-    children: <RestoreElementForm element={element} onDone={() => modals.close(modalId)} />,
+    children: <RestoreElementForm id={element.id} onDone={() => modals.close(modalId)} />,
   })
 }

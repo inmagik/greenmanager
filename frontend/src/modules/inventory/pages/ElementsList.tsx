@@ -101,7 +101,13 @@ export function ElementsList() {
       element_class: elementClass || undefined,
       species: species || undefined,
       location_status: (locationStatus as LocationStatus) || undefined,
-      removed: presence === "present" ? "false" : presence === "removed" ? "true" : undefined,
+      // Without its date, "present on a date" lists the elements present today.
+      removed:
+        presence === "present" || (presence === "on" && !presentOn)
+          ? "false"
+          : presence === "removed"
+            ? "true"
+            : undefined,
       present_on: (presence === "on" && presentOn) || undefined,
       outside_area: outsideArea ? "true" : undefined,
     }),
