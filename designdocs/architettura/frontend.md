@@ -230,6 +230,8 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 | `postcss-preset-mantine` | ^1.18.0 |
 | `postcss-simple-vars` | ^7.0.1 |
 
+Aggiunta con la prima fetta verticale: `@types/geojson` ^7946.0.16, i tipi delle geometrie GeoJSON (PR3c).
+
 - Le librerie della mappa e del disegno delle geometrie si scelgono in T2 (domanda 2). Quelle dei grafici, quando servono, si allineano a `@mantine/charts` ^9.7.0.
 - Non si copiano le librerie di data-lab legate a editor di documenti, diagrammi e simulazioni: lexical, reactflow, dagre, dnd-kit, swiper, d3-scale, chroma-js, html-to-image, xlsx. `flag-icons` serve solo al selettore della lingua, se le lingue sono più di una.
 - **Verifica di T4**: i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilano con Mantine 9.7 e TypeScript 6 senza modifiche. Le correzioni fatte nello scaffold sono altre:
@@ -266,7 +268,8 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
   - nel dettaglio dell'utente i permessi diretti si cambiano solo dallo staff, come nel server (D-045). Per gli altri il form dei permessi li mostra in sola lettura, con una nota che rimanda ai ruoli;
   - la voce di menu ha il campo `permission` anche nel tipo (`declarations.d.ts`), e la `DoubleNavbar` filtra le voci con `hasPermission`. Prima ogni `menu.tsx` filtrava le proprie, come fa ancora `users`;
   - `i18n/it/index.ts` unisce le chiavi `serverErrors` dei file dei moduli a quelle di `common.ts`, che l'unione semplice degli oggetti sovrascriverebbe (§9.2);
-  - `AsyncSelect` accetta `label`, `description` e `withAsterisk`, come gli altri campi di un form: `SpeciesSelect` lo usa nei form (§9.6).
+  - `AsyncSelect` accetta `label`, `description` e `withAsterisk`, come gli altri campi di un form: `SpeciesSelect` lo usa nei form (§9.6);
+  - `main.tsx` estende dayjs con `customParseFormat`: senza, i `DateInput` di Mantine non leggono le date scritte a mano nel formato `DD/MM/YYYY` (§9.7).
 
 ## 9. Moduli di dominio
 
@@ -280,7 +283,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 |---|---|---|---|
 | `parties` | committenti, `/parties/clients` | `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | PR3a |
 | `catalogs` | sette cataloghi, `/catalogs/<catalogo>` | lettura per ogni membro, `catalogs.WRITE_CATALOGS` | PR3b |
-| `territory` | zone e aree | `territory.READ_AREAS`, `territory.WRITE_AREAS` | PR3c |
+| `territory` | zone e aree, `/territory/zones` e `/territory/areas` | `territory.READ_AREAS`, `territory.WRITE_AREAS` | PR3c |
 | `inventory` | elementi | `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | PR3d |
 | `map` | mappa, `/map` | quelli dei layer mostrati | PR4a |
 
@@ -288,7 +291,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 
 - **Menu**: una voce dichiara il suo `permission`, e la `DoubleNavbar` la mostra solo a chi lo ha nell'organizzazione corrente (§3).
 - **Traduzioni**:
-  - in `common.ts`, oltre alle chiavi di §6: `fields.*` dei campi di tracciamento (autore, date, revisione), `tracking.*` per il riepilogo dell'ultima modifica, `revisionConflict.*`, e i codici di errore usati da più moduli (`revision_conflict`, `client_not_available`, `client_immutable`);
+  - in `common.ts`, oltre alle chiavi di §6: `fields.*` dei campi di tracciamento (autore, date, revisione), `tracking.*` per il riepilogo dell'ultima modifica, `revisionConflict.*`, `warnings.*` e `geometry.*` dei componenti di §9.7, e i codici di errore usati da più moduli (`revision_conflict`, `client_not_available`, `client_immutable`, `client_inactive`, `geometry_*`);
   - il file di un modulo ha le sue chiavi sotto il nome del modulo, più una chiave `serverErrors` con i codici di errore suoi (es. `client_has_related_data` in `parties.ts`). `i18n/it/index.ts` unisce i `serverErrors` di `common.ts` e dei moduli: un modulo nuovo vi aggiunge i suoi, oltre a registrare il file.
 - **Tracciamento** (`utils/tracking.ts`):
   - `TrackedRecord` è il tipo dei campi di tracciamento che il server restituisce per ogni dato di dominio (D-042);
@@ -305,13 +308,14 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 ### 9.3 Committente come filtro
 
 Vedi D-053. I dati del patrimonio (zone, aree, elementi) appartengono a un committente, e un'organizzazione ne gestisce più di uno.
-- `ClientSelect` (`modules/parties/components/`) sceglie un committente tra quelli dell'action `choices/`, con la ricerca nel testo. Con `activeOnly` mostra solo i committenti attivi: si usa nei form dei dati nuovi. Un committente disattivato è segnato nell'opzione. Il server accetta dati nuovi anche per un committente disattivato: il limite oggi è solo nell'interfaccia (domanda 5).
+- `ClientSelect` (`modules/parties/components/`) sceglie un committente tra quelli dell'action `choices/`, con la ricerca nel testo. Con `activeOnly` mostra solo i committenti attivi: si usa nei form dei dati nuovi, perché il server rifiuta zone, aree ed elementi nuovi per un committente disattivato (`client_inactive`, D-055). Un committente disattivato è segnato nell'opzione.
+- `choices/` lo legge chi ha `READ_CLIENTS`, `territory.READ_AREAS` o `inventory.READ_ELEMENTS` (D-055): il filtro e il form funzionano anche senza la lettura dei committenti, che resta il permesso della loro sezione.
 - `useClientFilter` (`modules/parties/hooks/`) dà il committente scelto come filtro di una lista, e la funzione per cambiarlo:
   - il valore sta nel parametro `client` dell'URL, che le API delle liste accettano come filtro: la lista si ricarica e si condivide;
   - l'ultimo valore si ricorda nel browser (localStorage), per organizzazione. Una lista aperta senza il parametro riparte da quel valore, e lo scrive nell'URL;
   - il valore è unico per le liste di zone, aree ed elementi: chi lavora su un committente lo ritrova passando da una lista all'altra;
   - un committente che non è più tra le scelte (eliminato, o di un'altra organizzazione) si scarta;
-  - cambiare committente riporta la lista a pagina 1.
+  - ogni cambio di committente, scelto o automatico (il valore ricordato rimesso nell'URL, un committente scartato), riporta la lista a pagina 1 e toglie dall'URL i filtri che dipendono dal committente, come la zona (`dependentParams`).
 
 ### 9.4 Storico nell'interfaccia
 
@@ -357,12 +361,44 @@ Vedi D-043 e D-053.
   - le azioni di scrittura stanno in `CheckPermission`, come negli altri moduli; l'hook aggiunge le regole che `CheckPermission` non esprime, perché dipendono dalla voce (di sistema o no) e dall'utente (staff o no);
   - le voci di sistema le modificano, ritirano ed eliminano solo gli utenti dello staff; nasconderle è una scelta dell'organizzazione, con `WRITE_CATALOGS`;
   - nei cataloghi senza voci delle organizzazioni (attributi e tipologie ISTAT) solo lo staff crea voci, che sono di sistema. Negli altri, il form di creazione dello staff ha la casella *Voce di sistema*.
-- **Campi bloccati**: il server dà in `locked_fields` i campi che non cambiano perché la voce è in uso (tipo di geometria e modalità della specie di una classe, tipo di dato e flag di misura di un attributo). Il form li disabilita e ne dice il motivo. Anche il codice di una voce di sistema è disabilitato.
+- **Campi bloccati**: il server dà in `locked_fields` i campi che non cambiano perché la voce è in uso (tipo di geometria e modalità della specie di una classe, tipo di dato e flag di misura di un attributo). Il form li disabilita e ne dice il motivo. Anche il codice di una voce di sistema è disabilitato. Nel dettaglio in sola lettura le caselle restano abilitate, con `readOnly`, che ignora già i clic: disabilitate sembrerebbero bloccate come i campi in uso.
 - **Selettori** per i form degli altri moduli:
   - `CatalogSelect`: le voci disponibili di un catalogo (`choices/`), con filtri, gruppi ed esclusioni facoltativi;
   - `ElementClassSelect`: le classi, raggruppate per categoria. `onChange` dà anche la classe scelta, con geometria, modalità della specie e attributi, che guidano il form dell'elemento (PR3d);
   - `SpeciesSelect`: cerca tra le specie disponibili sulla lista paginata, perché il catalogo ha migliaia di voci;
   - un valore già salvato, la cui voce è poi nascosta o ritirata, resta: il selettore lo mostra con la nota *non disponibile*. Un valore disponibile ma fuori dai filtri del selettore si mostra senza la nota.
+
+### 9.7 Territorio: `territory`
+
+`api/territory/zones/` e `api/territory/areas/` (§8.6 di [backend.md](backend.md)). Vedi D-055.
+
+- **Zone**:
+  - lista con il committente come filtro (§9.3) e la ricerca per nome; ordinamento per codice, nome e ultima modifica;
+  - dettaglio con il form in sola lettura, *Storico*, *Modifica*, il menu con l'eliminazione, e *Aree della zona*, che apre la lista delle aree filtrata per committente e zona;
+  - form con committente (solo alla creazione: poi non cambia), codice e nome. Il codice è facoltativo alla creazione, e se manca il server assegna il successivo; in modifica è obbligatorio, come nel server (`zone_code_required`). Il perimetro ufficiale della zona, facoltativo, non è nel form: arriva con la mappa;
+  - una zona con aree non si elimina (`zone_has_areas`).
+- **Aree, lista**:
+  - filtri: committente, zona del committente (solo con un committente scelto), ricerca per numero o nome, *da sistemare* (`has_overlaps`). *Reimposta* lascia il committente, che ha il suo filtro. Una zona nell'URL senza committente, o di un altro committente, si scarta;
+  - colonne: codice, nome con i segni *da sistemare* e *fittizia*, committente (solo senza filtro), zona, superficie, tipologia ISTAT, periodo di gestione. Su smartphone restano codice, nome, superficie e il menu delle azioni;
+  - nessuna selezione multipla: il server non ha un'eliminazione multipla delle aree.
+- **Aree, dettaglio** (`/territory/areas/:id/:tab`):
+  - gli avvisi dell'area (`warnings`) sopra le schede, con `WarningsAlert`; l'intestazione segna l'area fittizia e la gestione conclusa;
+  - scheda *Dati*: il form in sola lettura, *Modifica* lo rende modificabile;
+  - scheda *Geometria*: tipo, parti e misure del perimetro salvato. *Sostituisci da file* legge un perimetro nuovo, ne mostra misure e avvisi da `geometry-check/` (con l'area che si modifica, esclusa dalle sovrapposizioni) e lo salva con la revisione;
+  - il pulsante dell'intestazione modifica la scheda aperta; lasciare la scheda chiede conferma e chiude la modifica. La scheda *Elementi* arriva con la PR3d.
+- **Aree, form**:
+  - identificazione: committente (solo alla creazione), zona del committente, numero, subalterno, nome;
+  - perimetro, solo alla creazione: `GeometryFileInput`, poi `geometry-check/` con committente, periodo di gestione e flag di area fittizia del form, quindi gli avvisi cambiano con quei valori;
+  - classificazioni con `CatalogSelect` (§9.6): una voce nascosta o ritirata dopo il salvataggio resta, segnata *non disponibile*;
+  - gestione: inizio e fine, codice ISTAT del comune (se manca, quello del committente), codice del toponimo, livello di censimento, data del rilievo, esclusione dalla mappa pubblica, note;
+  - la creazione apre il dettaglio dell'area nuova, con gli avvisi del server. La modifica dalla modale della lista, che si chiude al salvataggio, li mostra in una notifica (`notifyWarnings`).
+- **Avvisi** (`components/WarningsAlert`): `WarningsAlert` mostra l'elenco `warnings` di una risposta, tradotto con `serverErrors.<code>` e i `params`, come gli errori (D-050), e non mostra nulla se l'elenco è vuoto; `notifyWarnings` lo mostra in una notifica, dove il form si chiude. Li usano anche gli elementi (PR3d).
+- **Geometria senza mappa** (`components/Geometry`), condivisa con gli elementi:
+  - `readGeometryFile(file, kind)` legge un file GeoJSON, `.geojson` o `.json` (una geometria, una feature o una FeatureCollection, fino a 10 MB), per il tipo di geometria del campo (`point`, `line`, `polygon`). Più linee o poligoni diventano una geometria multiparte; un punto dev'essere uno. Le coordinate si controllano fino alle posizioni. Rifiuta, con un messaggio tradotto, un file che non è GeoJSON o ha posizioni che non sono numeri, senza geometrie o con una geometria vuota (anche solo un anello o una parte), con geometrie di altro tipo, con un `crs`, su qualunque oggetto, che non è WGS84 (CRS84 o EPSG 4326, in tutte le forme del nome) o che non ha un nome da controllare, o con coordinate fuori dai limiti di longitudine e latitudine. Al server va solo la geometria, con tipo e coordinate;
+  - `GeometryFileInput`: il campo del file, con l'errore di lettura. Un file scelto mentre se ne legge un altro lo sostituisce: il risultato del primo si scarta;
+  - `GeometrySummary`: tipo, parti (con i buchi dei poligoni), superficie e perimetro, o lunghezza, dalle misure del server;
+  - `formatSurface` e `formatLength` scrivono le misure nella lingua corrente, con gli ettari da un ettaro in su.
+- **API**: `useAreaGeometryCheck` chiama `geometry-check/` come query, con la geometria nella chiave tramite un numero per oggetto, perché la chiave si serializza a ogni render. Una modifica di una zona aggiorna anche le aree, che ne mostrano codice e nome.
 
 ## Domande aperte
 
@@ -370,4 +406,4 @@ Vedi D-043 e D-053.
 2. **Libreria della mappa.** data-lab usa Leaflet per mostrare i layer e OpenLayers per esportare le mappe delle simulazioni. GreenManager deve anche disegnare e modificare punti, linee e poligoni in campo. Alternative: Leaflet con un plugin di disegno, OpenLayers, MapLibre. Il disegno deve gestire anche linee e poligoni multiparte (D-035). → rinviata a T2, da chiudere nella prima fetta verticale (D-040)
 3. **Mappa pubblica.** Rotte pubbliche nella stessa SPA, senza `AuthLayout`, o un'app separata e più leggera? → rinviata a T2
 4. **Storico di dominio nell'interfaccia.** `ChangeRecord` ha motivazione, organizzazione e origine di ogni modifica, e il committente consulta le modifiche di un periodo (CE-4, TR-6). Serve un endpoint con i filtri (committente, periodo, entità, record) e una pagina, o una scheda nei dettagli accanto allo storico tecnico? → rinviata oltre la prima fetta (D-053)
-5. **Committente disattivato e dati nuovi.** Il form dei dati nuovi propone solo i committenti attivi (`ClientSelect` con `activeOnly`), ma il server accetta zone, aree ed elementi anche per un committente disattivato. Il server deve rifiutarli, per esempio con `client_not_available`, o un committente disattivato deve poter ricevere dati, per esempio da un import? → da decidere con la PR3c
+5. **Committente disattivato e dati nuovi.** Il form dei dati nuovi propone solo i committenti attivi (`ClientSelect` con `activeOnly`), ma il server accetta zone, aree ed elementi anche per un committente disattivato. Il server deve rifiutarli, per esempio con `client_not_available`, o un committente disattivato deve poter ricevere dati, per esempio da un import? → **chiusa** con la PR3c: il server rifiuta i dati nuovi con `client_inactive`, e quelli esistenti restano modificabili (§9.3, D-055)

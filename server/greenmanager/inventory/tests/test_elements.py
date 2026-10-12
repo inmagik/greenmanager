@@ -335,6 +335,18 @@ class ElementTests(InventoryTestCase):
         self.assertEqual(moved.data["area_data"]["code"], "2")
         self.assertEqual(other_client.data["area"]["code"], "area_of_another_client")
 
+    def test_inactive_client_gets_no_new_elements(self):
+        tree = self.make_tree()
+        self.own.active = False
+        self.own.save()
+
+        created = self.post(URL, self.tree_data())
+        updated = self.patch(f"{URL}{tree.pk}/", {"tag_number": "7"})
+
+        self.assertEqual(created.status_code, 400, created.content)
+        self.assertEqual(created.data["area"]["code"], "client_inactive")
+        self.assertEqual(updated.status_code, 200, updated.content)
+
     def test_catalog_entries_must_be_available_the_stored_ones_stay(self):
         tree = self.make_tree()
         self.tilia.hidden_by.add(self.org)

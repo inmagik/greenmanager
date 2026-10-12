@@ -3,6 +3,7 @@ import catalogs from "./catalogs"
 import common from "./common"
 import parties from "./parties"
 import tenants from "./tenants"
+import territory from "./territory"
 import users from "./users"
 
 // The modules add the codes of their errors to `serverErrors`, which the spread would overwrite.
@@ -13,5 +14,11 @@ export default {
   ...tenants,
   ...parties,
   ...catalogs,
-  serverErrors: { ...common.serverErrors, ...parties.serverErrors, ...catalogs.serverErrors },
+  ...territory,
+  serverErrors: {
+    ...common.serverErrors,
+    ...parties.serverErrors,
+    ...catalogs.serverErrors,
+    ...territory.serverErrors,
+  },
 } as const

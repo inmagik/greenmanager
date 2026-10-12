@@ -108,6 +108,16 @@ class ZoneTests(TerritoryTestCase):
         record = ChangeRecord.objects.get(record_id=first.data["id"])
         self.assertEqual(record.client_id, self.own.pk)
 
+    def test_saved_zone_keeps_a_code(self):
+        zone = services.create_zone({"client": self.own, "name": "Nord"}, self.context)
+
+        response = self.patch(f"{self.url}{zone.pk}/", {"code": None})
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(response.data["code"]["code"], "zone_code_required")
+        zone.refresh_from_db()
+        self.assertEqual(zone.code, 1)
+
     def test_clients_of_other_organizations(self):
         foreign_zone = Zone.objects.create(client=self.foreign, code=1, name="X")
 
@@ -130,6 +140,19 @@ class ZoneTests(TerritoryTestCase):
 
         self.assertEqual(response.status_code, 400, response.content)
         self.assertEqual(response.data["client"]["code"], "client_immutable")
+
+    def test_inactive_client_gets_no_new_zones(self):
+        zone = services.create_zone({"client": self.own, "name": "Nord"}, self.context)
+        self.own.active = False
+        self.own.save()
+
+        created = self.post(self.url, {"client": str(self.own.pk), "name": "Sud"})
+        updated = self.patch(f"{self.url}{zone.pk}/", {"name": "Nord-est"})
+
+        self.assertEqual(created.status_code, 400, created.content)
+        self.assertEqual(created.data["client"]["code"], "client_inactive")
+        self.assertEqual(created.data["client"]["params"], {"name": "Comune"})
+        self.assertEqual(updated.status_code, 200, updated.content)
 
     def test_zone_with_areas_is_not_deleted(self):
         zone = services.create_zone({"client": self.own, "name": "Nord"}, self.context)
@@ -213,6 +236,18 @@ class AreaTests(TerritoryTestCase):
         self.assertEqual(other_zone.data["zone"]["code"], "zone_of_another_client")
         self.assertEqual(foreign_client.data["client"]["code"], "client_not_available")
         self.assertEqual(point.data["geometry"]["code"], "geometry_type_not_allowed")
+
+    def test_inactive_client_gets_no_new_areas(self):
+        area = self.make_area("1", 9)
+        self.own.active = False
+        self.own.save()
+
+        created = self.post(self.url, self.area_data(number="2"))
+        updated = self.patch(f"{self.url}{area.pk}/", {"name": "Parco grande"})
+
+        self.assertEqual(created.status_code, 400, created.content)
+        self.assertEqual(created.data["client"]["code"], "client_inactive")
+        self.assertEqual(updated.status_code, 200, updated.content)
 
     def test_classifications_must_be_available_the_stored_ones_stay(self):
         area = self.make_area("1", 9)

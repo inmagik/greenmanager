@@ -27,7 +27,7 @@ from parties.models import Client
 from parties.services import next_sequence_value
 from rest_framework import serializers
 from territory.models import Area
-from territory.services import stored_id
+from territory.services import check_client_active, stored_id
 
 from .models import CompositionItem, Element, code_order
 
@@ -65,7 +65,8 @@ def check_area(element, context, before=None):
     """
     The area of the element, which the organization of the change must be able
     to edit. It gives the client of the element, which does not change: the
-    assets of a client are separate from the others (scenario 4.8).
+    assets of a client are separate from the others (scenario 4.8). A new
+    element needs an active client.
     """
     area = (
         Area.objects.editable_by(context.organization)
@@ -84,6 +85,11 @@ def check_area(element, context, before=None):
             "The area belongs to another client: an element does not change client.",
             field="area",
         )
+    if before is None:
+        # Locked like the client of a new area (territory.services.check_client):
+        # it is not deactivated meanwhile.
+        client = Client.objects.select_for_update(no_key=True).get(pk=area.client_id)
+        check_client_active(client, field="area")
     element.client = area.client
     return area
 

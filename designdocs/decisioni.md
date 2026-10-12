@@ -572,3 +572,19 @@ Stati possibili:
   - quali campi si bloccano è una regola del server (`locked_when_in_use`): ripeterla nel frontend la duplicherebbe. Un campo disabilitato con il motivo evita di scoprire il blocco solo al salvataggio;
   - i dati salvati con una voce poi nascosta o ritirata restano validi (D-046): il form deve mostrarli, altrimenti il campo sembrerebbe vuoto.
 - **Alternative scartate**: pagine e form dedicati per specie e classi, che ripeterebbero lista, dettaglio, azioni e permessi; `retired` come casella del form; elenco dei campi bloccati scritto anche nel frontend; campi bloccati scoperti solo dall'errore `catalog_entry_in_use_locked`.
+
+## D-055 — Zone e aree nell'interfaccia
+
+- **Data**: 2026-10-12 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - un committente disattivato non riceve zone, aree ed elementi nuovi: il server rifiuta la creazione con `client_inactive`. Zone, aree ed elementi che ha già restano modificabili: anche il ripristino di un elemento rimosso e il cambio di area dentro lo stesso committente, che sono modifiche. Chiude la domanda 5 di [frontend.md](architettura/frontend.md);
+  - i committenti da scegliere (`choices/`) li legge chi legge i committenti, le aree o gli elementi: chi lavora sul censimento sceglie il committente nei filtri e nei form senza leggere l'anagrafica dei committenti;
+  - prima della mappa, il perimetro di un'area si importa da un file GeoJSON in WGS84 (AR-2). Più poligoni, anche da feature diverse, diventano un'area multiparte; un file con geometrie di altro tipo o in un altro sistema di riferimento si rifiuta, senza scartarne una parte. Prima del salvataggio, `geometry-check/` dà superficie, perimetro e avvisi, con i valori del form;
+  - gli avvisi del server (D-050) si mostrano sopra il form o il dettaglio, tradotti come gli errori; un'area sovrapposta ad altre è segnata *da sistemare* nella lista, che ha il filtro omonimo;
+  - nel dettaglio dell'area la geometria ha una scheda propria, e si cambia lì, separata dagli altri dati.
+- **Motivazione**:
+  - disattivare un committente vuol dire non lavorarci più: se l'interfaccia soltanto non lo propone, un import o un client diverso possono ancora aggiungergli dati. Le modifiche ai dati esistenti restano, per correggerli o chiudere la gestione delle aree;
+  - il nome del committente compare già nel dettaglio di zone, aree ed elementi; senza `choices/` chi ha il solo permesso di lettura del territorio non potrebbe filtrare, e chi scrive le aree non potrebbe crearne;
+  - la mappa arriva con le PR4: il file permette di provare zone e aree, e resta il modo di importare un perimetro rilevato con altri strumenti (QGIS, GPS). Rifiutare un file misto è più chiaro che importarne una parte senza dirlo; il server controlla comunque la geometria;
+  - la geometria è il dato più pesante e quello che cambia gli avvisi: separarla evita di rimandarla a ogni modifica dei dati, come già fa il server, che la esclude dalla lista e dallo storico tecnico.
+- **Alternative scartate**: committente disattivato limitato solo nell'interfaccia; filtro del committente mostrato solo a chi ha `READ_CLIENTS`; import che tiene i poligoni di un file misto e scarta il resto; conversione delle coordinate da altri sistemi di riferimento nel browser; geometria nel form dei dati.

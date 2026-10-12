@@ -35,26 +35,42 @@ def stored_id(before, field):
     return uuid.UUID(value) if value else None
 
 
-def check_client(record, context, before=None, lock=False):
+def check_client(record, context, before=None):
     """
     The client of a zone or an area, which the organization of the change must
     be able to edit. It does not change after the creation: the assets of a
-    client are separate from the others (scenario 4.8).
+    client are separate from the others (scenario 4.8). A deactivated client
+    gets no new records; those it has can still change.
 
-    ``lock`` locks the client until the end of the transaction, without blocking
-    the records that refer to it (``FOR NO KEY UPDATE``).
+    A new record locks the client until the end of the transaction, without
+    blocking the records that refer to it (``FOR NO KEY UPDATE``): the client is
+    not deactivated meanwhile, and two new zones do not get the same code.
     """
     if before is not None and record.client_id != stored_id(before, "client"):
         raise api_error("client_immutable", "The client cannot change.", field="client")
     clients = Client.objects.editable_by(context.organization)
-    if lock:
+    if before is None:
         clients = clients.select_for_update(no_key=True, of=("self",))
     client = clients.filter(pk=record.client_id).first()
     if client is None:
         raise api_error(
             "client_not_available", "The client is not available.", field="client"
         )
+    if before is None:
+        check_client_active(client, field="client")
     return client
+
+
+def check_client_active(client, field):
+    """A deactivated client gets no new zones, areas or elements: it is
+    reactivated first."""
+    if not client.active:
+        raise api_error(
+            "client_inactive",
+            "The client is deactivated: it gets no new data.",
+            {"name": client.name},
+            field=field,
+        )
 
 
 def normalized_geometry(geometry, field="geometry"):
@@ -99,9 +115,13 @@ def cancel_with_history(record, context, error):
 
 
 def prepare_zone(zone, context, before=None):
-    """Rules and defaults of a zone, before saving. A zone without a code gets
-    the next one of its client."""
-    check_client(zone, context, before, lock=zone.code is None)
+    """Rules and defaults of a zone, before saving. A new zone without a code
+    gets the next one of its client; a saved zone keeps a code."""
+    check_client(zone, context, before)
+    if before is not None and zone.code is None:
+        raise api_error(
+            "zone_code_required", "A saved zone needs a code.", field="code"
+        )
     zone.geometry = normalized_geometry(zone.geometry)
     if zone.code is None:
         # The client is locked: two new zones do not get the same code.
