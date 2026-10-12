@@ -557,3 +557,18 @@ Stati possibili:
   - `ChangeRecord` serve a consultare le modifiche di un committente in un periodo, con motivazione e origine (CE-4, TR-6): è una funzione a sé, con un endpoint filtrato e una pagina propria, che la fetta non richiede. Lo storico tecnico c'è già, nel server e nel frontend dello scaffold;
   - ricaricare è il modo più semplice di non sovrascrivere in silenzio la modifica di un collega, che è il rischio che la revisione evita (D-042). Le modifiche in conflitto sono rare: la stessa scheda modificata da due persone nello stesso momento.
 - **Alternative scartate**: committente come contesto globale dell'applicazione, come l'organizzazione, che nasconderebbe i dati degli altri committenti senza che l'URL lo mostri; filtro solo nell'URL, senza memoria; `ChangeRecord` al posto di django-auditlog nella modale; unione automatica delle modifiche in conflitto.
+
+## D-054 — Cataloghi nell'interfaccia
+
+- **Data**: 2026-10-12 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - i sette cataloghi hanno le stesse pagine di lista e dettaglio e lo stesso form, guidati da una definizione per catalogo: i campi oltre a quelli comuni, con il loro tipo, le colonne e i filtri. Specie e classi di elemento sono definizioni con campi propri: la voce superiore della specie e gli attributi della classe;
+  - nascondere e mostrare una voce di sistema, ritirarla e ripristinarla sono azioni del menu, non campi del form. Ritirare manda solo `retired`;
+  - il server dice quali campi sono bloccati perché la voce è in uso (`locked_fields`), e il form li mostra disabilitati, con il motivo;
+  - un valore già salvato la cui voce è poi nascosta o ritirata resta nei selettori, segnato come non disponibile.
+- **Motivazione**:
+  - le regole dei cataloghi sono le stesse per tutti (D-016, D-027, D-046): voci di sistema e dell'organizzazione, nascoste e ritirate, scrittura riservata. Pagine uguali le applicano una volta sola, e un catalogo nuovo è una definizione. Specie e classi differiscono solo nei campi, non nelle regole;
+  - nascondere è una scelta dell'organizzazione su una voce che non può modificare, e ritirare cambia dove la voce si può scegliere: come la disattivazione del committente (D-053), sono azioni distinte dalla modifica dei dati;
+  - quali campi si bloccano è una regola del server (`locked_when_in_use`): ripeterla nel frontend la duplicherebbe. Un campo disabilitato con il motivo evita di scoprire il blocco solo al salvataggio;
+  - i dati salvati con una voce poi nascosta o ritirata restano validi (D-046): il form deve mostrarli, altrimenti il campo sembrerebbe vuoto.
+- **Alternative scartate**: pagine e form dedicati per specie e classi, che ripeterebbero lista, dettaglio, azioni e permessi; `retired` come casella del form; elenco dei campi bloccati scritto anche nel frontend; campi bloccati scoperti solo dall'errore `catalog_entry_in_use_locked`.

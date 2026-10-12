@@ -6,8 +6,12 @@ Abstract models of the catalogs (§2.1–2.2 of 04-modello-dati.md, D-016, D-027
 - Fixed catalogs: system entries only, from an external source (ISTAT, CAM).
 
 Both use the same QuerySet methods, so views and services treat them alike:
-``system()``, ``visible_to(org)``, ``available_for(org)``, ``with_flags(org)``.
+``system()``, ``visible_to(org)``, ``available_for(org)``, ``with_flags(org)``,
+``with_in_use()``.
 """
+
+import operator
+from functools import reduce
 
 from core.models import TrackedModel
 from django.db import models
@@ -23,7 +27,37 @@ from django.db.models import (
 CODE_NOT_UNIQUE = "catalog_code_not_unique"
 
 
-class CatalogQuerySet(models.QuerySet):
+def in_use_expression(model):
+    """
+    Whether other data protect an entry of ``model`` from deletion: rows of a
+    direct relation with PROTECT or RESTRICT point to it.
+
+    The catalogs have no cascading relations whose rows other data protect, so
+    the direct relations are enough.
+    """
+    conditions = [
+        Exists(
+            relation.related_model._base_manager.filter(
+                **{relation.field.name: OuterRef("pk")}
+            )
+        )
+        for relation in model._meta.related_objects
+        if relation.on_delete in (models.PROTECT, models.RESTRICT)
+    ]
+    if not conditions:
+        return Value(False, output_field=BooleanField())
+    return ExpressionWrapper(
+        reduce(operator.or_, conditions), output_field=BooleanField()
+    )
+
+
+class InUseQuerySetMixin:
+    def with_in_use(self):
+        """Annotate ``in_use``: other data protect the entry from deletion."""
+        return self.annotate(in_use=in_use_expression(self.model))
+
+
+class CatalogQuerySet(InUseQuerySetMixin, models.QuerySet):
     """QuerySet of an extensible catalog."""
 
     def system(self):
@@ -76,7 +110,7 @@ class CatalogQuerySet(models.QuerySet):
         )
 
 
-class FixedCatalogQuerySet(models.QuerySet):
+class FixedCatalogQuerySet(InUseQuerySetMixin, models.QuerySet):
     """QuerySet of a fixed catalog: every entry is a system entry."""
 
     def system(self):

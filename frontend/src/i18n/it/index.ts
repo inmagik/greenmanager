@@ -1,4 +1,5 @@
 import auth from "./auth"
+import catalogs from "./catalogs"
 import common from "./common"
 import parties from "./parties"
 import tenants from "./tenants"
@@ -11,5 +12,6 @@ export default {
   ...users,
   ...tenants,
   ...parties,
-  serverErrors: { ...common.serverErrors, ...parties.serverErrors },
+  ...catalogs,
+  serverErrors: { ...common.serverErrors, ...parties.serverErrors, ...catalogs.serverErrors },
 } as const

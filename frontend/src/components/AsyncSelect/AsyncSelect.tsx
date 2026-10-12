@@ -13,6 +13,10 @@ export type AsyncSelectProps = {
   placeholder?: string
   /** Accessible name of the input, when there is no visible label. By default the placeholder. */
   ariaLabel?: string
+  /** Visible label, description and required mark, as the other inputs of a form. */
+  label?: React.ReactNode
+  description?: React.ReactNode
+  withAsterisk?: boolean
   error?: React.ReactNode
   disabled?: boolean
 }
@@ -26,6 +30,9 @@ export function AsyncSelect({
   defaultCaption,
   placeholder,
   ariaLabel,
+  label,
+  description,
+  withAsterisk,
   error,
   disabled,
 }: AsyncSelectProps) {
@@ -104,7 +111,10 @@ export function AsyncSelect({
           }}
           value={inputCaption}
           placeholder={placeholder}
-          aria-label={ariaLabel ?? placeholder}
+          aria-label={label ? undefined : (ariaLabel ?? placeholder)}
+          label={label}
+          description={description}
+          withAsterisk={withAsterisk}
           error={error}
           disabled={disabled}
         ></InputBase>

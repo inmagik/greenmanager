@@ -265,7 +265,8 @@ Fonte: `frontend/package.json` di bottaro-pesatura al commit `3d4b313f00`. Gesto
 - **Prima fetta verticale (T3)**:
   - nel dettaglio dell'utente i permessi diretti si cambiano solo dallo staff, come nel server (D-045). Per gli altri il form dei permessi li mostra in sola lettura, con una nota che rimanda ai ruoli;
   - la voce di menu ha il campo `permission` anche nel tipo (`declarations.d.ts`), e la `DoubleNavbar` filtra le voci con `hasPermission`. Prima ogni `menu.tsx` filtrava le proprie, come fa ancora `users`;
-  - `i18n/it/index.ts` unisce le chiavi `serverErrors` dei file dei moduli a quelle di `common.ts`, che l'unione semplice degli oggetti sovrascriverebbe (§9.2).
+  - `i18n/it/index.ts` unisce le chiavi `serverErrors` dei file dei moduli a quelle di `common.ts`, che l'unione semplice degli oggetti sovrascriverebbe (§9.2);
+  - `AsyncSelect` accetta `label`, `description` e `withAsterisk`, come gli altri campi di un form: `SpeciesSelect` lo usa nei form (§9.6).
 
 ## 9. Moduli di dominio
 
@@ -278,7 +279,7 @@ Un modulo per app Django di dominio, con lo stesso nome (§8.1 di [backend.md](b
 | Modulo | Risorse e rotte | Permessi | Arriva con |
 |---|---|---|---|
 | `parties` | committenti, `/parties/clients` | `parties.READ_CLIENTS`, `parties.WRITE_CLIENTS` | PR3a |
-| `catalogs` | cataloghi | lettura per ogni membro, `catalogs.WRITE_CATALOGS` | PR3b |
+| `catalogs` | sette cataloghi, `/catalogs/<catalogo>` | lettura per ogni membro, `catalogs.WRITE_CATALOGS` | PR3b |
 | `territory` | zone e aree | `territory.READ_AREAS`, `territory.WRITE_AREAS` | PR3c |
 | `inventory` | elementi | `inventory.READ_ELEMENTS`, `inventory.WRITE_ELEMENTS` | PR3d |
 | `map` | mappa, `/map` | quelli dei layer mostrati | PR4a |
@@ -329,6 +330,38 @@ Vedi D-043 e D-053.
 - **Form**: denominazione e tipo obbligatori; codice ISTAT di 5 o 6 cifre, codice fiscale o partita IVA, recapiti, sistema di riferimento per l'export CAM, note. `active` non è nel form: cambia con le azioni disattiva e riattiva.
 - **Eliminazione**: solo per un committente inserito per errore. Uno con dati collegati non si elimina (`client_has_related_data`): l'errore tradotto invita a disattivarlo.
 - L'organizzazione di gestione non è nel form: la cambia solo lo staff (`managing_organization_staff_only`), e il caso (K2, §4.7 di [04-modello-dati.md](../04-modello-dati.md)) non serve alla fetta.
+
+### 9.6 Cataloghi: `catalogs`
+
+`api/catalogs/<catalogo>/` (§8.4 di [backend.md](backend.md)). Vedi D-054.
+
+- **Hook**: `createCatalogApi(slug)` dà gli hook di un catalogo, uguali per tutti: lista, dettaglio, `choices/`, scritture, `hide/` e `unhide/`, l'URL dello storico. Le istanze dei sette cataloghi sono in `api/catalogs.ts`.
+- **Definizioni** (`definitions.ts`), una per catalogo:
+  - rotta, chiave delle traduzioni, icona, hook;
+  - se il catalogo è estendibile (voci di sistema più quelle delle organizzazioni) o fisso, e se le organizzazioni vi aggiungono voci;
+  - i campi oltre a quelli comuni (codice, descrizione, ordine, fonte), con un tipo: `enum`, `number`, `text`, `boolean`, `list`, più la voce superiore della specie e gli attributi della classe. Un campo può essere obbligatorio, derivato dal server (in sola lettura, mai inviato) o visibile solo con certi valori del form, come i valori ammessi di un attributo a scelta;
+  - quali campi sono colonne e filtri della lista.
+
+  Le definizioni guidano lista, dettaglio, form e menu: ogni catalogo ha la sua voce nella sezione *Cataloghi*.
+- **Specie e classi** usano le stesse pagine, con i loro campi:
+  - specie: il nome scientifico al posto del nome, livello, genere (dal server), nome comune, famiglia, voce superiore, sinonimi, riferimento esterno. La voce superiore si sceglie con `SpeciesSelect`: tra i generi per una specie o un ibrido, tra tutte le specie per una cultivar, con il controllo del livello lasciato al server. Un genere non ha voce superiore. Epiteti e cultivar non sono nel form: restano quelli dell'import;
+  - classi: categoria, tipo di geometria, unità, modalità della specie, conta come albero, posto d'impianto, e gli attributi della classe, in un editor che li ordina e li segna obbligatori. Un attributo nuovo si sceglie tra quelli disponibili; uno già nella classe resta anche se poi è nascosto o ritirato.
+- **Lista**: ricerca; filtri del catalogo (livello, categoria, tipo…), origine (sistema o organizzazione) e disponibilità (disponibili, non disponibili, nascoste, ritirate); colonne del catalogo, origine e stato. Nessuna selezione multipla: il server non ha un'eliminazione multipla delle voci.
+- **Dettaglio** (`/catalogs/<catalogo>/:id`): il form in sola lettura, *Storico*, *Modifica*, il menu delle azioni. Una voce nascosta o ritirata ha un avviso, con *Mostra* o *Ripristina* per chi può.
+- **Azioni**:
+  - nascondi e mostra, sulle voci di sistema dei cataloghi estendibili;
+  - ritira e ripristina, che mandano solo `retired`, senza la revisione (§9.2);
+  - elimina: una voce in uso non si elimina (`catalog_entry_in_use`), e l'errore tradotto invita a ritirarla o nasconderla.
+- **Permessi** (`useCatalogPermissions`):
+  - la lettura è aperta a ogni membro, e le voci di menu non hanno permesso; la scrittura chiede `WRITE_CATALOGS`;
+  - le voci di sistema le modificano, ritirano ed eliminano solo gli utenti dello staff; nasconderle è una scelta dell'organizzazione, con `WRITE_CATALOGS`;
+  - nei cataloghi senza voci delle organizzazioni (attributi e tipologie ISTAT) solo lo staff crea voci, che sono di sistema. Negli altri, il form di creazione dello staff ha la casella *Voce di sistema*.
+- **Campi bloccati**: il server dà in `locked_fields` i campi che non cambiano perché la voce è in uso (tipo di geometria e modalità della specie di una classe, tipo di dato e flag di misura di un attributo). Il form li disabilita e ne dice il motivo. Anche il codice di una voce di sistema è disabilitato.
+- **Selettori** per i form degli altri moduli:
+  - `CatalogSelect`: le voci disponibili di un catalogo (`choices/`), con gruppi ed esclusioni facoltativi;
+  - `ElementClassSelect`: le classi, raggruppate per categoria. `onChange` dà anche la classe scelta, con geometria, modalità della specie e attributi, che guidano il form dell'elemento (PR3d);
+  - `SpeciesSelect`: cerca tra le specie disponibili sulla lista paginata, perché il catalogo ha migliaia di voci;
+  - un valore già salvato, la cui voce è poi nascosta o ritirata, resta: il selettore lo mostra con la nota *non disponibile*.
 
 ## Domande aperte
 
