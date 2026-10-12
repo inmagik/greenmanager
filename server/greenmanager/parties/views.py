@@ -1,5 +1,6 @@
 import django_filters as FS
 from auth_core.utils import ActionPermission
+from core.permissions import any_permission
 from core.serializers import pop_revision
 from core.views import (
     AuditHistoryActionMixin,
@@ -19,6 +20,9 @@ from .serializers import ClientChoiceSerializer, ClientSerializer
 
 READ_CLIENTS = "parties.READ_CLIENTS"
 WRITE_CLIENTS = "parties.WRITE_CLIENTS"
+# The asset data belong to a client: who reads them picks the client in the
+# filters and in the forms, without reading the clients' data.
+READ_ASSETS = ("territory.READ_AREAS", "inventory.READ_ELEMENTS")
 
 
 class ClientFilter(StructuralFilterSet):
@@ -45,7 +49,7 @@ class ClientViewSet(
         "list": [READ_CLIENTS],
         "retrieve": [READ_CLIENTS],
         "history": [READ_CLIENTS],
-        "choices": [READ_CLIENTS],
+        "choices": [any_permission(READ_CLIENTS, *READ_ASSETS)],
         "create": [WRITE_CLIENTS],
         "update": [WRITE_CLIENTS],
         "partial_update": [WRITE_CLIENTS],

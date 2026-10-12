@@ -39,7 +39,8 @@ def check_client(record, context, before=None, lock=False):
     """
     The client of a zone or an area, which the organization of the change must
     be able to edit. It does not change after the creation: the assets of a
-    client are separate from the others (scenario 4.8).
+    client are separate from the others (scenario 4.8). A deactivated client
+    gets no new records; those it has can still change.
 
     ``lock`` locks the client until the end of the transaction, without blocking
     the records that refer to it (``FOR NO KEY UPDATE``).
@@ -54,7 +55,21 @@ def check_client(record, context, before=None, lock=False):
         raise api_error(
             "client_not_available", "The client is not available.", field="client"
         )
+    if before is None:
+        check_client_active(client, field="client")
     return client
+
+
+def check_client_active(client, field):
+    """A deactivated client gets no new zones, areas or elements: it is
+    reactivated first."""
+    if not client.active:
+        raise api_error(
+            "client_inactive",
+            "The client is deactivated: it gets no new data.",
+            {"name": client.name},
+            field=field,
+        )
 
 
 def normalized_geometry(geometry, field="geometry"):

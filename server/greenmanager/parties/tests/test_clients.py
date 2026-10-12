@@ -189,6 +189,25 @@ class ClientApiTests(APITestCase):
             ],
         )
 
+    def test_choices_for_the_readers_of_the_assets(self):
+        # Who reads zones, areas or elements picks their client in the filters
+        # and in the forms, without reading the clients.
+        for permission in ("territory.READ_AREAS", "inventory.READ_ELEMENTS"):
+            with self.subTest(permission=permission):
+                user = make_user(f"{permission}@example.com", self.org, [permission])
+                self.client.force_authenticate(user)
+
+                choices = self.client.get(self.url(action="choices"), **self.header)
+                listed = self.client.get(self.url(), **self.header)
+
+                self.assertEqual(choices.status_code, 200, choices.content)
+                self.assertEqual([c["name"] for c in choices.data], ["Comune di Prova"])
+                self.assertEqual(listed.status_code, 403, listed.content)
+        outsider = make_user("outsider@example.com", self.org)
+        self.client.force_authenticate(outsider)
+        response = self.client.get(self.url(action="choices"), **self.header)
+        self.assertEqual(response.status_code, 403, response.content)
+
 
 class ClientAdminTests(APITestCase):
     def test_admin_changes_go_through_the_services(self):
