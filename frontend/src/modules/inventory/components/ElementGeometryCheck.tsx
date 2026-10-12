@@ -68,7 +68,13 @@ export function ElementGeometryCheck({
           suggested.id !== area && (
             <Group gap="xs">
               <Text size="sm">{t("inventory.geometryCheck.suggestedArea", { name: areaLabel(suggested) })}</Text>
-              <Button size="compact-sm" variant="light" onClick={() => onUseArea(suggested)}>
+              {/* Not with the proposal for the position before, still shown while the new one arrives. */}
+              <Button
+                size="compact-sm"
+                variant="light"
+                loading={isPlaceholderData}
+                onClick={() => onUseArea(suggested)}
+              >
                 {t("inventory.geometryCheck.useSuggestedArea")}
               </Button>
             </Group>
