@@ -159,7 +159,12 @@ Issue [#15](https://github.com/inmagik/greenmanager/issues/15). Dipende dalle PR
   - domanda 5 di [frontend.md](frontend.md), chiusa: il server rifiuta zone, aree ed elementi nuovi per un committente disattivato (`client_inactive`), e quelli esistenti restano modificabili (D-055).
 - **Dalla PR3b**: le classificazioni nascoste dopo il salvataggio restano nel form, segnate *non disponibile*, e il salvataggio le conserva. Le caselle in sola lettura dei form dei cataloghi sono di nuovo abilitate (`disabled={locked}`).
 - **Server**: `client_inactive` nei servizi di `territory` e `inventory`; `choices/` dei committenti con `any_permission`; test.
-- **Revisione prima della PR** (`pr-reviewer`): codice della zona obbligatorio in modifica, che vuoto riceverebbe il successivo; avvisi in una notifica dopo la modifica dalla modale della lista; geometrie vuote rifiutate dal file, e WGS84 riconosciuto in tutte le forme del nome.
+- **Revisioni prima della PR** (`pr-reviewer`, due giri):
+  - codice della zona obbligatorio in modifica, nel form e nel server (`zone_code_required`): vuoto, riceveva il successivo;
+  - avvisi in una notifica dopo la modifica dalla modale della lista;
+  - geometrie vuote, anche in un anello o in una parte, rifiutate dal file; WGS84 riconosciuto in tutte le forme del nome; un file scelto mentre se ne legge un altro lo sostituisce;
+  - la creazione di zone, aree ed elementi blocca il committente, che così non si disattiva nel frattempo;
+  - D-055 precisa che ripristino e cambio di area restano permessi con il committente disattivato.
 - **Documenti**: §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md), decisione D-055, glossario.
 
 **Verifica**: si crea una zona e un'area con una geometria multiparte da file, e si vede la superficie calcolata. Un'area sovrapposta a un'altra mostra l'avviso e compare nel filtro "da sistemare".
@@ -193,7 +198,10 @@ Issue [#16](https://github.com/inmagik/greenmanager/issues/16). Dipende dalla PR
 - **Azioni**: rimuovi, con data, causa e motivazione; ripristina, con motivazione.
 - Scheda Elementi nel dettaglio dell'area.
 - `i18n/it/inventory.ts`, con i codici degli errori e degli avvisi (`element_outside_area`, `element_near_tree`); permessi `inventory.READ_ELEMENTS` e `inventory.WRITE_ELEMENTS`.
-- **Dalla PR3c**: `WarningsAlert` per gli avvisi; `GeometryFileInput` e `GeometrySummary` per linee e poligoni; `useClientFilter` con `dependentParams` per area e zona. Un elemento nuovo in un'area di un committente disattivato dà `client_inactive` sul campo `area`.
+- **Dalla PR3c**:
+  - `WarningsAlert` e `notifyWarnings` per gli avvisi; `GeometryFileInput` e `GeometrySummary` per linee e poligoni; `useClientFilter` con `dependentParams` per area e zona;
+  - un elemento nuovo in un'area di un committente disattivato dà `client_inactive` sul campo `area`;
+  - i dettagli tengono lo stato di modifica e il form legati alla sola revisione: se un link porta da un dettaglio a un altro della stessa rotta (es. l'elemento sostituito), senza smontare la pagina, il form mostrerebbe i valori del primo. Con i link della sostituzione, la chiave del form e lo stato di modifica vanno legati anche all'id.
 - **Dalla PR3b**: `ElementClassSelect` e `SpeciesSelect` hanno qui i primi consumatori. Dalla revisione prima della PR3b:
   - `SpeciesSelect` non mostra né il caricamento né un errore, a differenza di `CatalogSelect`;
   - nel form di una specie il genere mostrato non segue il nome scientifico finché non si salva; il server lo ricalcola.

@@ -517,7 +517,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 `api/territory/zones/` e `api/territory/areas/`, con `history/`, `choices/` e `geojson/`; le aree hanno anche `geometry-check/`.
 
 **Zone** (D-019):
-- `code` è univoco per committente; se manca, il servizio assegna il successivo, con il committente bloccato (`FOR NO KEY UPDATE`) perché due zone nuove non prendano lo stesso numero;
+- `code` è univoco per committente; se manca alla creazione, il servizio assegna il successivo, con il committente bloccato (`FOR NO KEY UPDATE`) perché due zone nuove non prendano lo stesso numero. Una zona salvata non resta senza codice (`zone_code_required`);
 - la geometria è facoltativa;
 - una zona con aree non si elimina (`zone_has_areas`).
 
@@ -531,14 +531,14 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 - le sovrapposizioni con altre aree del committente sono avvisi (D-050): `warnings` nel dettaglio e nelle risposte di scrittura, `has_overlaps` e il filtro omonimo nella lista, `geometry-check/` per un perimetro non ancora salvato, con il periodo di gestione e il flag di area fittizia del form (quelli dell'area, se si modifica un'area esistente). L'area che si modifica è del committente indicato: un'area inesistente, che l'organizzazione non vede o di un altro committente dà `area_not_available`. Il QuerySet ha `overlapping(...)`, `with_overlap_flag()` e `managed_on(data)`. Il flag, una sottoquery spaziale, si calcola solo nella lista e quando si filtra: `choices/` non lo calcola;
 - la lista non restituisce la geometria: la danno il dettaglio e `geojson/`.
 
-**Regole comuni**: il committente si sceglie tra quelli che l'organizzazione può modificare (`client_not_available`) e non cambia dopo la creazione (`client_immutable`). Una zona o un'area nuova vuole un committente attivo (`client_inactive`, con il nome del committente); quelle che ha già restano modificabili (D-055). Ogni creazione, modifica e cancellazione scrive un `ChangeRecord` con la geometria in GeoJSON. Nello storico tecnico (django-auditlog) la geometria non c'è: superficie e perimetro ne mostrano le modifiche.
+**Regole comuni**: il committente si sceglie tra quelli che l'organizzazione può modificare (`client_not_available`) e non cambia dopo la creazione (`client_immutable`). Una zona o un'area nuova vuole un committente attivo (`client_inactive`, con il nome del committente); quelle che ha già restano modificabili (D-055). La creazione blocca il committente (`FOR NO KEY UPDATE`) fino alla fine della transazione, così non viene disattivato nel frattempo: la disattivazione aspetta. Ogni creazione, modifica e cancellazione scrive un `ChangeRecord` con la geometria in GeoJSON. Nello storico tecnico (django-auditlog) la geometria non c'è: superficie e perimetro ne mostrano le modifiche.
 
 ### 8.7 Censimento: `inventory`
 
 `api/inventory/elements/`, con `history/`, `choices/`, `geojson/` e `geometry-check/`, più `remove/` e `restore/` sul singolo elemento.
 
 **Elementi** (EL-1, EL-3, EL-5, EL-7, EL-8; D-051):
-- l'area, che l'organizzazione deve poter modificare (`area_not_available`), dà il committente. Un elemento cambia area solo dentro lo stesso committente (`area_of_another_client`). Un elemento nuovo vuole un committente attivo: l'errore `client_inactive` è sul campo `area` (D-055);
+- l'area, che l'organizzazione deve poter modificare (`area_not_available`), dà il committente. Un elemento cambia area solo dentro lo stesso committente (`area_of_another_client`). Un elemento nuovo vuole un committente attivo: l'errore `client_inactive` è sul campo `area`, e il committente resta bloccato come nella creazione di un'area (§8.6). Ripristino e cambio di area dentro lo stesso committente sono modifiche, e restano permessi (D-055);
 - il codice lo dà il server da `ClientSequence`, ed è in sola lettura. Liste e `ordering=code` lo ordinano in ordine naturale. Il cartellino è univoco tra gli elementi presenti (`element_tag_number_not_unique`);
 - classe e specie sono voci disponibili per l'organizzazione di gestione, e quelle già salvate restano valide;
 - la geometria è obbligatoria (`geometry_required`), salvo la posizione al centro dell'area, e si normalizza per il tipo della classe (`geometry_type_not_allowed`). Le linee hanno `length_m`, i poligoni `surface_m2`, sull'ellissoide;

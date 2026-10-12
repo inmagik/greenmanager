@@ -117,6 +117,7 @@ export default {
   },
   serverErrors: {
     zone_code_not_unique: "Esiste già una zona con questo codice per il committente.",
+    zone_code_required: "Il codice di una zona salvata è obbligatorio.",
     zone_has_areas: "La zona {{name}} ha delle aree: spostale in un'altra zona prima di eliminarla.",
     zone_of_another_client: "La zona appartiene a un altro committente.",
     area_number_not_unique: "Esiste già un'area con questo numero e subalterno per il committente.",

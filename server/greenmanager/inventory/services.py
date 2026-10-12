@@ -86,7 +86,10 @@ def check_area(element, context, before=None):
             field="area",
         )
     if before is None:
-        check_client_active(area.client, field="area")
+        # Locked like the client of a new area (territory.services.check_client):
+        # it is not deactivated meanwhile.
+        client = Client.objects.select_for_update(no_key=True).get(pk=area.client_id)
+        check_client_active(client, field="area")
     element.client = area.client
     return area
 

@@ -577,7 +577,7 @@ Stati possibili:
 
 - **Data**: 2026-10-12 · **Passo**: T3, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
 - **Decisione**:
-  - un committente disattivato non riceve zone, aree ed elementi nuovi: il server rifiuta la creazione con `client_inactive`. Zone, aree ed elementi che ha già restano modificabili. Chiude la domanda 5 di [frontend.md](architettura/frontend.md);
+  - un committente disattivato non riceve zone, aree ed elementi nuovi: il server rifiuta la creazione con `client_inactive`. Zone, aree ed elementi che ha già restano modificabili: anche il ripristino di un elemento rimosso e il cambio di area dentro lo stesso committente, che sono modifiche. Chiude la domanda 5 di [frontend.md](architettura/frontend.md);
   - i committenti da scegliere (`choices/`) li legge chi legge i committenti, le aree o gli elementi: chi lavora sul censimento sceglie il committente nei filtri e nei form senza leggere l'anagrafica dei committenti;
   - prima della mappa, il perimetro di un'area si importa da un file GeoJSON in WGS84 (AR-2). Più poligoni, anche da feature diverse, diventano un'area multiparte; un file con geometrie di altro tipo o in un altro sistema di riferimento si rifiuta, senza scartarne una parte. Prima del salvataggio, `geometry-check/` dà superficie, perimetro e avvisi, con i valori del form;
   - gli avvisi del server (D-050) si mostrano sopra il form o il dettaglio, tradotti come gli errori; un'area sovrapposta ad altre è segnata *da sistemare* nella lista, che ha il filtro omonimo;

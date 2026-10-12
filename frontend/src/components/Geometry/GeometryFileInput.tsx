@@ -1,6 +1,6 @@
 import { FileInput, type FileInputProps } from "@mantine/core"
 import type { Geometry } from "geojson"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { TbFileUpload } from "react-icons/tb"
 import { GeometryFileError, readGeometryFile, type GeometryKind } from "./readGeometryFile"
@@ -19,6 +19,8 @@ export function GeometryFileInput({ kind, onChange, error, ...props }: Props) {
   const { t } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [readError, setReadError] = useState<string | null>(null)
+  // The file being read: a file chosen while another is read replaces it, and the result of the first is dropped.
+  const reading = useRef<File | null>(null)
 
   return (
     <FileInput
@@ -32,13 +34,16 @@ export function GeometryFileInput({ kind, onChange, error, ...props }: Props) {
       onChange={async (selected) => {
         setFile(selected)
         setReadError(null)
+        reading.current = selected
         if (!selected) {
           onChange(null)
           return
         }
         try {
-          onChange(await readGeometryFile(selected, kind))
+          const geometry = await readGeometryFile(selected, kind)
+          if (reading.current === selected) onChange(geometry)
         } catch (exc) {
+          if (reading.current !== selected) return
           const fileError = exc instanceof GeometryFileError ? exc : new GeometryFileError("notJSON")
           setReadError(
             t(`geometry.fileErrors.${fileError.code}`, {

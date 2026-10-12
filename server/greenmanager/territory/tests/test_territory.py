@@ -108,6 +108,16 @@ class ZoneTests(TerritoryTestCase):
         record = ChangeRecord.objects.get(record_id=first.data["id"])
         self.assertEqual(record.client_id, self.own.pk)
 
+    def test_saved_zone_keeps_a_code(self):
+        zone = services.create_zone({"client": self.own, "name": "Nord"}, self.context)
+
+        response = self.patch(f"{self.url}{zone.pk}/", {"code": None})
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertEqual(response.data["code"]["code"], "zone_code_required")
+        zone.refresh_from_db()
+        self.assertEqual(zone.code, 1)
+
     def test_clients_of_other_organizations(self):
         foreign_zone = Zone.objects.create(client=self.foreign, code=1, name="X")
 

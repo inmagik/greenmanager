@@ -53,13 +53,21 @@ function geometriesOf(value: unknown): Geometry[] {
   }
 }
 
-/** Whether a geometry has no positions, or a part without them (a polygon without rings, a line without points). */
+/** Whether a list of parts is empty, or has an empty part (a polygon without rings, a ring or a line without points). */
+function hasNoParts(parts: unknown[]): boolean {
+  return !parts.length || parts.some((part) => !Array.isArray(part) || !part.length)
+}
+
+/** Whether a geometry has no positions, or a part without them. */
 function isEmpty(geometry: Geometry): boolean {
   switch (geometry.type) {
     case "Point":
       return geometry.coordinates.length < 2
+    case "Polygon":
+    case "MultiLineString":
+      return hasNoParts(geometry.coordinates)
     case "MultiPolygon":
-      return !geometry.coordinates.length || geometry.coordinates.some((polygon) => !polygon.length)
+      return !geometry.coordinates.length || geometry.coordinates.some(hasNoParts)
     case "GeometryCollection":
       return !geometry.geometries.length
     default:
