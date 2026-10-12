@@ -1,4 +1,5 @@
 import { AlertError } from "@/components/AlertError"
+import { CheckPermission } from "@/components/CheckPermission"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
 import { TableEmptyState, createTable } from "@/components/Table"
@@ -17,6 +18,7 @@ import { ScopeBadge, StatusBadge } from "../components/EntryBadges"
 import type { CatalogDefinition } from "../definitions"
 import { enumLabel, fieldLabel, formatField } from "../fields"
 import { useCatalogPermissions } from "../hooks/useCatalogPermissions"
+import { CATALOGS_PERMISSIONS } from "../permissions"
 import type { CatalogEntry } from "../types"
 
 const Table = createTable<CatalogEntry>()
@@ -69,9 +71,11 @@ export function CatalogEntriesList({ catalog }: { catalog: CatalogDefinition }) 
     .filter((value) => catalog.extensible || value !== "hidden")
     .map((value) => ({ value, label: t(`catalogs.status.${value}`) }))
   const createAction = canCreate && (
-    <Button leftSection={<TbPlus />} onClick={() => openEntryCreate(catalog, createEntry, t)}>
-      {t("catalogs.newEntry")}
-    </Button>
+    <CheckPermission permission={CATALOGS_PERMISSIONS.WRITE_CATALOGS}>
+      <Button leftSection={<TbPlus />} onClick={() => openEntryCreate(catalog, createEntry, t)}>
+        {t("catalogs.newEntry")}
+      </Button>
+    </CheckPermission>
   )
 
   return (
@@ -80,7 +84,7 @@ export function CatalogEntriesList({ catalog }: { catalog: CatalogDefinition }) 
         icon={<catalog.icon size="1.5rem" />}
         title={title}
         breadcrumbs={[
-          { label: t("catalogs.title"), href: "#" },
+          { label: t("catalogs.title"), href: "/catalogs" },
           { label: title, href: "#" },
         ]}
         actions={createAction}

@@ -473,7 +473,7 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
   - `visible_to(org)`: voci di sistema e voci proprie, anche ritirate o nascoste;
   - `available_for(org)`: le voci che l'organizzazione può scegliere;
   - `with_flags(org)`: annota `is_hidden` e `is_available`;
-  - `with_in_use()`: annota `in_use`, vero se altri dati proteggono la voce dalla cancellazione. È una sottoquery `Exists` per ogni relazione diretta con `PROTECT` o `RESTRICT`: i cataloghi non hanno relazioni a cascata i cui record siano protetti da altri dati. Anche `is_in_use` dei servizi la usa.
+  - `with_in_use()`: annota `in_use`, vero se altri dati proteggono la voce dalla cancellazione. È una sottoquery `Exists` per ogni relazione diretta con `PROTECT` o `RESTRICT`, comprese le nascoste (`related_name="+"`), come nella cancellazione: i cataloghi non hanno relazioni a cascata i cui record siano protetti da altri dati. Anche `is_in_use` dei servizi la usa.
 
 **Endpoint** sotto `api/catalogs/`: `species/`, `element-classes/`, `attribute-definitions/`, `urban-green-types/`, `area-uses/`, `usage-intensities/`, `removal-causes/`.
 - Lista, dettaglio, scrittura, `history/` e `choices/` (solo voci disponibili); `hide/` e `unhide/` sui cataloghi estendibili.

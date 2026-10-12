@@ -354,7 +354,7 @@ Vedi D-043 e D-053.
   - elimina: una voce in uso non si elimina (`catalog_entry_in_use`), e l'errore tradotto invita a ritirarla o nasconderla.
 - **Permessi** (`useCatalogPermissions`):
   - la lettura è aperta a ogni membro, e le voci di menu non hanno permesso; la scrittura chiede `WRITE_CATALOGS`;
-  - le azioni di scrittura dipendono anche dalla voce (di sistema o no) e dall'utente (staff o no), che `CheckPermission` non esprime: le pagine le mostrano con le funzioni dell'hook, non con `CheckPermission`;
+  - le azioni di scrittura stanno in `CheckPermission`, come negli altri moduli; l'hook aggiunge le regole che `CheckPermission` non esprime, perché dipendono dalla voce (di sistema o no) e dall'utente (staff o no);
   - le voci di sistema le modificano, ritirano ed eliminano solo gli utenti dello staff; nasconderle è una scelta dell'organizzazione, con `WRITE_CATALOGS`;
   - nei cataloghi senza voci delle organizzazioni (attributi e tipologie ISTAT) solo lo staff crea voci, che sono di sistema. Negli altri, il form di creazione dello staff ha la casella *Voce di sistema*.
 - **Campi bloccati**: il server dà in `locked_fields` i campi che non cambiano perché la voce è in uso (tipo di geometria e modalità della specie di una classe, tipo di dato e flag di misura di un attributo). Il form li disabilita e ne dice il motivo. Anche il codice di una voce di sistema è disabilitato.

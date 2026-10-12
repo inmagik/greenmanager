@@ -1,4 +1,5 @@
 import { ActionIcon, Badge, Checkbox, Group, Input, Paper, Stack, Text } from "@mantine/core"
+import { useId } from "react"
 import { useTranslation } from "react-i18next"
 import { TbArrowDown, TbArrowUp, TbX } from "react-icons/tb"
 import { attributeDefinitionsApi } from "../api/catalogs"
@@ -19,6 +20,7 @@ type Props = {
  */
 export function ClassAttributesEditor({ label, value, onChange, readonly, error }: Props) {
   const { t } = useTranslation()
+  const labelId = useId()
   const move = (index: number, offset: number) => {
     const rows = [...value]
     const [row] = rows.splice(index, 1)
@@ -27,8 +29,9 @@ export function ClassAttributesEditor({ label, value, onChange, readonly, error 
   }
 
   return (
-    <Input.Wrapper label={label} error={error}>
-      <Stack gap="xs" mt="xxs">
+    // The label names the group of the rows: it is not the label of one input.
+    <Input.Wrapper label={label} labelElement="div" labelProps={{ id: labelId }} error={error}>
+      <Stack gap="xs" mt="xxs" role="group" aria-labelledby={labelId}>
         {value.length === 0 && (
           <Text size="sm" c="dimmed">
             {t("catalogs.classAttributes.empty")}

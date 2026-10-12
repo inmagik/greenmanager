@@ -26,7 +26,7 @@ export function EditCatalogEntryForm({ catalog, id, onSaved }: Props) {
   return (
     <CatalogEntryForm
       // A new revision, after a reload, starts the form again with its values.
-      key={entry.revision}
+      key={`${entry.id}:${entry.revision}`}
       catalog={catalog}
       entry={entry}
       onReload={() => refetch()}

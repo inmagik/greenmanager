@@ -1,5 +1,6 @@
 import { AlertError } from "@/components/AlertError"
 import { BlockNavigation } from "@/components/BlockNavigation"
+import { CheckPermission } from "@/components/CheckPermission"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
 import { QueryErrorPage } from "@/components/StatusPage"
@@ -16,6 +17,7 @@ import { CatalogEntryForm } from "../components/CatalogEntryForm"
 import { EntryBadges } from "../components/EntryBadges"
 import type { CatalogDefinition } from "../definitions"
 import { useCatalogPermissions } from "../hooks/useCatalogPermissions"
+import { CATALOGS_PERMISSIONS } from "../permissions"
 
 /** An entry of a catalog: its form, read-only until *Edit*, and its actions. */
 export function CatalogEntryDetail({ catalog }: { catalog: CatalogDefinition }) {
@@ -48,7 +50,7 @@ export function CatalogEntryDetail({ catalog }: { catalog: CatalogDefinition }) 
         title={entry.name}
         extraItems={<EntryBadges entry={entry} withScope={catalog.extensible} />}
         breadcrumbs={[
-          { label: t("catalogs.title"), href: "#" },
+          { label: t("catalogs.title"), href: "/catalogs" },
           { label: title, href: listPath },
           { label: entry.name, href: "#" },
         ]}
@@ -58,21 +60,23 @@ export function CatalogEntryDetail({ catalog }: { catalog: CatalogDefinition }) 
             <Button variant="default" leftSection={<TbHistory />} onClick={() => openEntryHistory(catalog, entry, t)}>
               {t("history.open")}
             </Button>
-            {canEdit(entry) && (
-              // Disabled while the entry reloads, after a save: the form must start from the new revision.
-              <Button leftSection={<TbPencil />} disabled={editable || isFetching} onClick={() => setEditable(true)}>
-                {t("common.edit")}
-              </Button>
-            )}
-            {/* Hidden while editing: its changes would reload the form and drop the edits. */}
-            {!editable && (
-              <CatalogEntryActions
-                catalog={catalog}
-                entry={entry}
-                inDetail
-                onDelete={() => navigate(listPath, { replace: true })}
-              />
-            )}
+            <CheckPermission permission={CATALOGS_PERMISSIONS.WRITE_CATALOGS}>
+              {canEdit(entry) && (
+                // Disabled while the entry reloads, after a save: the form must start from the new revision.
+                <Button leftSection={<TbPencil />} disabled={editable || isFetching} onClick={() => setEditable(true)}>
+                  {t("common.edit")}
+                </Button>
+              )}
+              {/* Hidden while editing: its changes would reload the form and drop the edits. */}
+              {!editable && (
+                <CatalogEntryActions
+                  catalog={catalog}
+                  entry={entry}
+                  inDetail
+                  onDelete={() => navigate(listPath, { replace: true })}
+                />
+              )}
+            </CheckPermission>
           </>
         }
       />
@@ -84,6 +88,7 @@ export function CatalogEntryDetail({ catalog }: { catalog: CatalogDefinition }) 
               title={t("catalogs.hiddenTitle")}
               message={t("catalogs.hiddenMessage")}
               action={canHide(entry) ? t("catalogs.unhide") : undefined}
+              actionPermission={CATALOGS_PERMISSIONS.WRITE_CATALOGS}
               onAction={() => unhideEntry(entry.id).catch((error) => notifyApiError(error))}
             />
           </Box>
@@ -95,13 +100,14 @@ export function CatalogEntryDetail({ catalog }: { catalog: CatalogDefinition }) 
               title={t("catalogs.retiredTitle")}
               message={t("catalogs.retiredMessage")}
               action={canEdit(entry) ? t("catalogs.restore") : undefined}
+              actionPermission={CATALOGS_PERMISSIONS.WRITE_CATALOGS}
               onAction={() => updateEntry({ id: entry.id, retired: false }).catch((error) => notifyApiError(error))}
             />
           </Box>
         )}
         <CatalogEntryForm
           // A new revision (a save, or a reload after a conflict) starts the form again with its values.
-          key={entry.revision}
+          key={`${entry.id}:${entry.revision}`}
           catalog={catalog}
           entry={entry}
           readonly={!editable}

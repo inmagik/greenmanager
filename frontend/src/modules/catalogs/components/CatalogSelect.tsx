@@ -59,6 +59,8 @@ export function CatalogSelect<Choice extends CatalogChoice>({
     <Select
       searchable
       placeholder={t("catalogs.select.placeholder")}
+      // Without a visible label, the placeholder names the field; an explicit aria-label wins.
+      aria-label={props.label ? undefined : (props.placeholder ?? t("catalogs.select.placeholder"))}
       nothingFoundMessage={t("common.noResults")}
       rightSection={isLoading ? <Loader size="xs" /> : undefined}
       {...props}

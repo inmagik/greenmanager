@@ -1,16 +1,18 @@
+import { CheckPermission } from "@/components/CheckPermission"
 import { notifyApiError, requestConfirmation } from "@/utils"
 import { Button, Menu } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { TbArchive, TbArchiveOff, TbDots, TbEye, TbEyeOff, TbHistory, TbPencil, TbTrash } from "react-icons/tb"
 import type { CatalogDefinition } from "../definitions"
 import { useCatalogPermissions } from "../hooks/useCatalogPermissions"
+import { CATALOGS_PERMISSIONS } from "../permissions"
 import type { CatalogEntry } from "../types"
 import { openEntryEdit, openEntryHistory } from "./catalogModals"
 
 type Props = {
   catalog: CatalogDefinition
   entry: CatalogEntry
-  /** In the detail page, which has its own buttons for editing and for the history. */
+  /** In the detail page, which has its own buttons for editing and for the history, and checks `WRITE_CATALOGS`. */
   inDetail?: boolean
   onDelete?: () => void
 }
@@ -60,57 +62,61 @@ export function CatalogEntryActions({ catalog, entry, inDetail = false, onDelete
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{t("catalogs.actions")}</Menu.Label>
-        {!inDetail && editable && (
-          <Menu.Item leftSection={<TbPencil />} onClick={() => openEntryEdit(catalog, entry, t)}>
-            {t("common.edit")}
-          </Menu.Item>
-        )}
+        <CheckPermission permission={CATALOGS_PERMISSIONS.WRITE_CATALOGS}>
+          {!inDetail && editable && (
+            <Menu.Item leftSection={<TbPencil />} onClick={() => openEntryEdit(catalog, entry, t)}>
+              {t("common.edit")}
+            </Menu.Item>
+          )}
+        </CheckPermission>
         {!inDetail && (
           <Menu.Item leftSection={<TbHistory />} onClick={() => openEntryHistory(catalog, entry, t)}>
             {t("history.open")}
           </Menu.Item>
         )}
-        {hideable &&
-          (entry.is_hidden ? (
-            <Menu.Item
-              leftSection={<TbEye />}
-              onClick={() => unhideEntry(entry.id).catch((error) => notifyApiError(error))}
-            >
-              {t("catalogs.unhide")}
-            </Menu.Item>
-          ) : (
-            <Menu.Item leftSection={<TbEyeOff />} onClick={() => confirmThen("hide", () => hideEntry(entry.id))}>
-              {t("catalogs.hide")}
-            </Menu.Item>
-          ))}
-        {editable &&
-          (entry.retired ? (
-            <Menu.Item
-              leftSection={<TbArchiveOff />}
-              onClick={() => updateEntry({ id: entry.id, retired: false }).catch((error) => notifyApiError(error))}
-            >
-              {t("catalogs.restore")}
-            </Menu.Item>
-          ) : (
-            <Menu.Item
-              leftSection={<TbArchive />}
-              onClick={() => confirmThen("retire", () => updateEntry({ id: entry.id, retired: true }))}
-            >
-              {t("catalogs.retire")}
-            </Menu.Item>
-          ))}
-        {editable && (
-          <>
-            <Menu.Label>{t("catalogs.dangerZone")}</Menu.Label>
-            <Menu.Item
-              color="red"
-              leftSection={<TbTrash />}
-              onClick={() => confirmThen("delete", () => deleteEntry(entry.id), t("catalogs.deleteError"))}
-            >
-              {t("catalogs.deleteEntry")}
-            </Menu.Item>
-          </>
-        )}
+        <CheckPermission permission={CATALOGS_PERMISSIONS.WRITE_CATALOGS}>
+          {hideable &&
+            (entry.is_hidden ? (
+              <Menu.Item
+                leftSection={<TbEye />}
+                onClick={() => unhideEntry(entry.id).catch((error) => notifyApiError(error))}
+              >
+                {t("catalogs.unhide")}
+              </Menu.Item>
+            ) : (
+              <Menu.Item leftSection={<TbEyeOff />} onClick={() => confirmThen("hide", () => hideEntry(entry.id))}>
+                {t("catalogs.hide")}
+              </Menu.Item>
+            ))}
+          {editable &&
+            (entry.retired ? (
+              <Menu.Item
+                leftSection={<TbArchiveOff />}
+                onClick={() => updateEntry({ id: entry.id, retired: false }).catch((error) => notifyApiError(error))}
+              >
+                {t("catalogs.restore")}
+              </Menu.Item>
+            ) : (
+              <Menu.Item
+                leftSection={<TbArchive />}
+                onClick={() => confirmThen("retire", () => updateEntry({ id: entry.id, retired: true }))}
+              >
+                {t("catalogs.retire")}
+              </Menu.Item>
+            ))}
+          {editable && (
+            <>
+              <Menu.Label>{t("catalogs.dangerZone")}</Menu.Label>
+              <Menu.Item
+                color="red"
+                leftSection={<TbTrash />}
+                onClick={() => confirmThen("delete", () => deleteEntry(entry.id), t("catalogs.deleteError"))}
+              >
+                {t("catalogs.deleteEntry")}
+              </Menu.Item>
+            </>
+          )}
+        </CheckPermission>
       </Menu.Dropdown>
     </Menu>
   )

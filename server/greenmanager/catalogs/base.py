@@ -23,6 +23,7 @@ from django.db.models import (
     Q,
     Value,
 )
+from django.db.models.deletion import get_candidate_relations_to_delete
 
 CODE_NOT_UNIQUE = "catalog_code_not_unique"
 
@@ -32,8 +33,9 @@ def in_use_expression(model):
     Whether other data protect an entry of ``model`` from deletion: rows of a
     direct relation with PROTECT or RESTRICT point to it.
 
-    The catalogs have no cascading relations whose rows other data protect, so
-    the direct relations are enough.
+    The relations are those the deletion collects, hidden ones included
+    (``related_name="+"``). The catalogs have no cascading relations whose rows
+    other data protect, so the direct relations are enough.
     """
     conditions = [
         Exists(
@@ -41,7 +43,7 @@ def in_use_expression(model):
                 **{relation.field.name: OuterRef("pk")}
             )
         )
-        for relation in model._meta.related_objects
+        for relation in get_candidate_relations_to_delete(model._meta)
         if relation.on_delete in (models.PROTECT, models.RESTRICT)
     ]
     if not conditions:
