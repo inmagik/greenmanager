@@ -1,8 +1,9 @@
+import { geometryKey } from "@/components/Geometry"
 import { API_URL } from "@/constants"
-import { useCreate, useDelete, useDetail, useList, usePartialUpdate } from "@inmagik/react-crud"
+import { useCreate, useData, useDelete, useDetail, useList, usePartialUpdate } from "@inmagik/react-crud"
 import { fetchApi, useDataFetchingAuth, type ApiError } from "@inmagik/react-crud/dist/crud/utils"
 import { useQuery } from "@tanstack/react-query"
-import type { Area, AreaGeometryCheck, AreaGeometryCheckResult, AreaListItem, AreaPayload } from "../types"
+import type { Area, AreaChoice, AreaGeometryCheck, AreaGeometryCheckResult, AreaListItem, AreaPayload } from "../types"
 
 export const areasEndpoint = `${API_URL}/api/territory/areas`
 
@@ -27,6 +28,14 @@ export function useArea(id: string | undefined) {
   return useDetail<Area>(areasEndpoint, id)
 }
 
+/** The areas of a client, to pick in a form or a filter, only those of `zone` if given; nothing without a client. */
+export function useAreaChoices(client: string | null | undefined, zone?: string | null) {
+  return useData<AreaChoice[]>(`${areasEndpoint}/choices`, {
+    query: { client, zone: zone || undefined },
+    reactQuery: { queryPrefix: [areasEndpoint, "choices"], enabled: !!client },
+  })
+}
+
 export function useCreateArea() {
   return useCreate<Area, AreaPayload>(areasEndpoint)
 }
@@ -44,19 +53,6 @@ export function useDeleteArea() {
 
 export function areaHistoryEndpoint(id: string) {
   return `${areasEndpoint}/${id}/history`
-}
-
-// A geometry can be large, and a query key is serialized at every render: the key has a number for each geometry.
-const geometryIds = new WeakMap<object, number>()
-let lastGeometryId = 0
-
-function geometryKey(geometry: object) {
-  let id = geometryIds.get(geometry)
-  if (id === undefined) {
-    id = ++lastGeometryId
-    geometryIds.set(geometry, id)
-  }
-  return id
 }
 
 /**

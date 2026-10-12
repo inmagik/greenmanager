@@ -46,6 +46,7 @@ export default {
     tabs: {
       data: "Dati",
       geometry: "Geometria",
+      elements: "Elementi",
     },
     sections: {
       identification: "Identificazione",
@@ -67,6 +68,12 @@ export default {
     },
     columns: {
       management: "Gestione",
+    },
+    areaSelect: {
+      label: "Area",
+      placeholder: "Scegli un'area",
+      noClient: "Scegli prima il committente",
+      nothingFound: "Nessuna area per questo committente",
     },
     zoneSelect: {
       label: "Zona",

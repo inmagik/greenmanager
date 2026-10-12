@@ -1,4 +1,5 @@
 export * from "./format"
 export * from "./GeometryFileInput"
+export * from "./geometryKey"
 export * from "./GeometrySummary"
 export * from "./readGeometryFile"

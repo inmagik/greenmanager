@@ -1,4 +1,4 @@
-import { CloseButton, Combobox, InputBase, useCombobox } from "@mantine/core"
+import { CloseButton, Combobox, InputBase, Loader, useCombobox } from "@mantine/core"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { TbChevronDown } from "react-icons/tb"
@@ -19,6 +19,8 @@ export type AsyncSelectProps = {
   withAsterisk?: boolean
   error?: React.ReactNode
   disabled?: boolean
+  /** The options are loading: a loader beside the arrow. */
+  loading?: boolean
 }
 
 export function AsyncSelect({
@@ -35,6 +37,7 @@ export function AsyncSelect({
   withAsterisk,
   error,
   disabled,
+  loading = false,
 }: AsyncSelectProps) {
   const { t } = useTranslation()
   const [lastValue, setLastValue] = useState<{ value: string; label: string } | null>(null)
@@ -77,12 +80,13 @@ export function AsyncSelect({
           size="sm"
           rightSectionProps={{
             style: {
-              width: value ? "3rem" : undefined,
+              width: value || loading ? "3rem" : undefined,
             },
           }}
           rightSection={
             <>
-              {!!value && (
+              {loading && <Loader size="xs" />}
+              {!!value && !loading && (
                 <CloseButton
                   size="sm"
                   onMouseDown={(event) => event.preventDefault()}

@@ -141,6 +141,16 @@ const translations = {
       tooLarge: "Il file supera {{max}} MB.",
     },
   },
+  geolocation: {
+    locate: "Usa la mia posizione",
+    errors: {
+      insecure: "La posizione del dispositivo si legge solo su una connessione sicura (HTTPS).",
+      unsupported: "Il browser non dà la posizione del dispositivo.",
+      denied: "Il permesso di leggere la posizione è negato: abilitalo nelle impostazioni del browser.",
+      unavailable: "La posizione non è disponibile: controlla che la localizzazione del dispositivo sia attiva.",
+      timeout: "La posizione non è arrivata in tempo: riprova, se puoi all'aperto.",
+    },
+  },
   serverErrors: {
     tenant_has_related_data: "L'organizzazione {{name}} non può essere eliminata perché contiene dati correlati.",
     user_not_associated_with_tenant: "{{name}} non è associato a questa organizzazione.",
@@ -171,6 +181,8 @@ const translations = {
     territory: "Territorio",
     "territory:areas": "Aree",
     "territory:zones": "Zone",
+    inventory: "Censimento",
+    "inventory:elements": "Elementi",
     catalogs: "Cataloghi",
     "catalogs:species": "Specie",
     "catalogs:element-classes": "Classi di elemento",
