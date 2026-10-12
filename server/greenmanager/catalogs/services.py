@@ -14,8 +14,8 @@ import copy
 from core.errors import api_error, check_revision, permission_error, validate_model
 from core.models import system_entry_id
 from core.services import stamp
-from django.db import IntegrityError, connection, router, transaction
-from django.db.models.deletion import Collector, ProtectedError, RestrictedError
+from django.db import IntegrityError, connection, transaction
+from django.db.models.deletion import ProtectedError, RestrictedError
 from django.utils.text import slugify
 
 from .models import AttributeDefinition, ElementClassAttribute, Species
@@ -37,12 +37,13 @@ def require_system_manager(user):
 
 def is_in_use(entry):
     """Whether other data protect the entry from deletion (it is in use)."""
-    collector = Collector(using=router.db_for_write(type(entry)))
-    try:
-        collector.collect([entry])
-    except (ProtectedError, RestrictedError):
-        return True
-    return False
+    return (
+        type(entry)
+        ._default_manager.filter(pk=entry.pk)
+        .with_in_use()
+        .values_list("in_use", flat=True)
+        .get()
+    )
 
 
 def unique_code(entry, text):

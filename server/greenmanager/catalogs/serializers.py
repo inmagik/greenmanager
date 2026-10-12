@@ -2,6 +2,7 @@ from core.serializers import TrackedModelSerializer
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from . import services
 from .models import (
     AreaUse,
     AttributeDefinition,
@@ -24,6 +25,7 @@ ENTRY_FIELDS = (
     "is_system",
     "is_hidden",
     "is_available",
+    "locked_fields",
 )
 
 
@@ -36,12 +38,15 @@ class CatalogEntrySerializer(TrackedModelSerializer):
     - ``is_hidden``, ``is_available``: for the organization of the request
       (annotations of the views).
     - ``code``: generated from the name when empty.
+    - ``locked_fields``: fields that cannot change because the entry is in use
+      (``locked_when_in_use``), so the forms show them read-only.
     """
 
     code = serializers.CharField(required=False, allow_blank=True, max_length=150)
     is_system = serializers.BooleanField(required=False, default=False)
     is_hidden = serializers.SerializerMethodField()
     is_available = serializers.SerializerMethodField()
+    locked_fields = serializers.SerializerMethodField()
 
     class Meta:
         fields = (*ENTRY_FIELDS, *TrackedModelSerializer.tracking_fields)
@@ -77,6 +82,17 @@ class CatalogEntrySerializer(TrackedModelSerializer):
             .filter(pk=obj.pk)
             .exists()
         )
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_locked_fields(self, obj):
+        if not obj.locked_when_in_use:
+            return []
+        # Annotated by the views (with_in_use); computed for the entry returned
+        # by a change.
+        in_use = getattr(obj, "in_use", None)
+        if in_use is None:
+            in_use = services.is_in_use(obj)
+        return list(obj.locked_when_in_use) if in_use else []
 
 
 class ExtensibleEntrySerializer(CatalogEntrySerializer):

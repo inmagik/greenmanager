@@ -50,12 +50,13 @@ Le chiavi esterne verso queste entità si aggiungono dopo, con le loro app e una
 | Elementi: codice, cartellino, composizione, ciclo di vita | D-051 | §8.7 |
 | Controlli spaziali degli elementi | D-052 | §8.7 |
 | Committente come filtro, storico e conflitti di revisione nell'interfaccia | D-053 | §9 di [frontend.md](frontend.md) |
+| Cataloghi nell'interfaccia | D-054 | §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md) |
 
 I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend arrivano con le PR3 e PR4: il numero si assegna quando si scrivono, e quelli indicati più sotto per le PR4 sono provvisori.
 
 ## 3. Sequenza e avanzamento
 
-Aggiornato al 2026-10-11.
+Aggiornato al 2026-10-12.
 
 | PR | Contenuto | Dipende da | Stato |
 |---|---|---|---|
@@ -65,13 +66,13 @@ Aggiornato al 2026-10-11.
 | PR2c | controlli spaziali degli elementi (backend) | PR2b | unita, [#12](https://github.com/inmagik/greenmanager/pull/12) |
 | PR2d | chiusura del backend: correzioni dalle revisioni (backend) | PR2c | unita, [#22](https://github.com/inmagik/greenmanager/pull/22) |
 | PR3a | parti comuni e committenti (frontend) | — | unita, [#23](https://github.com/inmagik/greenmanager/pull/23) |
-| PR3b | cataloghi (frontend) | PR3a | da fare, issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
+| PR3b | cataloghi (frontend) | PR3a | in revisione, [#24](https://github.com/inmagik/greenmanager/pull/24); issue [#14](https://github.com/inmagik/greenmanager/issues/14) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | da fare, issue [#15](https://github.com/inmagik/greenmanager/issues/15) |
 | PR3d | elementi (frontend) | PR3c, PR2c | da fare, issue [#16](https://github.com/inmagik/greenmanager/issues/16) |
 | PR4a | mappa: visualizzazione | PR3c | da fare, issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e il primo modulo di dominio, `parties` (PR3a). Fino alle PR3b–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, il primo modulo di dominio, `parties` (PR3a), e con la PR3b `catalogs`. Fino alle PR3c–PR3d gli altri dati di dominio si vedono dall'admin Django (`/admin/`) e dallo schema OpenAPI (`/api/schema/swagger-ui/`).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -132,16 +133,29 @@ Valgono per le PR3 e PR4:
 Issue [#14](https://github.com/inmagik/greenmanager/issues/14). Dipende dalla PR3a.
 
 - `api/createCatalogApi.ts`: una fabbrica di hook, uguale per tutti i cataloghi (`api/catalogs/<catalogo>/`), con le action `hide/`, `unhide/` e `choices/`.
-- Lista e dettaglio generici, guidati da una configurazione, per i cataloghi semplici: tipologie ISTAT, destinazioni d'uso, intensità di fruizione, cause di rimozione, attributi.
-- Pagine dedicate:
-  - **specie**: rango, genere e genitore, nome scientifico e comune;
+- Lista e dettaglio generici, guidati da una definizione per catalogo (D-054), per tutti e sette i cataloghi. Specie e classi hanno i loro campi nelle stesse pagine:
+  - **specie**: livello, genere e voce superiore, nome scientifico e comune;
   - **classi di elemento**: tipo di geometria, unità, `species_mode`, `counts_as_tree`, attributi della classe (`class_attributes`). I campi bloccati quando la classe è in uso sono in sola lettura.
-- Badge "sistema" e "organizzazione"; azioni nascondi e mostra sulle voci di sistema; filtri `available`, `scope`, `retired`, `hidden`.
+- Badge "sistema" e "organizzazione"; azioni nascondi e mostra sulle voci di sistema, ritira e ripristina; filtri `available`, `scope`, `retired`, `hidden`.
 - Selettori per i form degli altri moduli: `CatalogSelect`, `SpeciesSelect` (`AsyncSelect`, sulle sole voci disponibili), `ElementClassSelect`.
 - La lettura è aperta a ogni membro; la scrittura chiede `catalogs.WRITE_CATALOGS`. Solo lo staff modifica le voci di sistema (`system_entry_read_only`).
 - `i18n/it/catalogs.ts` e i codici di errore dei cataloghi.
+- **Server**:
+  - `locked_fields` nelle voci dei cataloghi, i campi bloccati perché la voce è in uso, con l'annotazione `with_in_use()`, che `is_in_use` usa al posto del `Collector` di Django;
+  - il filtro `rank` delle specie accetta più valori, per le voci superiori possibili di una cultivar.
+- **Documenti**: §9.6 di [frontend.md](frontend.md), §8.4 di [backend.md](backend.md), decisione D-054.
 
 **Verifica**: si nasconde una voce di sistema, che sparisce dai selettori e resta sui dati già salvati. Si aggiunge una specie propria. Una voce in uso non si elimina.
+
+**Prova nel browser** (2026-10-12), da utente non staff con `WRITE_CATALOGS` e da staff:
+- una destinazione d'uso di sistema nascosta lascia `choices/` e si mostra di nuovo dall'avviso del dettaglio;
+- una specie propria, con il genere come voce superiore; nascosto il genere, il form della specie lo mostra come *non disponibile* e il salvataggio lo conserva;
+- una specie con una cultivar figlia non si elimina, con l'errore tradotto;
+- una classe propria con due attributi, in ordine e uno obbligatorio;
+- da staff, tipo di dato e flag di misura di un attributo in uso sono disabilitati, come il codice di una voce di sistema;
+- le voci proprie di un'organizzazione non si vedono dall'altra; lista leggibile a larghezza smartphone.
+
+Il caso "resta sui dati già salvati" per aree ed elementi si prova con le PR3c e PR3d, che usano `CatalogSelect`, `SpeciesSelect` ed `ElementClassSelect`.
 
 ### PR3c. Zone e aree
 
@@ -207,7 +221,7 @@ Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalla PR
   - stato della mappa nell'URL.
 - Pulsante "Vedi sulla mappa" nei dettagli di aree ed elementi.
 - **Documenti**:
-  - decisione nuova, numero provvisorio D-054: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
+  - decisione nuova, numero provvisorio D-055: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
   - prima parte di `frontend-pattern.md` (T2): mappa, layer e basemap.
 
 **Verifica**:
@@ -239,7 +253,7 @@ Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR
 - **Test**: `vitest`, solo in sviluppo, per `multipart.ts` e gli helper del bbox.
 - **Documenti**:
   - `frontend-pattern.md` completo, con le "Domande aperte": liste, dettaglio e form; mappa, disegno e multiparte; uso in campo; mappa pubblica rinviata; basemap e CORS;
-  - decisione nuova, numero provvisorio D-055: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
+  - decisione nuova, numero provvisorio D-056: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
   - §8 di [frontend.md](frontend.md) e [README.md](README.md) di questa cartella;
   - chiusura della fetta: T2 e T3 completati, in attesa di revisione, in [designdocs/README.md](../README.md); riga **Stato** di [AGENTS.md](../../AGENTS.md); `frontend/AGENTS.md`.
 
@@ -286,7 +300,7 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
 
 ## Domande aperte
 
-1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-053 sono ipotesi. In particolare:
+1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-054 sono ipotesi. In particolare:
    - le scelte di D-051 (codice come testo, data di rimozione non futura, attributi controllati solo quando cambiano);
    - la composizione non obbligatoria per le classi che la prevedono;
    - le scelte di D-052 (2 m tra gli alberi, avviso dei vicini solo quando l'albero riceve una posizione, punto al centro dell'area che segue l'area).

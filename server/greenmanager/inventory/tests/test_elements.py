@@ -401,6 +401,29 @@ class ElementTests(InventoryTestCase):
         self.assertEqual(created.status_code, 403, created.content)
 
 
+class ClassInUseTests(InventoryTestCase):
+    def test_class_with_elements_locks_its_geometry_and_species_mode(self):
+        self.make_tree()
+        tree, hedge = self.classes["tree"], self.classes["hedge"]
+        staff = make_user(
+            "staff@example.com", self.org, ["catalogs.WRITE_CATALOGS"], is_staff=True
+        )
+        self.client.force_authenticate(staff)
+        url = "/api/catalogs/element-classes/"
+
+        listed = self.client.get(url, {"geometry_type": "point"}, **self.header)
+        detail = self.client.get(f"{url}{hedge.pk}/", **self.header)
+        changed = self.patch(f"{url}{tree.pk}/", {"geometry_type": "polygon"})
+
+        locked = {row["code"]: row["locked_fields"] for row in listed.data["results"]}
+        self.assertEqual(locked["tree"], ["geometry_type", "species_mode"])
+        self.assertEqual(detail.data["locked_fields"], [])
+        self.assertEqual(changed.status_code, 400, changed.content)
+        self.assertEqual(
+            changed.data["geometry_type"]["code"], "catalog_entry_in_use_locked"
+        )
+
+
 class LifeCycleTests(InventoryTestCase):
     def remove(self, element, **data):
         return self.post(f"{URL}{element.pk}/remove/", data)

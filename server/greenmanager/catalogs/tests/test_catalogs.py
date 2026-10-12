@@ -575,6 +575,28 @@ class SpeciesApiTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertFalse(self.system.hidden_by.filter(pk=self.org.pk).exists())
 
+    def test_filter_by_one_or_more_ranks(self):
+        Species.objects.create(
+            code="tilia-cordata-greenspire",
+            rank="cultivar",
+            scientific_name="Tilia cordata 'Greenspire'",
+            genus="Tilia",
+            parent=self.system,
+        )
+        url = "/api/catalogs/species/"
+
+        genera = self.client.get(url, {"rank": "genus"}, **self.header)
+        parents = self.client.get(
+            url, {"rank": ["genus", "species", "hybrid"]}, **self.header
+        )
+
+        self.assertEqual(genera.status_code, 200, genera.content)
+        self.assertEqual([row["code"] for row in genera.data["results"]], ["tilia"])
+        self.assertEqual(
+            [row["code"] for row in parents.data["results"]],
+            ["tilia", "tilia-cordata"],
+        )
+
     def test_new_parent_must_be_available_the_stored_one_stays(self):
         own = self.post(
             {"scientific_name": "Tilia americana", "parent": str(self.genus.pk)}
@@ -762,6 +784,23 @@ class ElementClassApiTests(APITestCase):
         self.assertEqual(
             response.data["data_type"]["code"], "catalog_entry_in_use_locked"
         )
+
+    def test_locked_fields_of_the_attributes_in_use(self):
+        unused = AttributeDefinition.objects.create(
+            code="unused", name="Inutilizzato", data_type="text"
+        )
+        self.client.force_authenticate(self.writer)
+        url = "/api/catalogs/attribute-definitions/"
+
+        listed = self.client.get(url, {"data_type": "text"}, **self.header)
+        detail = self.client.get(f"{url}{self.material.pk}/", **self.header)
+
+        self.assertEqual(listed.status_code, 200, listed.content)
+        locked = {row["code"]: row["locked_fields"] for row in listed.data["results"]}
+        self.assertEqual(locked["unused"], [])
+        self.assertEqual(detail.data["locked_fields"], ["data_type", "is_measure"])
+        self.assertTrue(services.is_in_use(self.material))
+        self.assertFalse(services.is_in_use(unused))
 
     def test_measure_flag_of_an_attribute_in_use_is_locked(self):
         self.client.force_authenticate(self.staff)

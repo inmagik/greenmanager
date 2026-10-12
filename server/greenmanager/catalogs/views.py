@@ -69,12 +69,18 @@ class CatalogScopeMixin:
 
     It comes after StructuralFilterMixin, so that the structural filters see the
     flags. Without a tenant only the system entries are visible.
+
+    Catalogs with fields locked when in use annotate ``in_use`` too, for
+    ``locked_fields``; not in ``choices``, which leaves it out.
     """
 
     def get_queryset(self):
         qs = super().get_queryset()
         tenant = self.get_current_tenant()
-        return qs.visible_to(tenant).with_flags(tenant)
+        qs = qs.visible_to(tenant).with_flags(tenant)
+        if qs.model.locked_when_in_use and self.action != "choices":
+            qs = qs.with_in_use()
+        return qs
 
 
 class CatalogViewSet(
@@ -180,7 +186,9 @@ TRACKED = ("created_by", "updated_by")
 
 
 class SpeciesFilter(ExtensibleCatalogFilter):
-    rank = FS.ChoiceFilter(choices=Species.Rank.choices)
+    # One or more ranks (?rank=genus&rank=species): the possible parents of an
+    # entry are of several ranks.
+    rank = FS.MultipleChoiceFilter(choices=Species.Rank.choices)
     genus = FS.CharFilter(lookup_expr="iexact")
 
 
