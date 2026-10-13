@@ -5,6 +5,7 @@ import { useLayoutEffect, useMemo, useState } from "react"
 import { useAuth } from "../auth/auth"
 import { DataFetchingAuthContext } from "@inmagik/react-crud"
 import { useTenant } from "@/hooks/useTenant"
+import { useMediaQuery } from "@mantine/hooks"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,8 @@ type Props = {
 function ProvideAuthToDataFetching({ children }: Props) {
   const { tokens } = useAuth()
   const { tenantId, isReady } = useTenant()
+  // A touch screen as the main input, a phone or a tablet: the changes are made in the field (D-058).
+  const field = useMediaQuery("(pointer: coarse)", false, { getInitialValueInEffect: false })
 
   const queryClient = useQueryClient()
   const [activeTenantId, setActiveTenantId] = useState<number | null>(tenantId)
@@ -48,8 +51,10 @@ function ProvideAuthToDataFetching({ children }: Props) {
     if (tenantId) {
       headers["X-Tenant-ID"] = tenantId.toString()
     }
+    // The source of the changes in the domain history (`ChangeRecord`): the server takes `web` or `field`.
+    headers["X-Change-Source"] = field ? "field" : "web"
     return headers
-  }, [tokens?.access, tenantId])
+  }, [tokens?.access, tenantId, field])
 
   if (tokens?.access && (!isReady || activeTenantId !== tenantId)) {
     return <div />

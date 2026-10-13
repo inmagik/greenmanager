@@ -56,8 +56,13 @@ export default {
     },
     geometry: {
       current: "Perimetro salvato",
-      replace: "Sostituisci da file",
+      edit: "Modifica il perimetro",
+      newGeometry: "Perimetro nuovo",
+      modeLabel: "Come dare il perimetro nuovo",
+      modes: { map: "Sulla mappa", file: "Da file" },
       mapLabel: "Mappa del perimetro dell'area",
+      editorLabel: "Mappa per disegnare il perimetro dell'area",
+      noParts: "Il perimetro non ha più parti: aggiungine una per salvarlo.",
     },
     geometryCheck: {
       chooseClient: "Scegli il committente per calcolare superficie e perimetro e controllare le sovrapposizioni.",

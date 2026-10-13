@@ -1,0 +1,9 @@
+/* Over the map, on the left: the zoom and the position are on the right. */
+.basemap {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  max-width: calc(100% - 70px);
+  box-shadow: var(--mantine-shadow-xs);
+}

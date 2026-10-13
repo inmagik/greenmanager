@@ -1,4 +1,5 @@
 import { Box, type BoxProps } from "@mantine/core"
+import classNames from "classnames"
 import type { TFunction } from "i18next"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
@@ -46,7 +47,16 @@ function mapLocale(t: TFunction, label: string): Record<string, string> {
  * A map with the basemaps of the application (`basemaps.ts`), in 2D: no rotation and no tilt. The children add
  * layers and controls with `useMap`. When the width changes, the west edge stays.
  */
-export function MapView({ initialView, basemap, compact = false, label, onViewChange, children, ...props }: Props) {
+export function MapView({
+  initialView,
+  basemap,
+  compact = false,
+  label,
+  onViewChange,
+  children,
+  className,
+  ...props
+}: Props) {
   const { t } = useTranslation()
   const container = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<MapLibreMap | null>(null)
@@ -101,7 +111,7 @@ export function MapView({ initialView, basemap, compact = false, label, onViewCh
   }, [])
 
   return (
-    <Box pos="relative" {...props}>
+    <Box pos="relative" className={classNames(classes.root, className)} {...props}>
       <div ref={container} className={classes.map} />
       {map && <MapContext.Provider value={map}>{children}</MapContext.Provider>}
     </Box>

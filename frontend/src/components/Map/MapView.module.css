@@ -1,3 +1,8 @@
+/* The z-index of the controls of MapLibre stay inside the map: the footer of a form scrolls over it. */
+.root {
+  isolation: isolate;
+}
+
 /* The container gets also the class of MapLibre, whose style says `position: relative`. */
 .map,
 .map:global(.maplibregl-map) {

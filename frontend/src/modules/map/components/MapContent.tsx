@@ -1,5 +1,7 @@
-import { bboxParam, geometryBounds } from "@/components/Map"
+import { bboxParam, geometryBounds, type MergedGeometry } from "@/components/Map"
 import { BasemapSwitcher } from "@/components/Map/BasemapSwitcher"
+import { GeometryDraw, type DrawControls } from "@/components/Map/draw/GeometryDraw"
+import { PointPicker, type PointControls } from "@/components/Map/draw/PointPicker"
 import { LocateControl } from "@/components/Map/LocateControl"
 import { useMap } from "@/components/Map/MapContext"
 import { useFeatureClick } from "@/components/Map/useFeatureClick"
@@ -11,7 +13,8 @@ import { useElement, useElementsGeoJSON } from "@/modules/inventory/api/elements
 import { INVENTORY_PERMISSIONS } from "@/modules/inventory/permissions"
 import { useArea, useAreasGeoJSON } from "@/modules/territory/api/areas"
 import { TERRITORY_PERMISSIONS } from "@/modules/territory/permissions"
-import type { FeatureCollection } from "geojson"
+import type { GeometryType } from "@/modules/catalogs/types"
+import type { FeatureCollection, Geometry, Point } from "geojson"
 import { useEffect, useMemo } from "react"
 import type { MapLayer, Selection } from "../hooks/useMapUrlState"
 import {
@@ -24,17 +27,31 @@ import {
   ELEMENTS_SOURCE,
   SELECTION_LAYERS,
   SELECTION_SOURCE,
+  PENDING_SOURCE,
 } from "../layers"
 import { LayersPanel, type LayerStatus } from "./LayersPanel"
-
-/** The height of the drawer of the feature on a phone, as a share of the screen (`FeaturePanel`). */
-export const DRAWER_SHARE = 0.45
+import { DRAWER_SHARE } from "./MapSidePanel"
 
 /**
  * What the map frames once its data arrive: the selected feature, or the areas of the client. Without animation when
  * the map opens; with it on a request of the user.
  */
 export type FitTarget = { target: "selection" | "client"; animate: boolean } | null
+
+/**
+ * The position of a new element, given on the map: the parts of a line or of a polygon drawn with terra-draw, or a
+ * point from a tap or the crosshair. The toolbar is in the panel, which gets the controls.
+ */
+export type MapDrawing = {
+  kind: GeometryType
+  /** The geometry at the start, read once, e.g. coming back from the form: its parts are edited. */
+  initial: Geometry | null
+  /** The point shown. */
+  point: Point | null
+  onChange: (geometry: MergedGeometry | null) => void
+  onDrawControls: (controls: DrawControls | null) => void
+  onPointControls: (controls: PointControls | null) => void
+}
 
 type Props = {
   /** On a phone the panel of the feature is a drawer over the lower part of the map. */
@@ -49,9 +66,13 @@ type Props = {
   onSelect: (selection: Selection | null) => void
   fit: FitTarget
   onFitted: () => void
+  /** A position being given on the map: the clicks do not select the features. */
+  drawing: MapDrawing | null
+  /** The position of a new element, given before: shown like a selected feature. */
+  pending: Geometry | null
 }
 
-// The part of the map that the drawer of the feature covers on a phone, in pixels: the drawer is a share of the
+// The part of the map that the drawer of the panel covers on a phone, in pixels: the drawer is a share of the
 // screen, from its bottom, and the map is lower than the screen.
 function drawerHeight(map: MapLibreMap, mobile: boolean) {
   if (!mobile) return 0
@@ -94,6 +115,8 @@ export function MapContent({
   onSelect,
   fit,
   onFitted,
+  drawing,
+  pending,
 }: Props) {
   const map = useMap()
   const { bbox, zoom } = useMapBbox()
@@ -139,14 +162,26 @@ export function MapContent({
     [selectedGeometry]
   )
   useGeoJSONLayer(SELECTION_SOURCE, { data: selectionData, layers: SELECTION_LAYERS, slot: "selection" })
+  const pendingData = useMemo<FeatureCollection | null>(
+    () =>
+      pending
+        ? { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: pending }] }
+        : null,
+    [pending]
+  )
+  useGeoJSONLayer(PENDING_SOURCE, { data: pendingData, layers: SELECTION_LAYERS, slot: "selection" })
 
-  useFeatureClick(CLICKABLE_LAYERS, (feature, event) => {
-    const id = feature?.properties.id as string | undefined
-    if (!feature || !id) return onSelect(null)
-    onSelect({ kind: feature.source === AREAS_SOURCE ? "area" : "element", id })
-    // On a phone the feature goes in the middle of the part above the drawer.
-    if (mobile) map.easeTo({ center: event.lngLat, offset: [0, -drawerHeight(map, mobile) / 2] })
-  })
+  useFeatureClick(
+    CLICKABLE_LAYERS,
+    (feature, event) => {
+      const id = feature?.properties.id as string | undefined
+      if (!feature || !id) return onSelect(null)
+      onSelect({ kind: feature.source === AREAS_SOURCE ? "area" : "element", id })
+      // On a phone the feature goes in the middle of the part above the drawer.
+      if (mobile) map.easeTo({ center: event.lngLat, offset: [0, -drawerHeight(map, mobile) / 2] })
+    },
+    !drawing
+  )
 
   // Frame the selected feature, or the areas of the client, once they are loaded.
   const clientAreas = client && !areas.isPlaceholderData ? areas.data : undefined
@@ -196,6 +231,22 @@ export function MapContent({
         basemapSwitcher={<BasemapSwitcher value={basemap} onChange={onBasemapChange} />}
       />
       <LocateControl />
+      {drawing &&
+        (drawing.kind === "point" ? (
+          <PointPicker
+            value={drawing.point}
+            onChange={drawing.onChange}
+            onControls={drawing.onPointControls}
+            coveredBottom={drawerHeight(map, mobile)}
+          />
+        ) : (
+          <GeometryDraw
+            kind={drawing.kind}
+            initial={drawing.initial}
+            onChange={drawing.onChange}
+            onControls={drawing.onDrawControls}
+          />
+        ))}
     </>
   )
 }

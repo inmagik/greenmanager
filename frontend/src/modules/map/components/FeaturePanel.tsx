@@ -10,7 +10,6 @@ import {
   Badge,
   Button,
   Center,
-  Drawer,
   Group,
   Loader,
   ScrollArea,
@@ -25,8 +24,7 @@ import { useTranslation } from "react-i18next"
 import { TbExternalLink, TbFocusCentered, TbX } from "react-icons/tb"
 import { Link } from "react-router-dom"
 import type { Selection } from "../hooks/useMapUrlState"
-import { DRAWER_SHARE } from "./MapContent"
-import classes from "./FeaturePanel.module.css"
+import { MapSidePanel } from "./MapSidePanel"
 
 type Props = {
   selection: Selection | null
@@ -205,41 +203,14 @@ function ElementContent({ id, onClose, onFit }: ContentProps) {
 /** The feature selected on the map, with its main data and the link to its detail. */
 export function FeaturePanel({ selection, mobile, onClose, onFit }: Props) {
   const { t } = useTranslation()
-  const content =
-    selection &&
-    (selection.kind === "area" ? (
-      <AreaContent key={selection.id} id={selection.id} onClose={onClose} onFit={onFit} />
-    ) : (
-      <ElementContent key={selection.id} id={selection.id} onClose={onClose} onFit={onFit} />
-    ))
-
-  if (mobile) {
-    // Without the overlay: the map stays usable above the drawer.
-    return (
-      <Drawer
-        opened={!!selection}
-        onClose={onClose}
-        position="bottom"
-        size={`${DRAWER_SHARE * 100}%`}
-        withOverlay={false}
-        withCloseButton={false}
-        lockScroll={false}
-        trapFocus={false}
-        closeOnClickOutside={false}
-        aria-label={t("map.panel.label")}
-        styles={{
-          body: { padding: 0, height: "100%" },
-          content: { borderTopLeftRadius: 12, borderTopRightRadius: 12 },
-        }}
-      >
-        {content}
-      </Drawer>
-    )
-  }
-  if (!selection) return null
   return (
-    <aside className={classes.side} aria-label={t("map.panel.label")}>
-      {content}
-    </aside>
+    <MapSidePanel opened={!!selection} mobile={mobile} label={t("map.panel.label")} onClose={onClose}>
+      {selection &&
+        (selection.kind === "area" ? (
+          <AreaContent key={selection.id} id={selection.id} onClose={onClose} onFit={onFit} />
+        ) : (
+          <ElementContent key={selection.id} id={selection.id} onClose={onClose} onFit={onFit} />
+        ))}
+    </MapSidePanel>
   )
 }

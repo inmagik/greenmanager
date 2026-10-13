@@ -91,7 +91,7 @@ export function AreaDetail() {
                   disabled={editable || isFetching}
                   onClick={() => setEditingTab(activeTab)}
                 >
-                  {t(activeTab === "geometry" ? "territory.geometry.replace" : "common.edit")}
+                  {t(activeTab === "geometry" ? "territory.geometry.edit" : "common.edit")}
                 </Button>
               </CheckPermission>
             )}

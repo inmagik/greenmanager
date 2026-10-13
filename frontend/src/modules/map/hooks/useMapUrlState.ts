@@ -37,8 +37,10 @@ export function useMapUrlState() {
   const update = useCallback(
     (changes: Record<string, string | null>, replace: boolean) =>
       setParams(
-        (current) => {
-          const next = new URLSearchParams(current)
+        () => {
+          // From the URL of now, not from the parameters of the last render: a move of the map that follows a
+          // selection in the same moment (e.g. the panel that closes, and the map that widens) keeps it.
+          const next = new URLSearchParams(window.location.search)
           for (const [name, value] of Object.entries(changes)) {
             if (value === null) next.delete(name)
             else next.set(name, value)

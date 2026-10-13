@@ -10,6 +10,7 @@ import { useHasPermission } from "@/hooks/useHasPermission"
 import { ClientSelect } from "@/modules/parties/components/ClientSelect"
 import { AreaSelect } from "@/modules/territory/components/AreaSelect"
 import { areaLabel } from "@/modules/territory/components/areaModals"
+import { useArea } from "@/modules/territory/api/areas"
 import { TERRITORY_PERMISSIONS } from "@/modules/territory/permissions"
 import { transformErrorsForForm } from "@/utils"
 import { isRevisionConflict } from "@/utils/tracking"
@@ -34,8 +35,9 @@ import { useForm, type FormErrors } from "@mantine/form"
 import { useDebouncedValue } from "@mantine/hooks"
 import { yupResolver } from "mantine-form-yup-resolver"
 import { useCallback, useMemo, useRef, useState } from "react"
+import type { TFunction } from "i18next"
 import { useTranslation } from "react-i18next"
-import { TbDeviceFloppy } from "react-icons/tb"
+import { TbDeviceFloppy, TbMapPin } from "react-icons/tb"
 import { Link } from "react-router-dom"
 import * as yup from "yup"
 import { attributesPayload, editableAttributes, isEmptyAttribute, type AttributeFormValue } from "../attributes"
@@ -85,11 +87,19 @@ type Props = {
   /** The client and the area of a new element, e.g. those of the filters of the list or of the area. */
   defaultClient?: string | null
   defaultArea?: string | null
+  /** The class of a new element, chosen before the position, e.g. on the map page. */
+  defaultClass?: ElementClassChoice | null
+  /**
+   * The position of a new element given on the map page: the form shows it, with its check and the button to change
+   * it, instead of its inputs. The class changes only among those with its type of geometry.
+   */
+  mapPosition?: { value: PositionValue; onEdit: () => void }
   onSubmit: (values: ElementPayload) => Promise<void> | void
   /** Reload the element after a revision conflict; the parent remounts the form with the new values. */
   onReload?: () => void
   readonly?: boolean
-  layout?: "modal" | "page"
+  /** `panel`: one column, e.g. in the panel of the map page. */
+  layout?: "modal" | "page" | "panel"
   onCancel?: () => void
 }
 
@@ -101,6 +111,18 @@ function speciesInput(mode: SpeciesMode | undefined, choice: FormValues["species
 
 function allowsComposition(mode: SpeciesMode | undefined) {
   return mode === "composition" || mode === "single_or_composition"
+}
+
+/** The position given on the map page: from the device with its accuracy, a point, or lines and polygons drawn. */
+function mapPositionLabel(t: TFunction, value: PositionValue): string {
+  if (value.mode === "coordinates" && value.gpsAccuracy !== null) {
+    return t("inventory.position.gpsReading", { value: Math.round(value.gpsAccuracy) })
+  }
+  if (value.geometry?.type === "Point") {
+    const [longitude, latitude] = value.geometry.coordinates
+    return t("inventory.position.mapPoint", { latitude: latitude.toFixed(7), longitude: longitude.toFixed(7) })
+  }
+  return t("inventory.position.mapDrawn")
 }
 
 function toNumber(value: number | string): number | null {
@@ -142,6 +164,8 @@ export function ElementForm({
   element,
   defaultClient,
   defaultArea,
+  defaultClass,
+  mapPosition,
   onSubmit,
   onReload,
   readonly = false,
@@ -152,7 +176,7 @@ export function ElementForm({
   const [isLoading, setIsLoading] = useState(false)
   const [conflict, setConflict] = useState(false)
   // The class just chosen: its geometry, species mode and attributes drive the form before its detail loads.
-  const [classChoice, setClassChoice] = useState<ElementClassChoice | null>(null)
+  const [classChoice, setClassChoice] = useState<ElementClassChoice | null>(defaultClass ?? null)
   const isNew = !element
   const canReadAreas = useHasPermission(TERRITORY_PERMISSIONS.READ_AREAS)
   const form = useForm<FormValues>({
@@ -160,7 +184,7 @@ export function ElementForm({
     initialValues: {
       client: element?.client ?? defaultClient ?? null,
       area: element?.area ?? defaultArea ?? null,
-      element_class: element?.element_class ?? null,
+      element_class: element?.element_class ?? defaultClass?.id ?? null,
       tag_number: element?.tag_number ?? "",
       species_choice: element?.composition.length ? "composition" : "single",
       species: element?.species ?? null,
@@ -180,7 +204,7 @@ export function ElementForm({
       surveyed_on: element?.surveyed_on ?? null,
       public_excluded: element?.public_excluded ?? false,
       notes: element?.notes ?? "",
-      position: emptyPosition(element?.element_class_data.geometry_type),
+      position: emptyPosition(element?.element_class_data.geometry_type ?? defaultClass?.geometry_type),
     },
     validate: (values: FormValues): FormErrors => yupResolver(schemaFor(values))(values),
   })
@@ -262,13 +286,15 @@ export function ElementForm({
           t("validation.number.min", { field: t("inventory.fields.estimatedCount"), min: 0 }),
           (value) => value === "" || (isNumber(value) && value >= 0)
         ),
-      position: isNew && geometryType ? positionSchema(t) : yup.mixed(),
+      position: isNew && geometryType && !mapPosition ? positionSchema(t) : yup.mixed(),
     })
   }
 
+  // The position of the map page, or of the inputs of the form.
+  const positionValue = mapPosition?.value ?? values.position
   // The position checked with the server: after a pause in the typing of the coordinates, and the same object for
   // the same values, which the key of the check counts.
-  const [position] = useDebouncedValue(values.position, 400)
+  const [position] = useDebouncedValue(positionValue, 400)
   const { mode, latitude, longitude, geometry: fileGeometry } = position
   const geometry = useMemo(
     () => positionGeometry({ mode, latitude, longitude, gpsAccuracy: null, geometry: fileGeometry }),
@@ -293,7 +319,11 @@ export function ElementForm({
   const readonlyProps = { readOnly: readonly, variant: inputVariant }
   const readonlySelectProps = readonly ? { readOnly: true, variant: "unstyled", rightSection: null } : {}
   const dateProps = { ...readonlyProps, valueFormat: "DD/MM/YYYY", clearable: !readonly }
-  const cols = layout === "page" ? { base: 1, md: 2, lg: 3 } : { base: 1, sm: 2 }
+  const cols = layout === "page" ? { base: 1, md: 2, lg: 3 } : layout === "panel" ? { base: 1 } : { base: 1, sm: 2 }
+  // The area of a new element, under the position drawn on the map, for those who read the areas.
+  const { data: areaDetail } = useArea(isNew && canReadAreas && values.area ? values.area : undefined)
+  const areaGeometry = areaDetail?.id === values.area ? areaDetail?.geometry : undefined
+  const mapContext = useMemo(() => (areaGeometry ? [areaGeometry] : []), [areaGeometry])
   const errors = form.errors
 
   return (
@@ -304,7 +334,7 @@ export function ElementForm({
         try {
           // The schema checked the required values.
           await onSubmit({
-            ...(isNew ? positionPayload(values.position) : {}),
+            ...(isNew ? positionPayload(positionValue) : {}),
             area: values.area!,
             element_class: values.element_class!,
             tag_number: values.tag_number.trim(),
@@ -406,15 +436,22 @@ export function ElementForm({
               <ElementClassSelect
                 withAsterisk={!readonly}
                 label={t("inventory.fields.elementClass")}
-                // The position of a saved element stays: its class changes among those of the same geometry.
-                filters={element ? { geometry_type: element.element_class_data.geometry_type } : undefined}
+                // The position of a saved element, or given on the map, stays: the class changes among those of the
+                // same geometry.
+                filters={
+                  element
+                    ? { geometry_type: element.element_class_data.geometry_type }
+                    : mapPosition && defaultClass
+                      ? { geometry_type: defaultClass.geometry_type }
+                      : undefined
+                }
                 {...readonlySelectProps}
                 value={values.element_class}
                 onChange={(value, choice) => {
                   form.setFieldValue("element_class", value)
                   setClassChoice(choice)
                   if (!choice) return
-                  if (isNew && choice.geometry_type !== geometryType) {
+                  if (isNew && !mapPosition && choice.geometry_type !== geometryType) {
                     form.setFieldValue("position", emptyPosition(choice.geometry_type))
                   }
                   if (choice.species_mode === "composition") form.setFieldValue("species_choice", "composition")
@@ -445,18 +482,33 @@ export function ElementForm({
           </Section>
           {isNew && geometryType && (
             <Section title={t("inventory.sections.position")}>
-              <PositionInput
-                key={geometryType}
-                geometryType={geometryType}
-                value={values.position}
-                onChange={(value) => form.setFieldValue("position", value)}
-                errors={{
-                  latitude: errors["position.latitude"],
-                  longitude: errors["position.longitude"],
-                  geometry: errors["position.geometry"] ?? errors.geometry,
-                  source: errors.location_source ?? errors.location_accuracy_m,
-                }}
-              />
+              {mapPosition ? (
+                <Group gap="xs" justify="space-between">
+                  <Text size="sm">{mapPositionLabel(t, mapPosition.value)}</Text>
+                  <Button size="compact-sm" variant="light" leftSection={<TbMapPin />} onClick={mapPosition.onEdit}>
+                    {t("inventory.position.change")}
+                  </Button>
+                </Group>
+              ) : (
+                <PositionInput
+                  key={geometryType}
+                  geometryType={geometryType}
+                  value={values.position}
+                  onChange={(value) => form.setFieldValue("position", value)}
+                  mapContext={mapContext}
+                  errors={{
+                    latitude: errors["position.latitude"],
+                    longitude: errors["position.longitude"],
+                    geometry: errors["position.geometry"] ?? errors.geometry,
+                    source: errors.location_source ?? errors.location_accuracy_m,
+                  }}
+                />
+              )}
+              {mapPosition && (errors.geometry || errors.location_source) && (
+                <Text size="sm" c="red">
+                  {errors.geometry ?? errors.location_source}
+                </Text>
+              )}
               {geometry && values.element_class && (
                 <ElementGeometryCheck
                   elementClass={values.element_class}

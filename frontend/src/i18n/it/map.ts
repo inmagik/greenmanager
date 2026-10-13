@@ -29,6 +29,20 @@ export default {
     legend: {
       provisional: "Posizione provvisoria",
     },
+    create: {
+      step: "Passo {{number}} di {{total}}",
+      steps: { class: "Classe", position: "Posizione", form: "Dati" },
+      classDescription: "La classe dice se l'elemento è un punto, una linea o un poligono.",
+      pointHint:
+        "Tocca la mappa dove si trova l'elemento, porta il mirino sul punto e premi Usa il mirino, oppure usa la posizione del dispositivo.",
+      noPoint: "Nessun punto scelto.",
+      back: "Indietro",
+      next: "Avanti",
+      close: "Chiudi il nuovo elemento",
+      discardTitle: "Lasciare il nuovo elemento?",
+      discardMessage: "La posizione e i dati inseriti non sono salvati e andranno persi.",
+      discard: "Lascia",
+    },
     panel: {
       label: "Dati dell'elemento o dell'area scelti sulla mappa",
       loading: "Caricamento...",

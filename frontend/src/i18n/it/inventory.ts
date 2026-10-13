@@ -109,8 +109,13 @@ export default {
       mapLabel: "Mappa della posizione dell'elemento",
       modes: {
         coordinates: "Coordinate",
+        map: "Sulla mappa",
         area_center: "Centro dell'area",
+        file: "Da file",
       },
+      editorLabel: "Mappa per disegnare la posizione dell'elemento",
+      mapPoint: "Punto sulla mappa: {{latitude}}, {{longitude}}",
+      mapDrawn: "Disegnata sulla mappa",
       modeLabel: "Come dare la posizione",
       areaCenterDescription:
         "Il punto va al centro dell'area, come posizione provvisoria: si verifica rilevandolo in campo, con le coordinate o il GPS.",
@@ -191,7 +196,7 @@ export default {
       latitude: "La latitudine è tra -90 e 90",
       longitude: "La longitudine è tra -180 e 180",
       coordinates: "Inserisci latitudine e longitudine, o usa la posizione del dispositivo",
-      geometry: "Scegli un file con la geometria dell'elemento",
+      geometry: "Disegna la posizione sulla mappa o scegli un file con la geometria dell'elemento",
       compositionSpecies: "Scegli la specie",
       compositionQuantity: "Indica gli individui o la percentuale",
       compositionDuplicated: "La specie è già nella composizione",
