@@ -181,7 +181,7 @@ Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR
 - **Disegno**:
   - `draw/useTerraDraw.ts`;
   - `draw/multipart.ts`: `splitParts` divide una geometria multiparte in feature separate al caricamento, `mergeParts` le riunisce al salvataggio.
-- **`CreateElementFlow`**:
+- **`CreateElementFlow`** (nel codice `CreateElementPanel`, §2.5 di [frontend-pattern.md](frontend-pattern.md)):
   1. scelta della classe;
   2. posizionamento: GPS, centro della mappa con il mirino, oppure disegno;
   3. `geometry-check/`, con l'area proposta e gli avvisi;

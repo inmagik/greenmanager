@@ -103,7 +103,7 @@ export default function GeometryEditor({ kind, initial, context = [], onChange, 
             {t("draw.hints.point")}
           </Text>
           <Button
-            size="xs"
+            size="sm"
             variant="default"
             leftSection={<TbCrosshair />}
             disabled={!pointControls}
@@ -132,7 +132,7 @@ export default function GeometryEditor({ kind, initial, context = [], onChange, 
             onControls={setPointControls}
           />
         ) : (
-          <GeometryDraw kind={kind} initial={initial} onChange={onChange} onControls={setControls} />
+          <GeometryDraw key={kind} kind={kind} initial={initial} onChange={onChange} onControls={setControls} />
         )}
         <LocateControl />
         <div className={classes.basemap}>

@@ -15,6 +15,7 @@ import { useArea, useAreasGeoJSON } from "@/modules/territory/api/areas"
 import { TERRITORY_PERMISSIONS } from "@/modules/territory/permissions"
 import type { GeometryType } from "@/modules/catalogs/types"
 import type { FeatureCollection, Geometry, Point } from "geojson"
+import { useViewportSize } from "@mantine/hooks"
 import { useEffect, useMemo } from "react"
 import type { MapLayer, Selection } from "../hooks/useMapUrlState"
 import {
@@ -66,7 +67,9 @@ type Props = {
   onSelect: (selection: Selection | null) => void
   fit: FitTarget
   onFitted: () => void
-  /** A position being given on the map: the clicks do not select the features. */
+  /** A new element is being created: the clicks do not select the features. */
+  creating: boolean
+  /** The position of the new element being given on the map. */
   drawing: MapDrawing | null
   /** The position of a new element, given before: shown like a selected feature. */
   pending: Geometry | null
@@ -115,10 +118,13 @@ export function MapContent({
   onSelect,
   fit,
   onFitted,
+  creating,
   drawing,
   pending,
 }: Props) {
   const map = useMap()
+  // Rendered again when the screen turns or changes size: the height of the drawer depends on it.
+  useViewportSize()
   const { bbox, zoom } = useMapBbox()
   const canReadAreas = useHasPermission(TERRITORY_PERMISSIONS.READ_AREAS)
   const canReadElements = useHasPermission(INVENTORY_PERMISSIONS.READ_ELEMENTS)
@@ -180,7 +186,7 @@ export function MapContent({
       // On a phone the feature goes in the middle of the part above the drawer.
       if (mobile) map.easeTo({ center: event.lngLat, offset: [0, -drawerHeight(map, mobile) / 2] })
     },
-    !drawing
+    !creating
   )
 
   // Frame the selected feature, or the areas of the client, once they are loaded.
@@ -241,6 +247,7 @@ export function MapContent({
           />
         ) : (
           <GeometryDraw
+            key={drawing.kind}
             kind={drawing.kind}
             initial={drawing.initial}
             onChange={drawing.onChange}

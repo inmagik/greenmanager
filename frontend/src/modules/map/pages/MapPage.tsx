@@ -146,6 +146,7 @@ export default function MapPage() {
             onSelect={select}
             fit={fit}
             onFitted={fitted}
+            creating={!!creating}
             drawing={drawing}
             // The position of the new element, while the form is open.
             pending={creating && !drawing ? (drawnGeometry ?? point) : null}

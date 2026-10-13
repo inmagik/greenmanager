@@ -48,7 +48,7 @@ function PointStep({
       </Text>
       <Group gap="xs">
         <Button
-          size="xs"
+          size="sm"
           variant="default"
           leftSection={<TbCurrentLocation />}
           loading={loading}
@@ -64,7 +64,7 @@ function PointStep({
           {t("geolocation.locate")}
         </Button>
         <Button
-          size="xs"
+          size="sm"
           variant="default"
           leftSection={<TbCrosshair />}
           disabled={!controls}

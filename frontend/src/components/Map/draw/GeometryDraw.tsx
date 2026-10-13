@@ -1,7 +1,7 @@
 import type { FeatureCollection, Geometry } from "geojson"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useGeoJSONLayer, type GeoJSONLayer } from "../useGeoJSONLayer"
-import { DRAW_PRECISION, mergeParts, splitParts, type MergedGeometry, type Part } from "./multipart"
+import { DRAW_PRECISION, mergeParts, partKey, splitParts, type MergedGeometry, type Part } from "./multipart"
 import { DRAW_MODES, SELECT_MODE, useTerraDraw, type DrawnKind, type TerraDrawInstance } from "./useTerraDraw"
 
 /** What the drawing does now, and its actions: for a toolbar outside the map (`DrawToolbar`). */
@@ -9,6 +9,8 @@ export type DrawControls = {
   kind: DrawnKind
   /** A new part is being drawn. */
   drawing: boolean
+  /** The part being drawn has the vertices it needs: two for a line, three for a polygon. */
+  canFinish: boolean
   /** A part is selected: "delete part" removes it. */
   selected: boolean
   /** The finished parts that terra-draw edits. */
@@ -46,6 +48,8 @@ const LOCKED_LAYERS: GeoJSONLayer[] = [
 
 const KEY_EVENT = { heldKeys: [], preventDefault: () => {} }
 
+const MIN_VERTICES: Record<DrawnKind, number> = { line: 2, polygon: 3 }
+
 /**
  * The parts of a line or of a polygon, drawn and edited on the map of `MapView` with terra-draw: each part is a
  * feature (`splitParts`), and the geometry joins them again (`mergeParts`). Tapping a part selects it and shows its
@@ -54,10 +58,13 @@ const KEY_EVENT = { heldKeys: [], preventDefault: () => {} }
  * in grey.
  */
 export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
+  // `kind` and `initial` are read once: a drawing of another kind is another component (`key`).
   const [split] = useState(() => splitParts(initial, kind, DRAW_PRECISION))
   const [locked, setLocked] = useState<Part[]>(split.locked)
   const lockedRef = useRef(locked)
   const [drawing, setDrawing] = useState(false)
+  // The vertices placed in the part being drawn.
+  const [vertices, setVertices] = useState(0)
   const [selected, setSelected] = useState<string | number | null>(null)
   const [parts, setParts] = useState(0)
   const [canUndo, setCanUndo] = useState(false)
@@ -84,19 +91,29 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
     const results = instance.addFeatures(
       split.editable.map((geometry) => ({ type: "Feature", geometry, properties: { mode: DRAW_MODES[kind] } }))
     )
-    // A part that terra-draw refuses stays as it is, like the polygons with holes.
+    // A part that terra-draw refuses stays as it was, like the polygons with holes.
     const refused = split.editable.filter((_, index) => !results[index]?.valid)
     if (refused.length > 0) {
-      lockedRef.current = [...split.locked, ...refused]
+      lockedRef.current = [...split.locked, ...refused.map((part) => split.originals.get(partKey(part)) ?? part)]
       setLocked(lockedRef.current)
     }
     instance.clearUndoRedoHistory()
+    // `finish` ends each change: a part drawn, and in the select mode a vertex dragged (`dragCoordinate`), added
+    // from the middle of a side (`insertMidpoint`) or removed (`deleteCoordinate`).
     instance.on("finish", (_id, context) => {
       if (context.mode === DRAW_MODES[kind]) {
         instance.setMode(SELECT_MODE)
         setDrawing(false)
       }
       emit(ready)
+    })
+    instance.on("change", (ids) => {
+      for (const id of ids) {
+        const feature = instance.getSnapshotFeature(id)
+        if (feature?.properties.currentlyDrawing && feature.properties.mode === DRAW_MODES[kind]) {
+          setVertices(Number(feature.properties.committedCoordinateCount ?? 0))
+        }
+      }
     })
     instance.on("select", (id) => setSelected(id))
     instance.on("deselect", () => setSelected(null))
@@ -113,6 +130,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
     () => ({
       kind,
       drawing,
+      canFinish: drawing && vertices >= MIN_VERTICES[kind],
       selected: selected !== null,
       parts,
       locked: locked.length,
@@ -122,11 +140,13 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
         draw.instance.setMode(DRAW_MODES[kind])
         setSelected(null)
         setDrawing(true)
+        setVertices(0)
       },
       finishPart: () => draw?.drawMode.onKeyUp({ key: "Enter", ...KEY_EVENT }),
       cancelPart: () => {
         if (!draw) return
         draw.drawMode.onKeyUp({ key: "Escape", ...KEY_EVENT })
+        setVertices(0)
         // Without other parts there is nothing to edit: the drawing goes on.
         if (parts + locked.length === 0) return
         draw.instance.setMode(SELECT_MODE)
@@ -145,7 +165,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
         emit(draw)
       },
     }),
-    [kind, drawing, selected, parts, locked, canUndo, draw, emit]
+    [kind, drawing, vertices, selected, parts, locked, canUndo, draw, emit]
   )
   useEffect(() => {
     handlers.current.onControls(controls)

@@ -161,7 +161,7 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
   - `select`, in cui si sceglie una parte e se ne modificano i vertici.
 - L'annullamento è quello di terra-draw, di sessione (le parti finite) e di modalità (i vertici della parte in corso).
 - I layer di terra-draw stanno nel livello `drawing` (§1.3). Le coordinate hanno 9 decimali, circa un decimo di millimetro.
-- `onReady`, letto una volta, carica le parti e registra gli eventi: le chiamate di `setState` arrivano dagli eventi di terra-draw, non dal corpo di un effetto.
+- `onReady`, letto una volta, carica le parti e registra gli eventi: le chiamate di `setState` arrivano dagli eventi di terra-draw, non dal corpo di un effetto. Anche il tipo di geometria si legge una volta: un disegno di un altro tipo è un altro componente, con la sua `key`.
 - **Spike** all'inizio della PR4b (ottobre 2026, terra-draw 1.37, adapter 1.5, MapLibre 6.14):
 
   | Punto | Esito |
@@ -190,8 +190,8 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
   - Una parte non si sposta intera: con un dito succederebbe per errore. Un poligono non può incrociarsi, né disegnandolo né spostandone i vertici: il server lo rifiuterebbe (`geometry_invalid`).
   - Le parti bloccate sono grigie e tratteggiate; un testo dice che si cambiano solo da file.
   - Senza parti, la mappa parte disegnando la prima.
-- **Pulsanti** (`DrawToolbar`), fuori dalla mappa, con un testo su cosa fare: *Aggiungi parte*, *Elimina parte* (della parte scelta), *Fine parte* e *Annulla la parte* mentre se ne disegna una, *Annulla l'ultima modifica*. *Fine parte* chiude la parte come il tasto Invio; un poligono si chiude anche toccando il primo vertice.
-- **Comunicazione con la pagina**: `GeometryDraw` dà la geometria riunita alla fine di ogni modifica (una parte finita, un vertice spostato, una parte eliminata, un annullamento), non all'apertura: la geometria salvata non è una modifica. I controlli (`DrawControls`) vanno alla pagina, che li mostra dove vuole; tornano `null` quando il disegno finisce.
+- **Pulsanti** (`DrawToolbar`), fuori dalla mappa, con un testo su cosa fare: *Aggiungi parte*, *Elimina parte* (della parte scelta), *Fine parte* e *Annulla la parte* mentre se ne disegna una, *Annulla l'ultima modifica*. *Fine parte* chiude la parte come il tasto Invio, e si attiva quando la parte ha i vertici che servono: due per una linea, tre per un poligono. Un poligono si chiude anche toccando il primo vertice. Il testo è annunciato agli screen reader (`aria-live`).
+- **Comunicazione con la pagina**: `GeometryDraw` dà la geometria riunita alla fine di ogni modifica, non all'apertura: la geometria salvata non è una modifica. La fine di una modifica è l'evento `finish` di terra-draw (una parte finita, un vertice spostato, aggiunto o tolto), più l'eliminazione di una parte e l'annullamento. I controlli (`DrawControls`) vanno alla pagina, che li mostra dove vuole; tornano `null` quando il disegno finisce.
 - **Stile**: la geometria nuova è arancio, come quella proposta nella mini mappa (§1.8), più scura quando è scelta. I vertici sono più grandi di quelli predefiniti, perché si toccano con un dito.
 - **Punto** (`PointPicker`): un tocco sulla mappa posa il punto dove è il dito. Il mirino, una croce al centro della parte visibile della mappa, è più preciso: si sposta la mappa e il punto si posa sotto il mirino (`placeAtCrosshair`). Su un telefono il centro è quello della parte sopra il drawer. `show` porta la mappa su un punto dato da fuori, come la posizione del dispositivo.
 
@@ -208,7 +208,7 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
   | elemento, scheda *Posizione* | punto: coordinate, sulla mappa, centro dell'area; linee e poligoni: sulla mappa, le parti salvate, o da file | la posizione salvata |
   | elemento nuovo, form | come la scheda *Posizione* | l'area scelta, per chi legge le aree |
 
-- Sulla mappa la mini mappa non c'è: l'editor mostra già la geometria salvata. Una geometria senza parti non si salva, e il testo lo dice.
+- Sulla mappa la mini mappa non c'è: l'editor mostra già la geometria salvata. Finché la geometria non cambia, *Salva* resta disattivato; una geometria senza parti non si salva, e il testo lo dice.
 
 ### 2.5 Nuovo elemento dalla mappa
 

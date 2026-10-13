@@ -15,7 +15,7 @@ type Props = {
 export function DrawToolbar({ controls }: Props) {
   const { t } = useTranslation()
   if (!controls) return null
-  const { kind, drawing, selected, parts, locked, canUndo } = controls
+  const { kind, drawing, canFinish, selected, parts, locked, canUndo } = controls
   const hint = drawing
     ? t(`draw.hints.drawing.${kind}`)
     : selected
@@ -26,11 +26,10 @@ export function DrawToolbar({ controls }: Props) {
 
   return (
     <Stack gap="xs">
-      {hint && (
-        <Text size="sm" c="dimmed">
-          {hint}
-        </Text>
-      )}
+      {/* Announced: it says what to do after each step. */}
+      <Text size="sm" c="dimmed" aria-live="polite">
+        {hint}
+      </Text>
       {locked > 0 && (
         <Text size="sm" c="dimmed">
           {t("draw.locked", { count: locked })}
@@ -39,22 +38,22 @@ export function DrawToolbar({ controls }: Props) {
       <Group gap="xs">
         {drawing ? (
           <>
-            <Button size="xs" leftSection={<TbCheck />} onClick={controls.finishPart}>
+            <Button size="sm" leftSection={<TbCheck />} disabled={!canFinish} onClick={controls.finishPart}>
               {t("draw.finishPart")}
             </Button>
             {parts + locked > 0 && (
-              <Button size="xs" variant="default" leftSection={<TbX />} onClick={controls.cancelPart}>
+              <Button size="sm" variant="default" leftSection={<TbX />} onClick={controls.cancelPart}>
                 {t("draw.cancelPart")}
               </Button>
             )}
           </>
         ) : (
           <>
-            <Button size="xs" variant="default" leftSection={<TbPlus />} onClick={controls.addPart}>
+            <Button size="sm" variant="default" leftSection={<TbPlus />} onClick={controls.addPart}>
               {t("draw.addPart")}
             </Button>
             <Button
-              size="xs"
+              size="sm"
               variant="default"
               color="red"
               leftSection={<TbTrash />}
@@ -65,7 +64,7 @@ export function DrawToolbar({ controls }: Props) {
             </Button>
           </>
         )}
-        <Button size="xs" variant="subtle" leftSection={<TbArrowBackUp />} disabled={!canUndo} onClick={controls.undo}>
+        <Button size="sm" variant="subtle" leftSection={<TbArrowBackUp />} disabled={!canUndo} onClick={controls.undo}>
           {t("draw.undo")}
         </Button>
       </Group>

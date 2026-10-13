@@ -82,6 +82,8 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
   const savedGeometry = useMemo(() => [element.geometry], [element.geometry])
   // On the map the editor shows the saved position under the new one.
   const onMap = editable && form.values.position.mode === "map"
+  // On the map or from a file, nothing to save until the geometry changes: the map shows the saved one.
+  const unchanged = ["map", "file"].includes(form.values.position.mode) && !form.values.position.geometry
 
   const save = async (data: Parameters<typeof updateElement>[0]) => {
     setIsLoading(true)
@@ -236,7 +238,7 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
               <Button variant="subtle" color="gray.7" onClick={cancel}>
                 {t("common.cancel")}
               </Button>
-              <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading}>
+              <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading} disabled={unchanged}>
                 {t("common.save")}
               </Button>
             </Group>

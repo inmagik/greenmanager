@@ -100,7 +100,7 @@ export type TerraDrawInstance = {
  * terra-draw on the map of `MapView`, to draw and edit lines or polygons: a mode that draws a new part, and a select
  * mode in which the vertices of the selected part move, with the undo of the changes. The layers of terra-draw go
  * in the `drawing` slot. `onReady`, read once, gets the instance when it is ready, to load the features and listen to
- * its events; the instance stops with the component.
+ * its events; the instance stops with the component. A drawing of another kind is another component, with its `key`.
  */
 export function useTerraDraw(kind: DrawnKind, onReady: (draw: TerraDrawInstance) => void) {
   const map = useMap()
