@@ -1,6 +1,6 @@
 # Prima fetta verticale: piano e avanzamento
 
-> **Stato**: in corso · **Passo**: T2 e T3 del binario tecnico, con la prima fetta verticale (D-040) · Metodologia in [README.md](../README.md)
+> **Stato**: PR tutte unite, in attesa della revisione della fetta · **Passo**: T2 e T3 del binario tecnico, con la prima fetta verticale (D-040) · Metodologia in [README.md](../README.md)
 
 Questo documento contiene il piano della prima fetta verticale: la sequenza delle PR, cosa contiene ciascuna e a che punto è. Le scelte tecniche sono registrate nelle decisioni D-041 e seguenti, in [decisioni.md](../decisioni.md), e nei documenti dei componenti: §8 di [backend.md](backend.md) e [frontend.md](frontend.md). Qui si rimanda a quei documenti, senza ripeterli.
 
@@ -74,9 +74,10 @@ Aggiornato al 2026-10-13.
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
 | PR3d | elementi (frontend) | PR3c, PR2c | unita, [#26](https://github.com/inmagik/greenmanager/pull/26) |
 | PR4a | mappa: visualizzazione | PR3c, PR3d | unita, [#27](https://github.com/inmagik/greenmanager/pull/27) |
-| PR4b | mappa: disegno e uso in campo | PR3d, PR4a | in revisione, [#28](https://github.com/inmagik/greenmanager/pull/28); issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
+| PR4b | mappa: disegno e uso in campo | PR3d, PR4a | unita, [#28](https://github.com/inmagik/greenmanager/pull/28) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a). Aree ed elementi si vedono sulla mappa, e con la PR4b le geometrie si disegnano e si modificano sulla mappa, anche multiparte; dalla mappa si crea un elemento nuovo.
+- La fetta è completa: PR1–PR4b unite. Il backend ha le app di §8 di [backend.md](backend.md). Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a e PR4b). Aree ed elementi si vedono sulla mappa; le geometrie si disegnano e si modificano sulla mappa, anche multiparte, e dalla mappa si crea un elemento nuovo.
+- Manca la revisione della fetta, con la prova da smartphone vero in HTTPS (domanda 3).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -156,46 +157,29 @@ Aggiornato al 2026-10-13.
 - Prova nel browser da utente non staff, con i soli permessi degli elementi, anche a larghezza smartphone, e con l'ortofoto dell'Emilia-Romagna; due revisioni con `pr-reviewer` e una di Copilot, unita senza autofix.
 - Riferimenti: §1 di [frontend-pattern.md](frontend-pattern.md), §7 e §9.9 di [frontend.md](frontend.md), §8.7 di [backend.md](backend.md).
 
-## 5. PR da fare
+**PR4b: mappa, disegno e uso in campo** ([#28](https://github.com/inmagik/greenmanager/pull/28); issue [#18](https://github.com/inmagik/greenmanager/issues/18); D-058).
+- Spike su terra-draw 1.37, con l'adapter 1.5: regge MapLibre 6, che resta. Le multiparte si dividono in parti (`splitParts`) e si riuniscono al salvataggio (`mergeParts`). I poligoni con buchi, che terra-draw rifiuta, restano bloccati e si salvano come erano.
+- Disegno (`components/Map/draw/`):
+  - linee e poligoni una parte alla volta, con i vertici da trascinare, i punti a metà dei lati e l'annullamento;
+  - `DrawToolbar` fuori dalla mappa, e `PointPicker` per i punti, con il mirino o il GPS;
+  - `partsOverlap` segnala due poligoni sovrapposti o con un lato in comune, che il server rifiuterebbe.
+- `GeometryEditor` lazy, nelle schede Geometria e Posizione e nei form di creazione di aree ed elementi, accanto al file. *Salva* resta disattivato finché una parte iniziata non è finita.
+- Nuovo elemento dalla mappa (`CreateElementPanel`): classe, posizione, poi il form con l'area proposta e gli avvisi. Il form resta se la posizione cambia. Chiudere o lasciare la pagina con qualcosa di non salvato chiede conferma.
+- Uso in campo: `X-Change-Source: field` dai dispositivi con lo schermo tattile; `ScreenWidthGuard` lascia passare tutte le pagine.
+- `vitest` per le funzioni pure, con 33 test.
+- Prova di §7 nel browser da utente non staff, a larghezza desktop e con uno smartphone emulato.
+- Revisioni: tre con `pr-reviewer` e due di Copilot; unita senza autofix.
+- Resta la prova da smartphone vero, in HTTPS (domanda 3).
+- Riferimenti: §2 e §3 di [frontend-pattern.md](frontend-pattern.md), §8 e §9.7–§9.9 di [frontend.md](frontend.md).
 
-### Regole delle PR del frontend
+## 5. Regole delle PR del frontend
 
-Valgono per le PR3 e PR4:
+Le PR della fetta sono tutte unite (§3 e §4). Le PR3 e PR4 hanno seguito queste regole:
 - i moduli seguono i pattern di §4–§5 di [frontend.md](frontend.md) e di `modules/tenants` e `modules/users`: pagine di lista e dettaglio, form, azioni, `navigation.tsx`, `menu.tsx`, `permissions.ts`;
 - i testi visibili stanno nelle traduzioni di `src/i18n/it/`;
 - i codici degli errori e degli avvisi del server si traducono con `serverErrors.<code>`: ogni PR aggiunge quelli che le servono;
 - prima di ogni commit `yarn lint` e `yarn build` devono passare, e dalla PR4b `yarn test`;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
-
-### PR4b. Mappa: disegno e uso in campo
-
-Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR3d e PR4a, unite.
-
-- **Spike all'inizio** su terra-draw (`terra-draw`, `terra-draw-maplibre-gl-adapter`):
-  - multiparte;
-  - poligoni con buchi;
-  - compatibilità dell'adapter con maplibre-gl 6;
-  - trascinamento dei vertici su iOS e Android.
-
-  Se l'adapter non regge la versione 6, si fissa maplibre-gl alla 5. Se i buchi non reggono, le parti con buchi restano bloccate e si conservano invariate.
-- **Disegno**:
-  - `draw/useTerraDraw.ts`;
-  - `draw/multipart.ts`: `splitParts` divide una geometria multiparte in feature separate al caricamento, `mergeParts` le riunisce al salvataggio.
-- **`CreateElementFlow`** (nel codice `CreateElementPanel`, §2.5 di [frontend-pattern.md](frontend-pattern.md)):
-  1. scelta della classe;
-  2. posizionamento: GPS, centro della mappa con il mirino, oppure disegno;
-  3. `geometry-check/`, con l'area proposta e gli avvisi;
-  4. `ElementForm` nel pannello.
-- **`GeometryEditor`** per aree ed elementi: modifica dei vertici, "Aggiungi parte", "Elimina parte", annulla e salva con `revision`.
-- **Uso in campo**: su mobile si invia `X-Change-Source: field`.
-- **Test**: `vitest`, solo in sviluppo, per `multipart.ts` e gli helper del bbox.
-- **Documenti**:
-  - `frontend-pattern.md` completo, con le "Domande aperte": liste, dettaglio e form; mappa, disegno e multiparte; uso in campo; mappa pubblica rinviata; basemap e CORS;
-  - decisione nuova, D-058: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
-  - §8 di [frontend.md](frontend.md) e [README.md](README.md) di questa cartella;
-  - chiusura della fetta: T2 e T3 completati, in attesa di revisione, in [designdocs/README.md](../README.md); riga **Stato** di [AGENTS.md](../../AGENTS.md); `frontend/AGENTS.md`.
-
-**Verifica**: la prova di fine fetta (§7), anche da smartphone.
 
 ## 6. Rischi da verificare
 
