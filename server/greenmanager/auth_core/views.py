@@ -272,12 +272,34 @@ class RolesViewset(
             )
         serializer.save(tenant=tenant)
 
+    @transaction.atomic
+    def perform_update(self, serializer):
+        # New permissions of the role update those of its users (receivers.py):
+        # they are locked first, as the deletion of the role does.
+        if "permissions" in serializer.validated_data:
+            self.lock_users(serializer.instance.user_set.all())
+        serializer.save()
+
     def role_users(self, request):
         serializer = RoleUsersSerializer(
             data=request.data, context=self.get_serializer_context()
         )
         serializer.is_valid(raise_exception=True)
         return serializer.validated_data["user_ids"]
+
+    def lock_users(self, users):
+        """
+        Lock the users in key order, before their roles, or a role they have,
+        change: the same order as UserSerializer.update, which locks the user and
+        then changes the roles. Otherwise the row of the roles is written first,
+        the receiver of m2m_changed then saves the user, and the two requests can
+        deadlock.
+        """
+        return list(
+            User.objects.select_for_update(of=("self",))
+            .filter(pk__in=[user.pk for user in users])
+            .order_by("pk")
+        )
 
     def users_response(self, users):
         queryset = User.objects.filter(id__in=[user.id for user in users])
@@ -300,9 +322,10 @@ class RolesViewset(
         action_permissions={"grant_to": ["auth_core.WRITE_ROLES"]},
         pagination_class=None,
     )
+    @transaction.atomic
     def grant_to(self, request, *args, **kwargs):
         role = self.get_object()
-        users = self.role_users(request)
+        users = self.lock_users(self.role_users(request))
         for user in users:
             user.roles.add(role)
         return self.users_response(users)
@@ -318,9 +341,10 @@ class RolesViewset(
         action_permissions={"revoke_from": ["auth_core.WRITE_ROLES"]},
         pagination_class=None,
     )
+    @transaction.atomic
     def revoke_from(self, request, *args, **kwargs):
         role = self.get_object()
-        users = self.role_users(request)
+        users = self.lock_users(self.role_users(request))
         for user in users:
             user.roles.remove(role)
         return self.users_response(users)

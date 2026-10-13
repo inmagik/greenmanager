@@ -151,6 +151,19 @@ class ImportSpeciesTests(TestCase):
         ]
         self.assertEqual(len(locking), 2)
 
+    def test_table_is_locked_for_writes_before_the_entries(self):
+        self.run_command(self.write_csv(self.rows()))
+
+        with CaptureQueriesContext(connection) as queries:
+            self.run_command(self.write_csv(self.rows()), "--update")
+
+        species = [
+            query["sql"]
+            for query in queries.captured_queries
+            if '"catalogs_species"' in query["sql"]
+        ]
+        self.assertEqual(species[0], 'LOCK TABLE "catalogs_species" IN EXCLUSIVE MODE')
+
     def test_parent_only_changes_are_counted_as_updates(self):
         self.run_command(self.write_csv(self.rows()))
         rows = self.rows()
