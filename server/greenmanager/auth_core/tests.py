@@ -11,7 +11,7 @@ from tenants.models import Tenant, TenantMembership
 
 from .models import Role
 from .permission_manager import PermissionManager
-from .serializers import UserSerializer
+from .serializers import RoleSerializer, UserSerializer
 
 
 class UsersApiTests(APITestCase):
@@ -515,6 +515,32 @@ class TenantScopedUsersTests(APITestCase):
         self.assertEqual(Role.objects.filter(name="Operators").count(), 1)
         renamed.refresh_from_db()
         self.assertEqual(renamed.name, "Inspectors")
+
+    def test_role_name_taken_after_validation_gives_the_error_of_the_rule(self):
+        # A concurrent request takes the name between validate_name and the save.
+        self.grant_role_permission()
+        renamed = Role.objects.create(tenant=self.tenant, name="Inspectors")
+
+        with mock.patch.object(
+            RoleSerializer, "validate_name", lambda serializer, value: value
+        ):
+            create = self.client.post(
+                "/api/core/auth/roles/",
+                {"name": "Operators", "permissions": []},
+                format="json",
+                **self.tenant_header,
+            )
+            rename = self.client.patch(
+                f"/api/core/auth/roles/{renamed.pk}/",
+                {"name": "Operators"},
+                format="json",
+                **self.tenant_header,
+            )
+
+        for response in (create, rename):
+            self.assertEqual(response.status_code, 400, response.content)
+            self.assertEqual(response.data["name"]["code"], "role_name_not_unique")
+        self.assertEqual(Role.objects.filter(name="Operators").count(), 1)
 
     def test_role_name_of_other_tenant_and_own_name_are_accepted(self):
         self.grant_role_permission()
