@@ -16,6 +16,8 @@ type Props = {
   mapInitial?: Geometry | null
   /** Geometries shown under the one drawn, and framed: the saved position, the area of a new element. */
   mapContext?: Geometry[]
+  /** A part being drawn on the map has vertices (`GeometryEditor`): the form does not save meanwhile. */
+  onDrawing?: (drawing: boolean) => void
   /** Errors of the form (`latitude`, `longitude`, `geometry`) and of the server (`geometry`, `location_source`). */
   errors: {
     latitude?: React.ReactNode
@@ -38,7 +40,15 @@ const MODES: Record<"point" | "other", PositionMode[]> = {
  * accuracy it declares), a point on the map, or the center of the area; for lines and polygons, the parts drawn on
  * the map (`GeometryEditor`) or a GeoJSON file.
  */
-export function PositionInput({ geometryType, value, onChange, mapInitial = null, mapContext, errors }: Props) {
+export function PositionInput({
+  geometryType,
+  value,
+  onChange,
+  mapInitial = null,
+  mapContext,
+  onDrawing,
+  errors,
+}: Props) {
   const { t } = useTranslation()
   const { locate, loading, error: positionError } = useCurrentPosition()
 
@@ -71,6 +81,7 @@ export function PositionInput({ geometryType, value, onChange, mapInitial = null
           context={mapContext}
           label={t("inventory.position.editorLabel")}
           onChange={(geometry) => onChange({ ...value, mode: "map", geometry })}
+          onDrawing={onDrawing}
         />
       )}
       {value.mode === "file" && (

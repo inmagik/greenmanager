@@ -23,6 +23,8 @@ export type GeometryEditorProps = {
   context?: Geometry[]
   /** The new geometry, at the end of each change: `null` when no part is left. */
   onChange: (geometry: MergedGeometry | null) => void
+  /** A part being drawn has vertices, not in the geometry until it is finished: the page does not save meanwhile. */
+  onDrawing?: (drawing: boolean) => void
   /** The accessible name of the map. */
   label: string
   h?: number | string
@@ -86,7 +88,15 @@ function Context({ geometries, initial }: { geometries: Geometry[]; initial: Bbo
  * basemap are over it. Loaded lazily, with MapLibre and terra-draw, through `LazyGeometryEditor` (exported as
  * `GeometryEditor` by `@/components/Map`).
  */
-export default function GeometryEditor({ kind, initial, context = [], onChange, label, h = 420 }: GeometryEditorProps) {
+export default function GeometryEditor({
+  kind,
+  initial,
+  context = [],
+  onChange,
+  onDrawing,
+  label,
+  h = 420,
+}: GeometryEditorProps) {
   const { t } = useTranslation()
   const [controls, setControls] = useState<DrawControls | null>(null)
   const [pointControls, setPointControls] = useState<PointControls | null>(null)
@@ -132,7 +142,16 @@ export default function GeometryEditor({ kind, initial, context = [], onChange, 
             onControls={setPointControls}
           />
         ) : (
-          <GeometryDraw key={kind} kind={kind} initial={initial} onChange={onChange} onControls={setControls} />
+          <GeometryDraw
+            key={kind}
+            kind={kind}
+            initial={initial}
+            onChange={onChange}
+            onControls={(value) => {
+              setControls(value)
+              onDrawing?.(!!value?.unfinished)
+            }}
+          />
         )}
         <LocateControl />
         <div className={classes.basemap}>

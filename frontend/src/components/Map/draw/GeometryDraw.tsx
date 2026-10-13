@@ -19,6 +19,8 @@ export type DrawControls = {
   drawing: boolean
   /** The part being drawn has the vertices it needs: two for a line, three for a polygon. */
   canFinish: boolean
+  /** The part being drawn has vertices: they are not in the geometry until the part is finished. */
+  unfinished: boolean
   /** A part is selected: "delete part" removes it. */
   selected: boolean
   /** The finished parts that terra-draw edits. */
@@ -143,6 +145,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
       kind,
       drawing,
       canFinish: drawing && vertices >= MIN_VERTICES[kind],
+      unfinished: drawing && vertices > 0,
       selected: selected !== null,
       parts,
       locked: locked.length,

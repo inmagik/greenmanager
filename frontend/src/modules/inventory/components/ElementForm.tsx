@@ -180,6 +180,8 @@ export function ElementForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [conflict, setConflict] = useState(false)
+  // A part being drawn is not in the geometry yet: saving would lose it.
+  const [drawing, setDrawing] = useState(false)
   // The class just chosen: its geometry, species mode and attributes drive the form before its detail loads.
   const [classChoice, setClassChoice] = useState<ElementClassChoice | null>(defaultClass ?? null)
   const isNew = !element
@@ -516,6 +518,7 @@ export function ElementForm({
                   value={values.position}
                   onChange={(value) => form.setFieldValue("position", value)}
                   mapContext={mapContext}
+                  onDrawing={setDrawing}
                   errors={{
                     latitude: errors["position.latitude"],
                     longitude: errors["position.longitude"],
@@ -691,14 +694,14 @@ export function ElementForm({
                 >
                   {t("common.cancel")}
                 </Button>
-                <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading}>
+                <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading} disabled={drawing}>
                   {t("common.save")}
                 </Button>
               </Group>
             </FormFooter>
           ) : (
             <Group justify="flex-end" pt="sm">
-              <Button type="submit" loading={isLoading}>
+              <Button type="submit" loading={isLoading} disabled={drawing}>
                 {t("common.confirm")}
               </Button>
             </Group>

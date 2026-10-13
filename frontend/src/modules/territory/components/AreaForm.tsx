@@ -96,6 +96,8 @@ export function AreaForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [conflict, setConflict] = useState(false)
+  // A part being drawn is not in the geometry yet: saving would lose it.
+  const [drawing, setDrawing] = useState(false)
   const isNew = !area
   const schema = yup.object({
     client: yup.string().nullable().required().label(t("territory.fields.client")),
@@ -294,6 +296,7 @@ export function AreaForm({
                     context={clientAreas}
                     label={t("territory.geometry.editorLabel")}
                     onChange={(geometry) => form.setFieldValue("geometry", geometry as MultiPolygon | null)}
+                    onDrawing={setDrawing}
                   />
                   {form.errors.geometry && (
                     <Text size="sm" c="red">
@@ -434,14 +437,14 @@ export function AreaForm({
                 >
                   {t("common.cancel")}
                 </Button>
-                <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading}>
+                <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading} disabled={drawing}>
                   {t("common.save")}
                 </Button>
               </Group>
             </FormFooter>
           ) : (
             <Group justify="flex-end" pt="sm">
-              <Button type="submit" loading={isLoading}>
+              <Button type="submit" loading={isLoading} disabled={drawing}>
                 {t("common.confirm")}
               </Button>
             </Group>

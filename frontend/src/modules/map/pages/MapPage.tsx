@@ -21,7 +21,7 @@ import { CreateElementPanel } from "../components/CreateElementPanel"
 import { FeaturePanel } from "../components/FeaturePanel"
 import { MapContent, type FitTarget, type MapDrawing } from "../components/MapContent"
 import { DRAWER_SHARE, MapSidePanel } from "../components/MapSidePanel"
-import { hasPosition, NEW_ELEMENT, positionPoint, type CreateElementState } from "../createElement"
+import { hasChanges, NEW_ELEMENT, positionPoint, type CreateElementState } from "../createElement"
 import { useMapUrlState } from "../hooks/useMapUrlState"
 import classes from "./MapPage.module.css"
 
@@ -92,7 +92,7 @@ export default function MapPage() {
       setDrawControls(null)
       setPointControls(null)
     }
-    if (!hasPosition(creating?.position ?? null)) return close()
+    if (!hasChanges(creating)) return close()
     modals.openConfirmModal({
       title: t("map.create.discardTitle"),
       children: t("map.create.discardMessage"),
@@ -184,7 +184,7 @@ export default function MapPage() {
         )}
       </div>
       <BlockNavigation
-        when={hasPosition(creating?.position ?? null)}
+        when={hasChanges(creating)}
         title={t("map.create.discardTitle")}
         message={t("map.create.discardMessage")}
       />

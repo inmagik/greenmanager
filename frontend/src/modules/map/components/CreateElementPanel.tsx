@@ -8,7 +8,7 @@ import { ElementForm } from "@/modules/inventory/components/ElementForm"
 import type { PositionValue } from "@/modules/inventory/position"
 import type { Element } from "@/modules/inventory/types"
 import { useClientChoices } from "@/modules/parties/api/clients"
-import { ActionIcon, Box, Button, Group, ScrollArea, Stack, Text, Title } from "@mantine/core"
+import { ActionIcon, Box, Button, Center, Group, Loader, ScrollArea, Stack, Text, Title } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { TbArrowLeft, TbArrowRight, TbCrosshair, TbCurrentLocation, TbX } from "react-icons/tb"
 import { hasPosition, positionPoint, type CreateElementState, type CreateStep } from "../createElement"
@@ -108,7 +108,7 @@ export function CreateElementPanel({
 }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: createElement } = useCreateElement()
-  const { data: activeClients } = useClientChoices({ active: "true" })
+  const { data: activeClients, isLoading: clientsLoading } = useClientChoices({ active: "true" })
   const defaultClient = activeClients?.some((choice) => choice.id === client) ? client : null
   const { step, elementClass, position } = state
   const kind = elementClass?.geometry_type
@@ -188,8 +188,14 @@ export function CreateElementPanel({
           {footer("class", "form", hasPosition(position) && !drawControls?.drawing && !drawControls?.overlap)}
         </>
       )}
-      {state.formShown && elementClass && hasPosition(position) && (
-        // Hidden while the position changes: the values typed stay.
+      {step === "form" && clientsLoading && (
+        <Center p="xl">
+          <Loader size="sm" />
+        </Center>
+      )}
+      {/* After the active clients: the form reads its client once. */}
+      {state.formShown && elementClass && position && !clientsLoading && (
+        // Hidden while the position changes, also without parts: the values typed stay.
         <ScrollArea flex={1} display={step === "form" ? undefined : "none"}>
           <Box p="sm">
             <ElementForm

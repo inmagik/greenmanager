@@ -37,6 +37,8 @@ export function AreaGeometryPanel({ area, editable, onDone, onReload }: Props) {
   // The new geometry; on the map, `null` also when its parts are all deleted.
   const [geometry, setGeometry] = useState<Polygon | MultiPolygon | null>(null)
   const [emptied, setEmptied] = useState(false)
+  // A part being drawn is not in the geometry yet: saving would lose it.
+  const [drawing, setDrawing] = useState(false)
   // The geometry read from a file, before the save, next to the saved one; on the map the editor shows both.
   const miniMapGeometries = useMemo<MiniMapGeometry[]>(
     () => [{ geometry: area.geometry }, ...(geometry ? [{ geometry, proposed: true }] : [])],
@@ -131,6 +133,7 @@ export function AreaGeometryPanel({ area, editable, onDone, onReload }: Props) {
                   change(value as MultiPolygon | null)
                   setEmptied(!value)
                 }}
+                onDrawing={setDrawing}
               />
             ) : (
               <GeometryFileInput
@@ -157,7 +160,7 @@ export function AreaGeometryPanel({ area, editable, onDone, onReload }: Props) {
             <Button variant="subtle" color="gray.7" onClick={cancel}>
               {t("common.cancel")}
             </Button>
-            <Button leftSection={<TbDeviceFloppy />} loading={isLoading} disabled={!geometry} onClick={save}>
+            <Button leftSection={<TbDeviceFloppy />} loading={isLoading} disabled={!geometry || drawing} onClick={save}>
               {t("common.save")}
             </Button>
           </Group>

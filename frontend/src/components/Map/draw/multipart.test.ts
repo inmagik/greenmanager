@@ -166,8 +166,29 @@ describe("partsOverlap", () => {
     expect(partsOverlap([polygon(10, 44, 4), polygon(11, 45)])).toBe(true)
   })
 
-  it("is false for parts that touch in a vertex", () => {
+  it("is false for parts that touch in a point", () => {
     expect(partsOverlap([polygon(10, 44), polygon(11, 45)])).toBe(false)
+    const onSide: Polygon = {
+      type: "Polygon",
+      coordinates: [
+        [
+          [11, 44.5],
+          [12, 44],
+          [12, 45],
+          [11, 44.5],
+        ],
+      ],
+    }
+    expect(partsOverlap([polygon(10, 44), onSide])).toBe(false)
+  })
+
+  it("is true for parts with a side, or a stretch of it, in common", () => {
+    expect(partsOverlap([polygon(10, 44), polygon(11, 44)])).toBe(true)
+    expect(partsOverlap([polygon(10, 44), polygon(11, 44.5)])).toBe(true)
+  })
+
+  it("is true for parts that coincide", () => {
+    expect(partsOverlap([polygon(10, 44), polygon(10, 44)])).toBe(true)
   })
 
   it("is false for a part in the hole of another, true for one over the hole", () => {

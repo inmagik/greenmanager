@@ -181,7 +181,7 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
   - Una parte non toccata riprende le coordinate di partenza: l'arrotondamento non diventa una modifica.
   - Le parti bloccate seguono quelle modificabili, come erano.
   - Senza parti la geometria è `null`.
-- `partsOverlap(parts)` dice se due poligoni fra le parti si sovrappongono: il server rifiuta un poligono multiparte così (`geometry_invalid`). Due parti che si toccano in un vertice non si sovrappongono. Il controllo è sul piano delle coordinate e guida il disegno; quello vero resta del server, che rifiuta anche due parti con un lato in comune, che a mano non si disegnano.
+- `partsOverlap(parts)` dice se due poligoni fra le parti si sovrappongono o hanno un tratto di lato in comune: il server rifiuta un poligono multiparte così (`geometry_invalid`). Due parti che si toccano in un punto vanno bene. Il controllo è sul piano delle coordinate e guida il disegno; quello vero resta del server.
 - I test (`multipart.test.ts`) coprono la divisione, i buchi, la precisione, le coordinate riprese, il giro completo e la sovrapposizione delle parti.
 
 ### 2.3 Modifica sulla mappa
@@ -189,11 +189,12 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
 - **Linee e poligoni** (`GeometryDraw`): ogni parte è una feature di terra-draw.
   - Toccare una parte la sceglie e ne mostra i vertici: si trascinano, e trascinando il punto a metà di un lato se ne aggiunge uno. Su un computer il clic destro toglie un vertice. Esc toglie la scelta.
   - Una parte non si sposta intera: con un dito succederebbe per errore. Un poligono non può incrociarsi, né disegnandolo né spostandone i vertici: il server lo rifiuterebbe (`geometry_invalid`).
-  - Due poligoni che si sovrappongono il server li rifiuta allo stesso modo. terra-draw controlla ogni parte da sola: la sovrapposizione la segnala un testo sopra i pulsanti (`partsOverlap`), finché si spostano i vertici o si elimina una parte. Nel nuovo elemento dalla mappa (§2.5) il passo della posizione non va avanti.
+  - Due poligoni che si sovrappongono, o con un tratto di lato in comune, il server li rifiuta allo stesso modo. terra-draw controlla ogni parte da sola: la sovrapposizione la segnala un testo sopra i pulsanti (`partsOverlap`), finché si spostano i vertici o si elimina una parte. Nel nuovo elemento dalla mappa (§2.5) il passo della posizione non va avanti.
   - Le parti bloccate sono grigie e tratteggiate; un testo dice che si cambiano solo da file.
   - Senza parti, la mappa parte disegnando la prima.
 - **Pulsanti** (`DrawToolbar`), fuori dalla mappa, con un testo su cosa fare: *Aggiungi parte*, *Elimina parte* (della parte scelta), *Fine parte* e *Annulla la parte* mentre se ne disegna una, *Annulla l'ultima modifica*. *Fine parte* chiude la parte come il tasto Invio, e si attiva quando la parte ha i vertici che servono: due per una linea, tre per un poligono. Un poligono si chiude anche toccando il primo vertice. Il testo è annunciato agli screen reader (`aria-live`).
 - **Comunicazione con la pagina**: `GeometryDraw` dà la geometria riunita alla fine di ogni modifica, non all'apertura: la geometria salvata non è una modifica. La fine di una modifica è l'evento `finish` di terra-draw (una parte finita, un vertice spostato, aggiunto o tolto), più l'eliminazione di una parte e l'annullamento. I controlli (`DrawControls`) vanno alla pagina, che li mostra dove vuole; tornano `null` quando il disegno finisce.
+  - Una parte in corso con dei vertici non è ancora nella geometria: `GeometryEditor` lo dice alla pagina (`onDrawing`), che intanto non salva. Altrimenti si salverebbe la geometria di prima, e la parte andrebbe persa.
 - **Stile**: la geometria nuova è arancio, come quella proposta nella mini mappa (§1.8), più scura quando è scelta. I vertici sono più grandi di quelli predefiniti, perché si toccano con un dito.
 - **Punto** (`PointPicker`): un tocco sulla mappa posa il punto dove è il dito. Il mirino, una croce al centro della parte visibile della mappa, è più preciso: si sposta la mappa e il punto si posa sotto il mirino (`placeAtCrosshair`). Su un telefono il centro è quello della parte sopra il drawer. `show` porta la mappa su un punto dato da fuori, come la posizione del dispositivo.
 
@@ -219,12 +220,12 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
   2. **posizione**, sulla mappa:
      - un punto: la posizione del dispositivo (*Usa la mia posizione*, con la precisione), il mirino o un tocco. Il testo dice quale punto è posato;
      - linee e poligoni: il disegno di §2.3, con i pulsanti nel pannello;
-  3. **dati**: il form dell'elemento (`ElementForm`, con `mapPosition` e il layout `panel`, a una colonna). La posizione vi compare come testo, con *Cambia posizione*, che torna al passo 2, e con il controllo: misure, area proposta, avvisi. Il committente è quello del filtro della mappa, se è attivo.
-- **Stato**: il flusso (`createElement.ts`) tiene la classe, la posizione e il passo. Il form, una volta aperto, resta montato mentre la posizione cambia, e i valori scritti restano. Una classe di un altro tipo di geometria toglie la posizione e il form; una dello stesso tipo li lascia, e il form la segue. Una classe scelta nel form torna al passo della classe.
+  3. **dati**: il form dell'elemento (`ElementForm`, con `mapPosition` e il layout `panel`, a una colonna). La posizione vi compare come testo, con *Cambia posizione*, che torna al passo 2, e con il controllo: misure, area proposta, avvisi. Il committente è quello del filtro della mappa, se è attivo: il form si apre dopo la lista dei committenti attivi, perché legge il committente proposto una volta sola.
+- **Stato**: il flusso (`createElement.ts`) tiene la classe, la posizione e il passo. Il form, una volta aperto, resta montato mentre la posizione cambia, anche quando le parti sono tutte eliminate, e i valori scritti restano. Una classe di un altro tipo di geometria toglie la posizione e il form; una dello stesso tipo li lascia, e il form la segue. Una classe scelta nel form torna al passo della classe.
 - **Mappa durante il flusso**: un tocco non sceglie le feature. Al passo 3 la posizione posata si vede come una feature scelta. Dopo il salvataggio la mappa sceglie l'elemento nuovo, e una notifica dice degli alberi vicini.
 - **Su un telefono** il pannello è il drawer di §1.6: alto il 45% dello schermo al passo della posizione, che usa la mappa, e l'85% ai passi della classe e dei dati.
   - La tendina delle classi si apre dentro il drawer (`withinPortal: false`), non in un portale. In un portale, posizionata prima di conoscere la propria larghezza, finiva oltre il bordo destro: Chrome sul telefono allargava la pagina, la tendina si nascondeva, e il ciclo si ripeteva a ogni frame.
-- **Uscita**: chiudere il pannello con una posizione già posata chiede conferma, e così lasciare la pagina (`BlockNavigation`).
+- **Uscita**: chiudere il pannello con una posizione già posata, o con il form già aperto, chiede conferma, e così lasciare la pagina (`BlockNavigation`).
 
 ## 3. Uso in campo
 

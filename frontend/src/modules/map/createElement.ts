@@ -19,6 +19,11 @@ export function hasPosition(position: PositionValue | null): position is Positio
   return !!position && (position.mode === "coordinates" || !!position.geometry)
 }
 
+/** Something that closing the flow would lose: a position, or the form, whose values may be typed. */
+export function hasChanges(state: CreateElementState | null) {
+  return !!state && (state.formShown || hasPosition(state.position))
+}
+
 /** The point of a position, to show it on the map. */
 export function positionPoint(position: PositionValue | null) {
   if (!position) return null

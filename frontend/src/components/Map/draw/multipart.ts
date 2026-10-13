@@ -140,6 +140,16 @@ function onSegment(point: Position, [a, b]: [Position, Position]) {
   )
 }
 
+// Two sides on the same line that share a stretch, not only an end.
+function sidesShare([a, b]: [Position, Position], [c, d]: [Position, Position]) {
+  if (side(a, b, c) !== 0 || side(a, b, d) !== 0) return false
+  // Along the axis where the side is longer.
+  const axis = Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]) ? 0 : 1
+  const start = Math.max(Math.min(a[axis], b[axis]), Math.min(c[axis], d[axis]))
+  const end = Math.min(Math.max(a[axis], b[axis]), Math.max(c[axis], d[axis]))
+  return start < end
+}
+
 function insideRing([x, y]: Position, ring: Position[]) {
   let inside = false
   for (let index = 1; index < ring.length; index++) {
@@ -160,8 +170,10 @@ function strictlyInside(point: Position, polygon: Polygon) {
 function polygonsOverlap(a: Polygon, b: Polygon) {
   const sidesA = segments(a)
   const sidesB = segments(b)
-  if (sidesA.some(([p, q]) => sidesB.some(([r, s]) => segmentsCross(p, q, r, s)))) return true
-  // Without crossing sides, one is inside the other if one of its vertices, or the middle of a side, is.
+  if (sidesA.some((sideA) => sidesB.some((sideB) => segmentsCross(...sideA, ...sideB) || sidesShare(sideA, sideB)))) {
+    return true
+  }
+  // Without sides crossing or in common, one is inside the other if one of its vertices, or the middle of a side, is.
   const probes = (sides: [Position, Position][]) =>
     sides.flatMap(([p, q]): Position[] => [p, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]])
   return (
@@ -170,9 +182,9 @@ function polygonsOverlap(a: Polygon, b: Polygon) {
 }
 
 /**
- * Whether two polygons among the parts overlap: the server refuses such a multipart polygon (`geometry_invalid`). Two
- * parts that touch in a vertex do not overlap; the server refuses a side in common too, which a drawing by hand does
- * not make. A check on the plane of the coordinates, which guides the drawing: the server makes the real one.
+ * Whether two polygons among the parts overlap, or have a stretch of side in common: the server refuses such a
+ * multipart polygon (`geometry_invalid`). Two parts that touch in a point do not overlap. A check on the plane of the
+ * coordinates, which guides the drawing: the server makes the real one.
  */
 export function partsOverlap(parts: Part[]): boolean {
   const polygons = parts.filter((part): part is Polygon => part.type === "Polygon")

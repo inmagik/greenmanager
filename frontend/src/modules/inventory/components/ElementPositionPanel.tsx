@@ -61,6 +61,8 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
   const [area, setArea] = useState<Area>(element.area_data)
   const [conflict, setConflict] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  // A part being drawn is not in the geometry yet: saving would lose it.
+  const [drawing, setDrawing] = useState(false)
   const { mutateAsync: updateElement } = useUpdateElement()
   const form = useForm<{ position: PositionValue }>({
     mode: "controlled",
@@ -205,6 +207,7 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
                 value={form.values.position}
                 mapInitial={element.geometry}
                 mapContext={savedGeometry}
+                onDrawing={setDrawing}
                 onChange={(value) => {
                   form.setFieldValue("position", value)
                   form.clearErrors()
@@ -238,7 +241,12 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
               <Button variant="subtle" color="gray.7" onClick={cancel}>
                 {t("common.cancel")}
               </Button>
-              <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading} disabled={unchanged}>
+              <Button
+                leftSection={<TbDeviceFloppy />}
+                type="submit"
+                loading={isLoading}
+                disabled={unchanged || drawing}
+              >
                 {t("common.save")}
               </Button>
             </Group>
