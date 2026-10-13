@@ -86,13 +86,14 @@ export default function MapPage() {
         : null,
     [kind, drawnGeometry, point, setPosition]
   )
+  const unsaved = hasChanges(creating, !!drawControls?.unfinished)
   const closeCreation = () => {
     const close = () => {
       setCreating(null)
       setDrawControls(null)
       setPointControls(null)
     }
-    if (!hasChanges(creating)) return close()
+    if (!unsaved) return close()
     modals.openConfirmModal({
       title: t("map.create.discardTitle"),
       children: t("map.create.discardMessage"),
@@ -183,11 +184,7 @@ export default function MapPage() {
           />
         )}
       </div>
-      <BlockNavigation
-        when={hasChanges(creating)}
-        title={t("map.create.discardTitle")}
-        message={t("map.create.discardMessage")}
-      />
+      <BlockNavigation when={unsaved} title={t("map.create.discardTitle")} message={t("map.create.discardMessage")} />
     </Page>
   )
 }

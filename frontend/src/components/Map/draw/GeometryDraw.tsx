@@ -63,6 +63,14 @@ const KEY_EVENT = { heldKeys: [], preventDefault: () => {} }
 
 const MIN_VERTICES: Record<DrawnKind, number> = { line: 2, polygon: 3 }
 
+const PART_TYPES: Record<DrawnKind, Part["type"]> = { line: "LineString", polygon: "Polygon" }
+
+// A part, finished or being drawn: the points that guide the drawing (the vertices, the closing points) have its mode
+// too.
+function isPart(feature: GeoJSONStoreFeatures, kind: DrawnKind) {
+  return feature.properties.mode === DRAW_MODES[kind] && feature.geometry.type === PART_TYPES[kind]
+}
+
 // The vertices placed in a part being drawn: terra-draw counts them for a polygon, not for a line, which has one
 // coordinate more, the one that follows the pointer.
 function placedVertices(feature: GeoJSONStoreFeatures) {
@@ -96,10 +104,10 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
 
   const emit = useCallback(
     ({ instance }: TerraDrawInstance) => {
-      // The finished parts: not the one being drawn, nor the points that guide the editing.
+      // The finished parts: not the one being drawn.
       const finished = instance
         .getSnapshot()
-        .filter((feature) => feature.properties.mode === DRAW_MODES[kind] && !feature.properties.currentlyDrawing)
+        .filter((feature) => isPart(feature, kind) && !feature.properties.currentlyDrawing)
         .map((feature) => feature.geometry as Part)
       setParts(finished.length)
       setOverlap(partsOverlap([...finished, ...lockedRef.current]))
@@ -142,7 +150,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
           continue
         }
         const feature = instance.getSnapshotFeature(id)
-        if (feature?.properties.currentlyDrawing && feature.properties.mode === DRAW_MODES[kind]) {
+        if (feature && isPart(feature, kind) && feature.properties.currentlyDrawing) {
           drawnId = id
           setVertices(placedVertices(feature))
         }

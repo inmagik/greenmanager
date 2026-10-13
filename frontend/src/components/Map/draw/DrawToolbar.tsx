@@ -15,7 +15,7 @@ type Props = {
 export function DrawToolbar({ controls }: Props) {
   const { t } = useTranslation()
   if (!controls) return null
-  const { kind, drawing, canFinish, selected, parts, locked, overlap, canUndo } = controls
+  const { kind, drawing, canFinish, unfinished, selected, parts, locked, overlap, canUndo } = controls
   const hint = drawing
     ? t(`draw.hints.drawing.${kind}`)
     : selected
@@ -46,7 +46,8 @@ export function DrawToolbar({ controls }: Props) {
             <Button size="sm" leftSection={<TbCheck />} disabled={!canFinish} onClick={controls.finishPart}>
               {t("draw.finishPart")}
             </Button>
-            {parts + locked > 0 && (
+            {/* Without other parts it removes the vertices placed, and the drawing goes on. */}
+            {(parts + locked > 0 || unfinished) && (
               <Button size="sm" variant="default" leftSection={<TbX />} onClick={controls.cancelPart}>
                 {t("draw.cancelPart")}
               </Button>
