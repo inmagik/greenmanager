@@ -78,7 +78,7 @@ describe("makeRefreshMe", () => {
     expect(auth.setUser).not.toHaveBeenCalled()
   })
 
-  it("applies only the response of the latest request", async () => {
+  it("does not apply a response older than one already applied", async () => {
     const first = deferred<User>()
     const second = deferred<User>()
     const fetchUser = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
@@ -95,6 +95,21 @@ describe("makeRefreshMe", () => {
 
     expect(auth.setUser).toHaveBeenCalledTimes(1)
     expect(auth.setUser).toHaveBeenCalledWith(latest)
+  })
+
+  it("applies an older response when the latest request fails", async () => {
+    const first = deferred<User>()
+    const fetchUser = vi.fn().mockReturnValueOnce(first.promise).mockRejectedValueOnce(new Error("offline"))
+    const auth = authState()
+    const refreshMe = makeRefreshMe(fetchUser, () => auth)
+
+    const firstRefresh = refreshMe({ userIds: [7] })
+    await refreshMe({ userIds: [7] })
+    const older = { ...user, roles: [3] }
+    first.resolve(older)
+    await firstRefresh
+
+    expect(auth.setUser).toHaveBeenCalledWith(older)
   })
 
   it("drops the response after a logout", async () => {

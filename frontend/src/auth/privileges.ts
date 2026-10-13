@@ -21,13 +21,14 @@ export type AuthState = {
 /**
  * The refresh behind `refreshMe`: if the change touches the current user, reads `me/` with `fetchUser` and replaces
  * the user. `getAuth` gives AuthProvider as it is now, both when the refresh starts (the tokens may have been renewed
- * since the change began) and when the response arrives. The response replaces the user only if it answers the
- * latest request, since an older one could carry outdated privileges, and only if the same user is still logged in:
- * after a logout it would bring back the authenticated pages. On failure the user stays as it was until the next
- * load; the server checks the permissions anyway.
+ * since the change began) and when the response arrives. A response replaces the user only if no newer one has done
+ * it already, since it would bring back outdated privileges, and only if the same user is still logged in: after a
+ * logout it would bring back the authenticated pages. On failure the user stays as it was until the next load; the
+ * server checks the permissions anyway.
  */
 export function makeRefreshMe(fetchUser: (tokens: Tokens) => Promise<User | null>, getAuth: () => AuthState) {
   let lastRequest = 0
+  let lastApplied = 0
   return async (changed: ChangedPrivileges) => {
     const { user, tokens } = getAuth()
     if (!user || !tokens || !touchesUser(user, changed)) {
@@ -37,7 +38,8 @@ export function makeRefreshMe(fetchUser: (tokens: Tokens) => Promise<User | null
     try {
       const updatedUser = await fetchUser(tokens)
       const current = getAuth()
-      if (updatedUser && request === lastRequest && current.tokens && current.user?.id === user.id) {
+      if (updatedUser && request > lastApplied && current.tokens && current.user?.id === user.id) {
+        lastApplied = request
         current.setUser(updatedUser)
       }
     } catch {
