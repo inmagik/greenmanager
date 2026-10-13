@@ -239,7 +239,7 @@ Aggiunte con la prima fetta verticale:
 - `vitest` ^5.0.4, tra le dipendenze di sviluppo, i test delle funzioni pure (PR4b, D-058).
 
 - La libreria della mappa è MapLibre (D-057); quella del disegno è terra-draw (D-058). Le librerie dei grafici, quando servono, si allineano a `@mantine/charts` ^9.7.0.
-- **Test** (D-058): vitest, con la configurazione di Vite, per le funzioni pure: i file `*.test.ts` accanto al codice (`components/Map/bbox.test.ts`, `components/Map/draw/multipart.test.ts`). `tsc -b` li controlla con il resto; la build non li include.
+- **Test** (D-058): vitest, con la configurazione di Vite, per le funzioni pure: i file `*.test.ts` accanto al codice (`components/Map/bbox.test.ts`, `components/Map/draw/multipart.test.ts`, `auth/privileges.test.ts`). `tsc -b` li controlla con il resto; la build non li include.
 - Non si copiano le librerie di data-lab legate a editor di documenti, diagrammi e simulazioni: lexical, reactflow, dagre, dnd-kit, swiper, d3-scale, chroma-js, html-to-image, xlsx. `flag-icons` serve solo al selettore della lingua, se le lingue sono più di una.
 - **Verifica di T4**: i componenti copiati da data-lab, scritti per Mantine 9.3 e TypeScript 5.9, compilano con Mantine 9.7 e TypeScript 6 senza modifiche. Le correzioni fatte nello scaffold sono altre:
   - `yarn.lock` parte da quello di bottaro-pesatura. Con un lockfile nuovo yarn non trova `hashery` 1.x, una dipendenza indiretta di ESLint;
@@ -278,6 +278,9 @@ Aggiunte con la prima fetta verticale:
   - `AsyncSelect` accetta `label`, `description` e `withAsterisk`, come gli altri campi di un form: `SpeciesSelect` lo usa nei form (§9.6). Con `loading` mostra un loader accanto alla freccia, mentre le opzioni si caricano (PR3d);
   - `main.tsx` estende dayjs con `customParseFormat`: senza, i `DateInput` di Mantine non leggono le date scritte a mano nel formato `DD/MM/YYYY` (§9.7);
   - `DataProvider` manda anche `X-Change-Source`, `field` o `web` (§9.2, PR4b).
+- **Correzioni rimaste dalla revisione della PR dello scaffold** (issue #7):
+  - dopo una modifica che tocca l'utente corrente il modulo `users` rilegge `me/` con `refreshMe` di `auth/auth.ts` e aggiorna l'utente di `AuthProvider`, così menu e `CheckPermission` usano subito i privilegi nuovi. Valgono le modifiche ai suoi dati, ruoli e permessi e quelle a un suo ruolo: permessi, assegnazione, rimozione, eliminazione. In data-lab restavano i privilegi vecchi fino al ricaricamento della pagina. La risposta della modifica non basta, perché è limitata all'organizzazione corrente. La logica sta in `makeRefreshMe` di `auth/privileges.ts`, con i suoi test: rilegge solo se la modifica tocca l'utente (`touchesUser`), usa i token del momento della chiamata, non applica una risposta più vecchia di una già applicata e la applica solo se è ancora connesso lo stesso utente: dopo un logout la risposta riporterebbe le pagine autenticate. Lo stato di `AuthProvider` lo tiene `AuthStateTracker`, montato in `App.tsx` dentro il provider e aggiornato in un layout effect, nel commit stesso: un refresh può finire dopo che la pagina che l'ha avviato si è smontata;
+  - il nome di un ruolo già usato nell'organizzazione dà l'errore `role_name_not_unique` sul campo del nome (§3.1 di [backend.md](backend.md)).
 
 ## 9. Moduli di dominio
 

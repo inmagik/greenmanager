@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
@@ -63,6 +63,16 @@ def own_account_error(field=None):
     )
 
 
+def role_name_error(field=None):
+    return api_error(
+        {
+            "code": "role_name_not_unique",
+            "detail": "A role with this name already exists in the tenant.",
+        },
+        field,
+    )
+
+
 def validate_permission_codes(codes):
     known = {permission["code"] for permission in permission_manager.permissions}
     unknown = sorted(set(codes) - known)
@@ -79,6 +89,41 @@ def validate_permission_codes(codes):
 
 class RoleSerializer(serializers.ModelSerializer):
     user_count = serializers.IntegerField(read_only=True)
+
+    def name_taken(self, tenant, name):
+        roles = Role.objects.filter(tenant=tenant, name=name)
+        if self.instance is not None:
+            roles = roles.exclude(pk=self.instance.pk)
+        return roles.exists()
+
+    def validate_name(self, value):
+        """
+        The name is unique in the tenant (``unique_role_name_per_tenant``). The
+        view assigns the tenant on save, so DRF adds no validator for the
+        constraint, and a duplicate would reach the database as an error 500.
+        """
+        tenant = (
+            self.instance.tenant
+            if self.instance is not None
+            else self.context.get("tenant")
+        )
+        # Without a tenant the view answers with its own error (tenant_required).
+        if tenant is not None and self.name_taken(tenant, value):
+            raise role_name_error()
+        return value
+
+    def save(self, **kwargs):
+        # A concurrent request may take the name after validate_name: the
+        # constraint is checked again, and gives the error of the rule.
+        try:
+            with transaction.atomic():
+                return super().save(**kwargs)
+        except IntegrityError:
+            tenant = kwargs.get("tenant") or getattr(self.instance, "tenant", None)
+            name = self.validated_data.get("name", getattr(self.instance, "name", None))
+            if tenant is not None and self.name_taken(tenant, name):
+                raise role_name_error(field="name")
+            raise
 
     def validate_permissions(self, value):
         return validate_permission_codes(value)

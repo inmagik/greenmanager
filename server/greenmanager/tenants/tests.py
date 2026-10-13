@@ -182,6 +182,26 @@ class TenantMembershipApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 201, response.content)
         self.assertTrue(TenantMembership.objects.get(user=newcomer).is_default)
+        self.assertTrue(response.data["is_default"])
+
+    def test_update_answers_with_the_restored_default(self):
+        staff = get_user_model().objects.create_user(email="staff@example.com")
+        staff.is_staff = True
+        staff.save(update_fields=["is_staff"])
+        self.client.force_authenticate(staff)
+
+        response = self.client.patch(
+            f"/api/core/tenant-memberships/{self.default_membership.pk}/",
+            {"is_default": False},
+            format="json",
+            HTTP_X_TENANT_ID=str(self.tenant.pk),
+        )
+
+        # The oldest membership becomes the default again: the response says so.
+        self.assertEqual(response.status_code, 200, response.content)
+        self.default_membership.refresh_from_db()
+        self.assertTrue(self.default_membership.is_default)
+        self.assertTrue(response.data["is_default"])
 
 
 class TenantAdminMembershipTests(TestCase):

@@ -1,5 +1,5 @@
 import { AlertError } from "@/components/AlertError"
-import { useAuth } from "@/auth/auth"
+import { refreshMe, useAuth } from "@/auth/auth"
 import { BlockNavigation } from "@/components/BlockNavigation"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
@@ -171,6 +171,7 @@ export function UserDetail() {
                 // Only the fields of this tab: roles and permissions have their own tab.
                 await updateUser({ id: user.id, full_name: values.full_name, email: values.email })
                 setEditable(false)
+                refreshMe({ userIds: [user.id] })
               }}
               onCancel={() => {
                 setEditable(false)
@@ -191,6 +192,7 @@ export function UserDetail() {
                   roles: values.roles.map((role) => role.id),
                 })
                 setEditable(false)
+                refreshMe({ userIds: [user.id] })
               }}
               onCancel={() => {
                 setEditable(false)

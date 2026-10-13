@@ -1,3 +1,4 @@
+import { refreshMe } from "@/auth/auth"
 import type { User } from "@/auth/types"
 import { CheckPermission } from "@/components/CheckPermission"
 import { API_URL } from "@/constants"
@@ -51,6 +52,7 @@ export function RoleUserContextActions({ user, roleId }: Props) {
                     .then(() => {
                       queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/users`] })
                       queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/roles`] })
+                      refreshMe({ userIds: [user.id] })
                     })
                     .catch((error) => notifyApiError(error))
                 }

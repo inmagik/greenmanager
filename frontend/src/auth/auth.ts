@@ -1,6 +1,8 @@
 import { MakeAuthTools } from "@inmagik/react-auth"
 import { useAction } from "@inmagik/react-crud"
+import { useLayoutEffect } from "react"
 import { API_URL } from "../constants"
+import { makeRefreshMe, type AuthState } from "./privileges"
 import type { Credentials, Tokens, User } from "./types"
 
 export async function refresh(tokens: Tokens) {
@@ -96,3 +98,24 @@ export function useUpdateMe() {
 }
 
 export const [AuthProvider, useAuth] = MakeAuthTools<User, Tokens, Credentials>()
+
+// AuthProvider as it is now, kept by AuthStateTracker. A refresh may end after the page that started it has gone.
+let currentAuth: AuthState = { user: null, tokens: null, setUser: () => {} }
+
+/** Keeps the state of AuthProvider for `refreshMe`: mounted once, inside AuthProvider (`App.tsx`). */
+export function AuthStateTracker() {
+  const { user, tokens, setUser } = useAuth()
+  // A layout effect runs in the commit itself: a response that arrives after a logout finds the user gone.
+  useLayoutEffect(() => {
+    currentAuth = { user, tokens, setUser }
+  }, [user, tokens, setUser])
+  return null
+}
+
+/**
+ * Call it after a change to users or roles. If the change touches the current user (`touchesUser`), it reads `me/`
+ * again and replaces the user of AuthProvider, whose roles and permissions drive the menu and `CheckPermission`: the
+ * response of the change is not enough, since it is limited to the current tenant. There is one for the whole app, so
+ * that an older response never overwrites a newer one, whichever page made the requests. See `makeRefreshMe`.
+ */
+export const refreshMe = makeRefreshMe(getUserData, () => currentAuth)
