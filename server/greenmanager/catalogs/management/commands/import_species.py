@@ -9,7 +9,8 @@ The entries are matched by code: new codes are created, existing ones are left
 as they are unless ``--update``. The keys of the new entries are deterministic
 (``core.models.system_entry_id``). The hierarchy (ranks and parents) is checked
 once all the rows are applied, so the order of the rows does not matter. A code
-repeated in the file stops the import.
+repeated in the file stops the import. Writes on the species wait for the end of
+the import.
 
     python manage.py import_species catalogs/seeds/species_starter.csv
 """
@@ -30,7 +31,7 @@ from core.models import system_entry_id
 from core.services import snapshot, stamp
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import connection, transaction
 from rest_framework.exceptions import APIException
 
 FIELDS = (
@@ -71,6 +72,7 @@ class Command(BaseCommand):
 
         counts = {"created": 0, "updated": 0, "unchanged": 0}
         with transaction.atomic():
+            self.lock_table()
             entries, created, changed = {}, set(), set()
             for line, row in enumerate(rows, start=2):
                 code = (row.get("code") or "").strip()
@@ -99,6 +101,19 @@ class Command(BaseCommand):
                 f"{counts['updated']} updated, {counts['unchanged']} unchanged."
             )
         )
+
+    def lock_table(self):
+        """
+        Lock the species against writes for the whole import. The import locks
+        the entries in the order of the file, the genus before its species; the
+        API locks an entry and then its parent, the species before the genus. The
+        two orders could deadlock. Writes on the species wait for the end of the
+        import, and so do the writes that set a species elsewhere (the check of
+        the foreign key locks it); reads go on.
+        """
+        table = connection.ops.quote_name(Species._meta.db_table)
+        with connection.cursor() as cursor:
+            cursor.execute(f"LOCK TABLE {table} IN EXCLUSIVE MODE")
 
     def import_row(self, row, line, update):
         code = (row.get("code") or "").strip()

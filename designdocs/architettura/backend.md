@@ -151,6 +151,10 @@ Si copiano da data-lab con gli adattamenti indicati. Le migrazioni si rigenerano
 - **Utenti condivisi** con altri tenant: solo lo staff ne cambia l'email, li disattiva o li elimina (errore `user_shared_with_other_tenants`), perché email, `is_active` e l'utente valgono per tutti i tenant. L'email conta più di tutto: chi la cambia può recuperare la password e usare l'account negli altri tenant.
 - **Permessi diretti** (T3, D-045): li cambia solo lo staff, per ogni utente, anche senza `WRITE_ROLES` nel tenant (errore `403 direct_permissions_staff_only`), perché valgono in tutti i tenant dell'utente. Dentro un'organizzazione i permessi si danno con i ruoli. È una differenza rispetto a data-lab e bottaro-pesatura.
 - **Modifica di un utente sotto lock**: `UserSerializer.update` blocca e rilegge l'utente, poi ripete i controlli su account condiviso, ruoli e permessi diretti sui valori salvati. Una modifica contemporanea, per esempio dei permessi diretti da parte dello staff, non viene riscritta con i valori letti prima. In data-lab il salvataggio usava l'istanza letta all'inizio della richiesta.
+- **Ordine dei lock tra utenti e ruoli** (issue #10): chi cambia i ruoli blocca prima gli utenti, in ordine di chiave, e poi scrive la tabella dei ruoli, come `UserSerializer.update`.
+  - `grant_to` e `revoke_from` bloccano gli utenti all'inizio, in una transazione. La cancellazione di un ruolo li blocca nel receiver `pre_delete`.
+  - I receiver che salvano più utenti li salvano in ordine di chiave, non per email, l'ordinamento di default.
+  - In data-lab `grant_to` e `revoke_from` scrivono prima la riga del ruolo, e poi il receiver di `m2m_changed` salva l'utente. Con una modifica contemporanea dello stesso utente le due transazioni potevano andare in deadlock: PostgreSQL ne annulla una, e la richiesta va in errore.
 - **Il proprio account**: nessuno lo disattiva o lo elimina (errore `cannot_change_own_account`).
 - **Codici dei permessi**: utenti e ruoli accettano solo i codici raccolti da `PermissionManager` (errore `unknown_permission`).
 - **Nome del ruolo** (issue #7): un nome già usato nell'organizzazione dà l'errore `role_name_not_unique` sul campo `name`. Il tenant lo assegna la view al salvataggio, quindi DRF non genera il validatore del vincolo `unique_role_name_per_tenant`: in data-lab il nome ripetuto arrivava al database e la risposta era un errore 500. Se una richiesta simultanea prende il nome dopo la validazione, `RoleSerializer.save` intercetta l'errore del vincolo, ricontrolla il nome e risponde con lo stesso codice, come `core.services.save_validated` per le app di dominio.
@@ -503,6 +507,8 @@ Ogni modifica ai dati di dominio passa da un servizio, anche dall'admin.
 **Dati iniziali** (D-048):
 - la migrazione `0002_system_entries` carica le voci di sistema dei cataloghi piccoli;
 - le specie si caricano con `python manage.py import_species catalogs/seeds/species_starter.csv`, dopo `migrate`. Il comando crea le voci nuove per codice, lascia le esistenti se non c'è `--update` e prova il file con `--dry-run`. La gerarchia (ranghi e genitori) si controlla dopo aver applicato tutte le righe, quindi l'ordine delle righe non conta; un errore, o un codice ripetuto nel file, annulla tutto l'import. Con `--update` le voci esistenti si bloccano quando il comando le legge, come in `update_entry`, così una modifica contemporanea dall'API non va persa.
+  - Per tutto l'import la tabella delle specie è bloccata in scrittura (`LOCK TABLE … IN EXCLUSIVE MODE`, issue #10). Il comando blocca le voci nell'ordine del file, il genere prima della specie, mentre l'API blocca la voce e poi il suo genitore: i due ordini potevano andare in deadlock.
+  - Le scritture sulle specie aspettano la fine dell'import, e così quelle che assegnano una specie altrove (il controllo della chiave esterna la blocca), per esempio un elemento nuovo. Le letture continuano.
 
 ### 8.5 Committenti: `parties`
 

@@ -5,13 +5,31 @@ from axes.models import AccessAttempt
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.db import connection
 from django.test import SimpleTestCase, TestCase
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APITestCase
 from tenants.models import Tenant, TenantMembership
 
 from .models import Role
 from .permission_manager import PermissionManager
 from .serializers import RoleSerializer, UserSerializer
+
+
+def first_query(queries, *fragments):
+    """Position of the first captured query that contains all the fragments."""
+    return next(
+        index
+        for index, query in enumerate(queries.captured_queries)
+        if all(fragment in query["sql"] for fragment in fragments)
+    )
+
+
+USERS_LOCKED_IN_KEY_ORDER = (
+    'FROM "auth_core_user"',
+    'ORDER BY "auth_core_user"."id" ASC',
+    "FOR UPDATE",
+)
 
 
 class UsersApiTests(APITestCase):
@@ -363,6 +381,49 @@ class TenantScopedUsersTests(APITestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertFalse(self.user.roles.filter(pk=self.role.pk).exists())
 
+    def test_grant_to_locks_the_users_in_key_order_before_the_roles(self):
+        self.grant_role_permission()
+        users = [
+            get_user_model().objects.create_user(email=email)
+            for email in ("b@x.com", "a@x.com")
+        ]
+        for user in users:
+            TenantMembership.objects.create(tenant=self.tenant, user=user)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.post(
+                f"/api/core/auth/roles/{self.role.pk}/grant_to/",
+                {"user_ids": [user.pk for user in reversed(users)]},
+                format="json",
+                **self.tenant_header,
+            )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertLess(
+            first_query(queries, *USERS_LOCKED_IN_KEY_ORDER),
+            first_query(queries, 'INSERT INTO "auth_core_user_roles"'),
+        )
+        for user in users:
+            self.assertTrue(user.roles.filter(pk=self.role.pk).exists())
+
+    def test_revoke_from_locks_the_users_in_key_order_before_the_roles(self):
+        self.grant_role_permission()
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.post(
+                f"/api/core/auth/roles/{self.role.pk}/revoke_from/",
+                {"user_ids": [self.shared.pk, self.user.pk]},
+                format="json",
+                **self.tenant_header,
+            )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertLess(
+            first_query(queries, *USERS_LOCKED_IN_KEY_ORDER),
+            first_query(queries, 'DELETE FROM "auth_core_user_roles"'),
+        )
+        self.assertFalse(self.role.user_set.exists())
+
     def test_revoke_from_requires_role_permission(self):
         response = self.client.post(
             f"/api/core/auth/roles/{self.role.pk}/revoke_from/",
@@ -611,6 +672,36 @@ class RolePermissionsReceiverTests(TestCase):
         self.assertEqual(self.user.all_permissions, ["auth_core.READ_USERS"])
 
         self.role.user_set.clear()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.all_permissions, [])
+
+    def test_role_changes_update_the_users_in_key_order(self):
+        # Created after, with an email before: the default ordering is by email.
+        later = get_user_model().objects.create_user(email="a@example.com")
+        self.role.user_set.add(self.user, later)
+        updated = []
+        self.role.permissions = ["auth_core.WRITE_USERS"]
+
+        with mock.patch.object(
+            get_user_model(),
+            "update_permissions",
+            autospec=True,
+            side_effect=lambda user: updated.append(user.pk),
+        ):
+            self.role.save()
+
+        self.assertEqual(updated, [self.user.pk, later.pk])
+
+    def test_role_deletion_locks_the_users_in_key_order_before_the_roles(self):
+        self.role.user_set.add(self.user)
+
+        with CaptureQueriesContext(connection) as queries:
+            self.role.delete()
+
+        self.assertLess(
+            first_query(queries, *USERS_LOCKED_IN_KEY_ORDER),
+            first_query(queries, 'DELETE FROM "auth_core_user_roles"'),
+        )
         self.user.refresh_from_db()
         self.assertEqual(self.user.all_permissions, [])
 

@@ -45,10 +45,12 @@ def update_user_permissions_when_roles_change(
 
     # role.user_set.add(...) and similar: the instance is the role, the users
     # are in pk_set. On clear pk_set is empty: the users are read before.
+    # Several users are saved in key order, as RolesViewset.lock_users locks
+    # them: the default ordering (email) would risk deadlocks.
     if action == "pre_clear":
-        instance._users_before_clear = list(instance.user_set.all())
+        instance._users_before_clear = list(instance.user_set.order_by("pk"))
     elif action in ("post_add", "post_remove"):
-        for user in model.objects.filter(pk__in=pk_set or []):
+        for user in model.objects.filter(pk__in=pk_set or []).order_by("pk"):
             user.update_permissions()
     elif action == "post_clear":
         for user in getattr(instance, "_users_before_clear", []):
@@ -61,8 +63,8 @@ def update_role_permissions(sender, instance, raw, **kwargs):
     if raw:
         return  # Skip signal for raw data loading
 
-    # Update all users that have this role
-    for user in instance.user_set.all():
+    # Update all users that have this role, in key order (see above)
+    for user in instance.user_set.order_by("pk"):
         setattr(user, "_update_permissions_signal", True)  # Avoid recursion
         user.update_permissions()
         setattr(user, "_update_permissions_signal", False)
@@ -70,6 +72,8 @@ def update_role_permissions(sender, instance, raw, **kwargs):
 
 @receiver(pre_delete, sender=Role)
 def delete_role_permissions(sender, instance, **kwargs):
-    # Update all users that had this role
-    for user in instance.user_set.all():
+    # Update all users that had this role. They are locked first, in key order,
+    # as RolesViewset.lock_users does before revoke_from: the deletion runs in a
+    # transaction (Collector.delete).
+    for user in instance.user_set.select_for_update(of=("self",)).order_by("pk"):
         user.roles.remove(instance)  # Remove the role from the user

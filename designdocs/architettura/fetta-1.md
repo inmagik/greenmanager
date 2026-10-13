@@ -79,7 +79,7 @@ Aggiornato al 2026-10-13.
 - La fetta è completa: PR1–PR4b unite. Il backend ha le app di §8 di [backend.md](backend.md). Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a e PR4b). Aree ed elementi si vedono sulla mappa; le geometrie si disegnano e si modificano sulla mappa, anche multiparte, e dalla mappa si crea un elemento nuovo.
 - Manca la revisione della fetta, con la prova da smartphone vero in HTTPS (domanda 3).
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
-- I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
+- I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)), i due della PR1 sull'ordine dei lock dopo la fetta (§3.1 e §8.4 di [backend.md](backend.md)).
 
 ## 4. PR fatte
 
@@ -217,7 +217,7 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
 - Una PR alla volta, su un branch `fetta1-prN-…` che parte da `main`. Commit in italiano, "Fetta 1: …".
 - Prima del push, una revisione del diff con l'agente `pr-reviewer`, rispetto a questo documento e alle decisioni.
 - Il push e l'apertura della PR aspettano la conferma del responsabile di progetto. Poi c'è la revisione di Copilot.
-- I rilievi validi lasciati fuori da una PR vanno nella issue [#10](https://github.com/inmagik/greenmanager/issues/10).
+- I rilievi validi lasciati fuori da una PR vanno in una issue, come la [#10](https://github.com/inmagik/greenmanager/issues/10) per questa fetta.
 - Dopo l'unione di una PR si aggiornano la tabella di §3 e la issue della PR.
 
 ## Domande aperte
