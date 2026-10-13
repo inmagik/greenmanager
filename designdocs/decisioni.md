@@ -632,3 +632,26 @@ Stati possibili:
   - la categoria della classe colora gli elementi in modo leggibile (vegetazione, arredi, giochi, impianti). Ricavarla nel frontend dalle classi disponibili lascerebbe senza colore gli elementi di una classe nascosta o ritirata;
   - un drawer sopra la mappa, su desktop, coprirebbe lo zoom e la posizione. Su smartphone due colonne non ci stanno.
 - **Alternative scartate**: Leaflet o OpenLayers; `react-map-gl`; MapLibre nel bundle principale; uno stile per ogni sfondo; il PCN chiamato direttamente; i dati senza `bbox`; i colori ricavati nel frontend dalle classi disponibili; il drawer sopra la mappa anche su desktop.
+
+## D-058 — Disegno sulla mappa e uso in campo
+
+- **Data**: 2026-10-13 · **Passo**: T2, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - linee e poligoni si disegnano e si modificano con terra-draw (`terra-draw` 1.37 e `terra-draw-maplibre-gl-adapter` 1.5), sulla mappa di MapLibre 6 (D-057). Lo spike all'inizio della PR4b ha verificato l'adapter con MapLibre 6, che resta;
+  - terra-draw non ha geometrie multiparte: ogni parte è una feature (`splitParts`), e le parti si riuniscono in una geometria multiparte quando cambiano (`mergeParts`). Una parte non toccata riprende le coordinate di partenza. I poligoni con buchi, che terra-draw rifiuta, restano bloccati, in grigio, e si salvano come erano: si cambiano solo da file;
+  - una parte si sceglie toccandola; i suoi vertici si trascinano, e trascinando il punto a metà di un lato se ne aggiunge uno. Una parte non si sposta intera, e un poligono non può incrociarsi; due poligoni che si sovrappongono, o con un lato in comune, sono segnalati, e una parte in corso blocca il salvataggio. *Aggiungi parte*, *Fine parte*, *Elimina parte* e *Annulla l'ultima modifica* sono pulsanti fuori dalla mappa; su un computer il clic destro toglie un vertice;
+  - un punto si posa con un tocco sulla mappa, con il mirino al centro della parte visibile, o con la posizione del dispositivo; senza terra-draw;
+  - l'editor della geometria (`GeometryEditor`) si affianca al file: nella scheda Geometria dell'area e nella scheda Posizione dell'elemento, dove modifica le parti salvate, e nei form di creazione di aree ed elementi. La geometria nuova si controlla con `geometry-check/` e si salva con la revisione letta, come quella da file;
+  - nella pagina della mappa, *Nuovo elemento* apre un flusso nel pannello: la classe, la posizione sulla mappa, il form dell'elemento con il controllo della posizione e l'area proposta. Durante il flusso un tocco non sceglie le feature; dopo il salvataggio la mappa sceglie l'elemento nuovo;
+  - una posizione data sulla mappa ha origine `map`; quella del dispositivo `gps`, con la precisione;
+  - uso in campo: il frontend manda `X-Change-Source: field` quando il puntatore principale è uno schermo tattile (`pointer: coarse`: smartphone e tablet), altrimenti `web` (D-043). `ScreenWidthGuard` lascia passare tutte le pagine: ognuna si usa anche da smartphone;
+  - i test automatici del frontend usano vitest, solo in sviluppo, per le funzioni pure della mappa (`multipart.ts`, `bbox.ts`).
+- **Motivazione**:
+  - terra-draw è la scelta del responsabile di progetto (§1 di [fetta-1.md](architettura/fetta-1.md)): disegna su MapLibre senza legarsi alla sua versione, e ha modifica dei vertici, punti intermedi, annullamento e validazioni;
+  - le geometrie multiparte servono (D-035), ma lo store di terra-draw ha solo punti, linee e poligoni semplici. Dividere e riunire tiene sul server il formato di sempre. L'arrotondamento di terra-draw, a 9 decimali, sposterebbe di meno di un millimetro anche le parti non toccate: riprenderne le coordinate evita una modifica che nessuno ha fatto. Un poligono con buchi perso o deformato sarebbe un danno silenzioso: meglio non toccarlo, e dirlo;
+  - con un dito è facile spostare una parte intera per errore, e su un telefono non c'è il clic destro: per questo i comandi sono pulsanti, con l'annullamento. Un poligono che si incrocia, o due parti che si sovrappongono, il server li rifiuta (`geometry_invalid`): l'editor impedisce il primo e segnala le seconde, perché terra-draw controlla ogni parte da sola;
+  - posare un punto con un dito è impreciso: il mirino lo posa dove serve, il tocco è più veloce, e il GPS è il caso del rilevatore sul posto (scenario 4.2);
+  - il disegno nella mappa evita di passare dalla lista: chi è in campo vede gli altri elementi e le aree mentre posa il nuovo (TR-4). La classe viene prima, perché dice se si posa un punto, una linea o un poligono;
+  - lo schermo tattile distingue il dispositivo meglio della larghezza: un tablet in campo ha uno schermo largo, e un computer con la finestra stretta non è in campo. Il server accetta dal frontend solo `web` e `field` (D-043);
+  - le funzioni di geometria hanno casi limite (parti, buchi, precisione, limiti di WGS84) che una prova a mano non copre; vitest usa la configurazione di Vite.
+- **Alternative scartate**: MapLibre 5, che servirebbe solo se l'adapter non reggesse la 6; un editor delle multiparte nostro; i buchi modificabili con un'altra libreria; il punto con la modalità di terra-draw; l'origine `field` decisa dalla larghezza dello schermo; pagine limitate sugli schermi piccoli; Jest.

@@ -1,6 +1,7 @@
 import { AlertError } from "@/components/AlertError"
 import { FormFooter } from "@/components/FormFooter"
 import { GeometryFileInput } from "@/components/Geometry"
+import { GeometryEditor } from "@/components/Map"
 import { RevisionConflictAlert } from "@/components/RevisionConflictAlert"
 import { areaUsesApi, urbanGreenTypesApi, usageIntensitiesApi } from "@/modules/catalogs/api/catalogs"
 import { CatalogSelect } from "@/modules/catalogs/components/CatalogSelect"
@@ -8,15 +9,28 @@ import { ClientSelect } from "@/modules/parties/components/ClientSelect"
 import { transformErrorsForForm } from "@/utils"
 import { isRevisionConflict } from "@/utils/tracking"
 import { ApiError } from "@inmagik/react-crud/dist/crud/utils"
-import { Box, Button, Checkbox, Group, Select, SimpleGrid, Stack, Text, Textarea, TextInput } from "@mantine/core"
+import {
+  Box,
+  Button,
+  Checkbox,
+  Group,
+  SegmentedControl,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  Textarea,
+  TextInput,
+} from "@mantine/core"
 import { DateInput } from "@mantine/dates"
 import { useForm } from "@mantine/form"
 import type { MultiPolygon, Polygon } from "geojson"
 import { yupResolver } from "mantine-form-yup-resolver"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { TbDeviceFloppy } from "react-icons/tb"
 import * as yup from "yup"
+import { useAreasGeoJSON } from "../api/areas"
 import { CENSUS_LEVELS, type Area, type AreaPayload, type CensusLevel } from "../types"
 import { AreaGeometryCheck } from "./AreaGeometryCheck"
 import { ZoneSelect } from "./ZoneSelect"
@@ -43,6 +57,8 @@ type FormValues = {
   /** A new area only: the geometry of an area changes in its own tab. */
   geometry: Polygon | MultiPolygon | null
 }
+
+type GeometryMode = "map" | "file"
 
 type Props = {
   /** The area shown or changed; none for a new area, whose form also has the geometry. */
@@ -80,6 +96,8 @@ export function AreaForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [conflict, setConflict] = useState(false)
+  // A part being drawn is not in the geometry yet: saving would lose it.
+  const [drawing, setDrawing] = useState(false)
   const isNew = !area
   const schema = yup.object({
     client: yup.string().nullable().required().label(t("territory.fields.client")),
@@ -136,6 +154,13 @@ export function AreaForm({
   const dateProps = { ...readonlyProps, valueFormat: "DD/MM/YYYY", clearable: !readonly }
   const cols = layout === "page" ? { base: 1, md: 2, lg: 3 } : { base: 1, sm: 2 }
   const { values } = form
+  // A new perimeter is drawn on the map, over the other areas of the client, or read from a file.
+  const [geometryMode, setGeometryMode] = useState<GeometryMode>("map")
+  const { data: clientAreasData } = useAreasGeoJSON({ client: values.client }, isNew && !!values.client)
+  const clientAreas = useMemo(
+    () => clientAreasData?.features.map((feature) => feature.geometry) ?? [],
+    [clientAreasData]
+  )
 
   return (
     <form
@@ -250,14 +275,45 @@ export function AreaForm({
           </Section>
           {isNew && (
             <Section title={t("territory.sections.geometry")}>
-              <GeometryFileInput
-                kind="polygon"
-                withAsterisk
-                label={t("territory.fields.geometryFile")}
-                description={t("territory.fields.geometryFileDescription")}
-                onChange={(geometry) => form.setFieldValue("geometry", geometry as Polygon | MultiPolygon | null)}
-                error={form.errors.geometry}
+              <SegmentedControl
+                aria-label={t("territory.geometry.modeLabel")}
+                data={(["map", "file"] as const).map((value) => ({
+                  value,
+                  label: t(`territory.geometry.modes.${value}`),
+                }))}
+                value={geometryMode}
+                onChange={(value) => {
+                  setGeometryMode(value as GeometryMode)
+                  form.setFieldValue("geometry", null)
+                }}
+                style={{ alignSelf: "flex-start" }}
               />
+              {geometryMode === "map" ? (
+                <>
+                  <GeometryEditor
+                    kind="polygon"
+                    initial={null}
+                    context={clientAreas}
+                    label={t("territory.geometry.editorLabel")}
+                    onChange={(geometry) => form.setFieldValue("geometry", geometry as MultiPolygon | null)}
+                    onDrawing={setDrawing}
+                  />
+                  {form.errors.geometry && (
+                    <Text size="sm" c="red">
+                      {form.errors.geometry}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <GeometryFileInput
+                  kind="polygon"
+                  withAsterisk
+                  label={t("territory.fields.geometryFile")}
+                  description={t("territory.fields.geometryFileDescription")}
+                  onChange={(geometry) => form.setFieldValue("geometry", geometry as Polygon | MultiPolygon | null)}
+                  error={form.errors.geometry}
+                />
+              )}
               {values.geometry && (
                 <AreaGeometryCheck
                   geometry={values.geometry}
@@ -381,14 +437,14 @@ export function AreaForm({
                 >
                   {t("common.cancel")}
                 </Button>
-                <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading}>
+                <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading} disabled={drawing}>
                   {t("common.save")}
                 </Button>
               </Group>
             </FormFooter>
           ) : (
             <Group justify="flex-end" pt="sm">
-              <Button type="submit" loading={isLoading}>
+              <Button type="submit" loading={isLoading} disabled={drawing}>
                 {t("common.confirm")}
               </Button>
             </Group>

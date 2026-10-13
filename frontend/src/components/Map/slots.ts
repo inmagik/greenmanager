@@ -6,9 +6,10 @@ import type { LayerSpecification } from "maplibre-gl"
  * - `surfaces`: large polygons under the rest, such as the areas;
  * - `features`: the censused elements;
  * - `selection`: the feature selected;
+ * - `drawing`: the geometry being drawn or edited (terra-draw);
  * - `position`: the position of the user.
  */
-export const SLOTS = ["surfaces", "features", "selection", "position"] as const
+export const SLOTS = ["surfaces", "features", "selection", "drawing", "position"] as const
 export type Slot = (typeof SLOTS)[number]
 
 /** The empty layer that closes a slot: the layers of the slot are added before it. */

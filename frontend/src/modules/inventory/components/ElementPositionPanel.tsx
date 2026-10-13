@@ -49,10 +49,11 @@ function Value({ label, children }: { label: string; children: React.ReactNode }
 type Area = { id: string; code: string; name: string }
 
 /**
- * The position of an element, without a map: the coordinates of a point, or the parts and measures of a line or a
- * polygon, with its status and source. In edit mode, a new position from coordinates, the device, the center of the
- * area or a file; before saving, `geometry-check/` gives its measures, the proposed area and the warnings. A
- * provisional position not at the center of the area can be confirmed as it is.
+ * The position of an element: the coordinates of a point, or the parts and measures of a line or a polygon, with its
+ * status and source, and the small map. In edit mode, a new position from coordinates, the device, the map (a point,
+ * or the parts of the saved line or polygon, edited), the center of the area or a file; before saving,
+ * `geometry-check/` gives its measures, the proposed area and the warnings. A provisional position not at the center
+ * of the area can be confirmed as it is.
  */
 export function ElementPositionPanel({ element, editable, onDone, onReload }: Props) {
   const { t } = useTranslation()
@@ -60,6 +61,8 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
   const [area, setArea] = useState<Area>(element.area_data)
   const [conflict, setConflict] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  // A part being drawn is not in the geometry yet: saving would lose it.
+  const [drawing, setDrawing] = useState(false)
   const { mutateAsync: updateElement } = useUpdateElement()
   const form = useForm<{ position: PositionValue }>({
     mode: "controlled",
@@ -78,6 +81,11 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
     [element.geometry, geometry]
   )
   const chooseArea = useCallback((suggested: Area) => setArea(suggested), [])
+  const savedGeometry = useMemo(() => [element.geometry], [element.geometry])
+  // On the map the editor shows the saved position under the new one.
+  const onMap = editable && form.values.position.mode === "map"
+  // On the map or from a file, nothing to save until the geometry changes: the map shows the saved one.
+  const unchanged = ["map", "file"].includes(form.values.position.mode) && !form.values.position.geometry
 
   const save = async (data: Parameters<typeof updateElement>[0]) => {
     setIsLoading(true)
@@ -181,7 +189,7 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
                 </Stack>
               </Alert>
             )}
-            <MiniMap label={t("inventory.position.mapLabel")} geometries={miniMapGeometries} />
+            {!onMap && <MiniMap label={t("inventory.position.mapLabel")} geometries={miniMapGeometries} />}
           </Stack>
           {editable && (
             <Stack gap="xs">
@@ -197,6 +205,9 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
               <PositionInput
                 geometryType={geometryType}
                 value={form.values.position}
+                mapInitial={element.geometry}
+                mapContext={savedGeometry}
+                onDrawing={setDrawing}
                 onChange={(value) => {
                   form.setFieldValue("position", value)
                   form.clearErrors()
@@ -230,7 +241,12 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
               <Button variant="subtle" color="gray.7" onClick={cancel}>
                 {t("common.cancel")}
               </Button>
-              <Button leftSection={<TbDeviceFloppy />} type="submit" loading={isLoading}>
+              <Button
+                leftSection={<TbDeviceFloppy />}
+                type="submit"
+                loading={isLoading}
+                disabled={unchanged || drawing}
+              >
                 {t("common.save")}
               </Button>
             </Group>

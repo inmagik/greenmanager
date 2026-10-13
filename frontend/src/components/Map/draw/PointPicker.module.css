@@ -1,0 +1,14 @@
+/* The crosshair, in the middle of the part of the map that no panel covers; the map gets the taps. */
+.crosshair {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--mantine-color-dark-7);
+  filter: drop-shadow(0 0 1px white) drop-shadow(0 0 1px white);
+}

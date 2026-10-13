@@ -1,14 +1,14 @@
 import type { GeometryType } from "@/modules/catalogs/types"
 import type { TFunction } from "i18next"
-import type { LineString, MultiLineString, MultiPolygon, Polygon } from "geojson"
+import type { LineString, MultiLineString, MultiPolygon, Point, Polygon } from "geojson"
 import * as yup from "yup"
 import type { ElementGeometryInput, ElementPosition } from "./types"
 
 /**
- * How the form gives the position: coordinates of a point, typed or read from the device, the center of the area (a
- * point, provisional), or a line or a polygon from a file. The map arrives with PR4b.
+ * How the form gives the position: coordinates of a point, typed or read from the device; the center of the area (a
+ * point, provisional); a geometry drawn on the map (a point, lines or polygons); lines or polygons from a file.
  */
-export type PositionMode = "coordinates" | "area_center" | "file"
+export type PositionMode = "coordinates" | "area_center" | "map" | "file"
 
 export type PositionValue = {
   mode: PositionMode
@@ -17,18 +17,18 @@ export type PositionValue = {
   longitude: number | string
   /** The accuracy the device declared, while the coordinates are those it gave; `null` when typed. */
   gpsAccuracy: number | null
-  /** A line or a polygon read from a file. */
-  geometry: LineString | MultiLineString | Polygon | MultiPolygon | null
+  /** A geometry drawn on the map, or a line or a polygon read from a file. */
+  geometry: Point | LineString | MultiLineString | Polygon | MultiPolygon | null
 }
 
 export function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value)
 }
 
-/** An empty position for the type of geometry of a class. */
+/** An empty position for the type of geometry of a class: coordinates for a point, the map for the others. */
 export function emptyPosition(geometryType: GeometryType | undefined): PositionValue {
   return {
-    mode: !geometryType || geometryType === "point" ? "coordinates" : "file",
+    mode: !geometryType || geometryType === "point" ? "coordinates" : "map",
     latitude: "",
     longitude: "",
     gpsAccuracy: null,
@@ -38,7 +38,7 @@ export function emptyPosition(geometryType: GeometryType | undefined): PositionV
 
 /** The geometry of a complete position, to check it; none at the center of the area, which the server gives. */
 export function positionGeometry(value: PositionValue): ElementGeometryInput | null {
-  if (value.mode === "file") return value.geometry
+  if (value.mode === "file" || value.mode === "map") return value.geometry
   if (value.mode !== "coordinates") return null
   const { latitude, longitude } = value
   if (!isNumber(latitude) || !isNumber(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null
@@ -55,8 +55,9 @@ export function positionPayload(value: PositionValue): ElementPosition {
     return { location_source: "area_center", location_accuracy_m: null }
   }
   const geometry = positionGeometry(value) ?? undefined
-  if (value.mode === "file") {
-    return { geometry, location_source: "import", location_accuracy_m: null, location_status: "verified" }
+  if (value.mode === "file" || value.mode === "map") {
+    const source = value.mode === "file" ? "import" : "map"
+    return { geometry, location_source: source, location_accuracy_m: null, location_status: "verified" }
   }
   const fromDevice = value.gpsAccuracy !== null
   return {
@@ -86,7 +87,7 @@ export function positionSchema(t: TFunction) {
       .mixed()
       .nullable()
       .when("mode", {
-        is: "file",
+        is: (mode: PositionMode) => mode === "file" || mode === "map",
         then: (schema) => schema.required(t("inventory.validation.geometry")),
       }),
   })

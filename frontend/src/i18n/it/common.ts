@@ -161,6 +161,29 @@ const translations = {
     },
     showOnMap: "Vedi sulla mappa",
   },
+  draw: {
+    addPart: "Aggiungi parte",
+    deletePart: "Elimina parte",
+    finishPart: "Fine parte",
+    cancelPart: "Annulla la parte",
+    undo: "Annulla l'ultima modifica",
+    placeAtCrosshair: "Usa il mirino",
+    hints: {
+      drawing: {
+        line: "Tocca la mappa per aggiungere i vertici della linea, poi premi Fine parte. Si salva solo una parte finita.",
+        polygon:
+          "Tocca la mappa per aggiungere i vertici del poligono, poi premi Fine parte o tocca il primo vertice. Si salva solo una parte finita.",
+      },
+      select: "Tocca una parte per modificarla, o aggiungine un'altra.",
+      selected:
+        "Trascina i vertici per spostarli e i punti a metà dei lati per aggiungerne. Su un computer, il clic destro su un vertice lo toglie.",
+      point: "Tocca la mappa dove si trova l'elemento, o porta il mirino sul punto e premi Usa il mirino.",
+    },
+    overlap:
+      "Due parti si sovrappongono o hanno un lato in comune, e così la geometria non si salva: sposta i vertici o elimina una delle due.",
+    locked_one: "Una parte con buchi resta com'è, in grigio: si cambia solo da file.",
+    locked_other: "{{count}} parti con buchi restano come sono, in grigio: si cambiano solo da file.",
+  },
   geolocation: {
     locate: "Usa la mia posizione",
     errors: {

@@ -8,11 +8,12 @@ const TOLERANCE = 8
 /**
  * Clicks on the map: the feature under the pointer, of the first of `layers` that has one (the order is the
  * priority, e.g. the elements before the areas), or `null` where there is none, with the event of the click. On the
- * layers the pointer is a hand.
+ * layers the pointer is a hand. Not while `enabled` is false, e.g. while a geometry is drawn.
  */
 export function useFeatureClick(
   layers: string[],
-  onClick: (feature: MapGeoJSONFeature | null, event: MapMouseEvent) => void
+  onClick: (feature: MapGeoJSONFeature | null, event: MapMouseEvent) => void,
+  enabled = true
 ) {
   const map = useMap()
   const handler = useRef(onClick)
@@ -22,6 +23,7 @@ export function useFeatureClick(
   const key = layers.join(" ")
 
   useEffect(() => {
+    if (!enabled) return
     const ids = key.split(" ")
     const click = (event: MapMouseEvent) => {
       const { x, y } = event.point
@@ -47,6 +49,7 @@ export function useFeatureClick(
       map.off("click", click)
       map.off("mouseenter", ids, enter)
       map.off("mouseleave", ids, leave)
+      leave()
     }
-  }, [map, key])
+  }, [map, key, enabled])
 }

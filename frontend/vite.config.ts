@@ -15,8 +15,13 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // MapLibre in a chunk of its own, loaded only by the lazy chunks of the map (D-057).
-        codeSplitting: { groups: [{ name: "maplibre", test: /node_modules[\\/]maplibre-gl[\\/]/ }] },
+        // MapLibre and terra-draw in chunks of their own, loaded only by the lazy chunks of the map (D-057, D-058).
+        codeSplitting: {
+          groups: [
+            { name: "maplibre", test: /node_modules[\\/]maplibre-gl[\\/]/ },
+            { name: "terra-draw", test: /node_modules[\\/]terra-draw(-maplibre-gl-adapter)?[\\/]/ },
+          ],
+        },
       },
     },
   },

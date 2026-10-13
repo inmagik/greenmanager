@@ -10,6 +10,8 @@ export const ELEMENTS_MIN_ZOOM = 15
 export const AREAS_SOURCE = "areas"
 export const ELEMENTS_SOURCE = "elements"
 export const SELECTION_SOURCE = "selection"
+/** The position of a new element, while its form is open. */
+export const PENDING_SOURCE = "pending"
 
 /** The colors of the elements, by the category of their class. */
 export const CATEGORY_COLORS: Record<ElementCategory, string> = {
