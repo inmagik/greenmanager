@@ -1,3 +1,4 @@
+import { AlertError } from "@/components/AlertError"
 import { DrawToolbar } from "@/components/Map/draw/DrawToolbar"
 import type { DrawControls } from "@/components/Map/draw/GeometryDraw"
 import type { PointControls } from "@/components/Map/draw/PointPicker"
@@ -108,7 +109,8 @@ export function CreateElementPanel({
 }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: createElement } = useCreateElement()
-  const { data: activeClients, isLoading: clientsLoading } = useClientChoices({ active: "true" })
+  const clients = useClientChoices({ active: "true" })
+  const activeClients = clients.data
   const defaultClient = activeClients?.some((choice) => choice.id === client) ? client : null
   const { step, elementClass, position } = state
   const kind = elementClass?.geometry_type
@@ -188,13 +190,34 @@ export function CreateElementPanel({
           {footer("class", "form", hasPosition(position) && !drawControls?.drawing && !drawControls?.overlap)}
         </>
       )}
-      {step === "form" && clientsLoading && (
-        <Center p="xl">
-          <Loader size="sm" />
-        </Center>
-      )}
-      {/* After the active clients: the form reads its client once. */}
-      {state.formShown && elementClass && position && !clientsLoading && (
+      {/* Without the active clients the form has no client to choose: it waits for them, or for a new try. */}
+      {step === "form" &&
+        !activeClients &&
+        (clients.isError && !clients.isFetching ? (
+          <Stack gap="sm" p="sm">
+            <AlertError
+              title={t("parties.loadError")}
+              message={t("map.create.clientsError")}
+              action={t("map.create.retry")}
+              onAction={() => clients.refetch()}
+            />
+            <Button
+              variant="subtle"
+              color="gray.7"
+              leftSection={<TbArrowLeft />}
+              onClick={() => go("position")}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {t("map.create.back")}
+            </Button>
+          </Stack>
+        ) : (
+          <Center p="xl">
+            <Loader size="sm" />
+          </Center>
+        ))}
+      {/* After the active clients, which stay if a later reload fails: the form reads its client once. */}
+      {state.formShown && elementClass && position && activeClients && (
         // Hidden while the position changes, also without parts: the values typed stay.
         <ScrollArea flex={1} display={step === "form" ? undefined : "none"}>
           <Box p="sm">

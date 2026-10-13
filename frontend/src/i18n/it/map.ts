@@ -42,6 +42,8 @@ export default {
       discardTitle: "Lasciare il nuovo elemento?",
       discardMessage: "La posizione e i dati inseriti non sono salvati e andranno persi.",
       discard: "Lascia",
+      clientsError: "Senza i committenti il nuovo elemento non si salva. La posizione resta: riprova.",
+      retry: "Riprova",
     },
     panel: {
       label: "Dati dell'elemento o dell'area scelti sulla mappa",
