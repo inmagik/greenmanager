@@ -1,8 +1,8 @@
 import { MakeAuthTools } from "@inmagik/react-auth"
 import { useAction } from "@inmagik/react-crud"
-import { useCallback, useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { API_URL } from "../constants"
-import { makeRefreshMe, type ChangedPrivileges } from "./privileges"
+import { makeRefreshMe, type AuthState } from "./privileges"
 import type { Credentials, Tokens, User } from "./types"
 
 export async function refresh(tokens: Tokens) {
@@ -99,20 +99,22 @@ export function useUpdateMe() {
 
 export const [AuthProvider, useAuth] = MakeAuthTools<User, Tokens, Credentials>()
 
-// One for the whole app: only the latest request replaces the user, whichever page made it.
-const refreshMe = makeRefreshMe(getUserData)
+// AuthProvider as it is now, kept by AuthStateTracker. A refresh may end after the page that started it has gone.
+let currentAuth: AuthState = { user: null, tokens: null, setUser: () => {} }
+
+/** Keeps the state of AuthProvider for `refreshMe`: mounted once, inside AuthProvider (`App.tsx`). */
+export function AuthStateTracker() {
+  const { user, tokens, setUser } = useAuth()
+  useEffect(() => {
+    currentAuth = { user, tokens, setUser }
+  }, [user, tokens, setUser])
+  return null
+}
 
 /**
  * After a change to users or roles: if it touches the current user (`touchesUser`), reads `me/` again and replaces
  * the user of AuthProvider, whose roles and permissions drive the menu and `CheckPermission`. The response of the
- * change is not enough: it is limited to the current tenant. See `makeRefreshMe`.
+ * change is not enough: it is limited to the current tenant. One for the whole app, so that only the latest request
+ * counts, whichever page made it. See `makeRefreshMe`.
  */
-export function useRefreshMe() {
-  const auth = useAuth()
-  // AuthProvider as it is when the refresh runs, not when the callback was made.
-  const latest = useRef(auth)
-  useEffect(() => {
-    latest.current = auth
-  })
-  return useCallback((changed: ChangedPrivileges) => refreshMe(() => latest.current, changed), [])
-}
+export const refreshMe = makeRefreshMe(getUserData, () => currentAuth)

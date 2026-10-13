@@ -1,4 +1,4 @@
-import { useRefreshMe } from "@/auth/auth"
+import { refreshMe } from "@/auth/auth"
 import { notifyApiError, requestConfirmation } from "@/utils"
 import { Button, Menu } from "@mantine/core"
 import { TbDots, TbPencil, TbTrash } from "react-icons/tb"
@@ -16,7 +16,6 @@ type Props = {
 export function RoleContextActions({ role, onDelete }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: deleteRole } = useDeleteRole()
-  const refreshMe = useRefreshMe()
 
   return (
     <Menu>

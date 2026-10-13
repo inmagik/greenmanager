@@ -1,4 +1,4 @@
-import { useRefreshMe } from "@/auth/auth"
+import { refreshMe } from "@/auth/auth"
 import { Header } from "@/components/Header/Header"
 import { Page } from "@/components/Page"
 import { TableEmptyState } from "@/components/Table"
@@ -31,7 +31,6 @@ export function RolesList() {
   const filters = useMemo(() => ({ page, ordering, search: debSearch }), [debSearch, page, ordering])
   const { data, isLoading: isLoadingRoles } = useRoles(filters)
   const { mutateAsync: bulkDeleteRoles } = useBulkDeleteRoles()
-  const refreshMe = useRefreshMe()
 
   // Computed values
   const selectedRoles = useMemo(() => {

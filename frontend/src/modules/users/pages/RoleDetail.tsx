@@ -1,4 +1,4 @@
-import { useRefreshMe } from "@/auth/auth"
+import { refreshMe } from "@/auth/auth"
 import { BlockNavigation } from "@/components/BlockNavigation"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
@@ -46,7 +46,6 @@ export function RoleDetail() {
   const { data: role, error: roleError } = useRole(id)
   const { mutateAsync: updateRole } = useUpdateRole()
   const { mutateAsync: revokeRoleFromUsers } = useRevokeRoleFromUsers(id)
-  const refreshMe = useRefreshMe()
   const { data: usersWithRole, isLoading: isLoadingUsers, refetch: refetchUsers } = useUsers(filters)
 
   const selectedUsers = useMemo(() => {

@@ -1,5 +1,5 @@
 import { AlertError } from "@/components/AlertError"
-import { useAuth, useRefreshMe } from "@/auth/auth"
+import { refreshMe, useAuth } from "@/auth/auth"
 import { BlockNavigation } from "@/components/BlockNavigation"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
@@ -22,7 +22,6 @@ import { notifyApiError } from "@/utils"
 export function UserDetail() {
   const { t } = useTranslation()
   const { user: currentUser } = useAuth()
-  const refreshMe = useRefreshMe()
 
   // URL Params
   const { id: idParam, tab: tabParam } = useParams<{ id: string; tab?: string }>()

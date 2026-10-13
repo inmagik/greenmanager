@@ -12,21 +12,23 @@ export function touchesUser(user: Pick<User, "id" | "roles">, { userIds = [], ro
   return userIds.includes(user.id) || roleIds.some((id) => user.roles.includes(id))
 }
 
-type AuthState = {
+export type AuthState = {
   user: User | null
   tokens: Tokens | null
   setUser: (user: User) => void
 }
 
 /**
- * The refresh behind `useRefreshMe`: if the change touches the current user, reads `me/` with `fetchUser` and
- * replaces the user. `getAuth` gives AuthProvider as it is when called: a confirmation may run after a token refresh.
- * Only the response of the latest request replaces the user, since an older one could carry outdated privileges. On
- * failure the user stays as it was until the next load; the server checks the permissions anyway.
+ * The refresh behind `refreshMe`: if the change touches the current user, reads `me/` with `fetchUser` and replaces
+ * the user. `getAuth` gives AuthProvider as it is now, both when the refresh starts (the tokens may have been renewed
+ * since the change began) and when the response arrives. The response replaces the user only if it answers the
+ * latest request, since an older one could carry outdated privileges, and only if the same user is still logged in:
+ * after a logout it would bring back the authenticated pages. On failure the user stays as it was until the next
+ * load; the server checks the permissions anyway.
  */
-export function makeRefreshMe(fetchUser: (tokens: Tokens) => Promise<User | null>) {
+export function makeRefreshMe(fetchUser: (tokens: Tokens) => Promise<User | null>, getAuth: () => AuthState) {
   let lastRequest = 0
-  return async (getAuth: () => AuthState, changed: ChangedPrivileges) => {
+  return async (changed: ChangedPrivileges) => {
     const { user, tokens } = getAuth()
     if (!user || !tokens || !touchesUser(user, changed)) {
       return
@@ -34,8 +36,9 @@ export function makeRefreshMe(fetchUser: (tokens: Tokens) => Promise<User | null
     const request = ++lastRequest
     try {
       const updatedUser = await fetchUser(tokens)
-      if (updatedUser && request === lastRequest) {
-        getAuth().setUser(updatedUser)
+      const current = getAuth()
+      if (updatedUser && request === lastRequest && current.tokens && current.user?.id === user.id) {
+        current.setUser(updatedUser)
       }
     } catch {
       // Network error: see above.

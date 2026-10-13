@@ -1,4 +1,4 @@
-import { useRefreshMe } from "@/auth/auth"
+import { refreshMe } from "@/auth/auth"
 import { Button } from "@mantine/core"
 import { modals } from "@mantine/modals"
 import { TbPlus } from "react-icons/tb"
@@ -16,7 +16,6 @@ type Props = {
 export default function GrantRoleToUsersAction({ id, refetchUsers, setSelection }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: grantRoleToUsers } = useGrantRoleToUsers(id)
-  const refreshMe = useRefreshMe()
   return (
     <Button
       leftSection={<TbPlus />}

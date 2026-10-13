@@ -1,4 +1,12 @@
-import { AuthProvider, getRefreshExpireDate, getTokenExpireDate, getUserData, login, refresh } from "./auth/auth"
+import {
+  AuthProvider,
+  AuthStateTracker,
+  getRefreshExpireDate,
+  getTokenExpireDate,
+  getUserData,
+  login,
+  refresh,
+} from "./auth/auth"
 import { TenantProvider } from "./context/TenantProvider"
 import DataProvider from "./general/DataProvider"
 import { ThemeProvider } from "./general/ThemeProvider"
@@ -13,6 +21,7 @@ function App() {
       getTokenExpireDate={getTokenExpireDate}
       getRefreshExpireDate={getRefreshExpireDate}
     >
+      <AuthStateTracker />
       <TenantProvider>
         <DataProvider>
           <ThemeProvider>

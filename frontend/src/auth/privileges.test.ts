@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { makeRefreshMe, touchesUser } from "./privileges"
+import { makeRefreshMe, touchesUser, type AuthState } from "./privileges"
 import type { Tokens, User } from "./types"
 
 // `roles` of `me/` holds the roles of every tenant of the user.
@@ -30,68 +30,98 @@ function deferred<T>() {
 }
 
 describe("makeRefreshMe", () => {
+  function authState(overrides: Partial<AuthState> = {}): AuthState {
+    return { user, tokens, setUser: vi.fn(), ...overrides }
+  }
+
   it("replaces the user with the one read from me/ after a change that touches them", async () => {
     const updated = { ...user, roles: [3] }
     const fetchUser = vi.fn().mockResolvedValue(updated)
-    const setUser = vi.fn()
+    const auth = authState()
 
-    await makeRefreshMe(fetchUser)(() => ({ user, tokens, setUser }), { roleIds: [12] })
+    await makeRefreshMe(fetchUser, () => auth)({ roleIds: [12] })
 
     expect(fetchUser).toHaveBeenCalledWith(tokens)
-    expect(setUser).toHaveBeenCalledWith(updated)
+    expect(auth.setUser).toHaveBeenCalledWith(updated)
   })
 
   it("does not read me/ after a change to other users and roles", async () => {
     const fetchUser = vi.fn()
-    const setUser = vi.fn()
+    const auth = authState()
 
-    await makeRefreshMe(fetchUser)(() => ({ user, tokens, setUser }), { userIds: [2], roleIds: [4] })
+    await makeRefreshMe(fetchUser, () => auth)({ userIds: [2], roleIds: [4] })
 
     expect(fetchUser).not.toHaveBeenCalled()
-    expect(setUser).not.toHaveBeenCalled()
+    expect(auth.setUser).not.toHaveBeenCalled()
   })
 
   it("uses the tokens of AuthProvider at the time of the call", async () => {
-    const auth = { user, tokens, setUser: vi.fn() }
+    const auth = authState()
     const fetchUser = vi.fn().mockResolvedValue(user)
-    const refreshMe = makeRefreshMe(fetchUser)
-    const refreshed = { access: "new access", refresh: "new refresh" }
+    const refreshMe = makeRefreshMe(fetchUser, () => auth)
+    const renewed = { access: "new access", refresh: "new refresh" }
 
-    auth.tokens = refreshed
-    await refreshMe(() => auth, { userIds: [7] })
+    auth.tokens = renewed
+    await refreshMe({ userIds: [7] })
 
-    expect(fetchUser).toHaveBeenCalledWith(refreshed)
+    expect(fetchUser).toHaveBeenCalledWith(renewed)
   })
 
   it("keeps the user when me/ fails", async () => {
-    const setUser = vi.fn()
-    const auth = () => ({ user, tokens, setUser })
+    const auth = authState()
 
-    await makeRefreshMe(vi.fn().mockResolvedValue(null))(auth, { userIds: [7] })
-    await expect(makeRefreshMe(vi.fn().mockRejectedValue(new Error("offline")))(auth, { userIds: [7] })).resolves.toBe(
-      undefined
-    )
+    await makeRefreshMe(vi.fn().mockResolvedValue(null), () => auth)({ userIds: [7] })
+    await expect(
+      makeRefreshMe(vi.fn().mockRejectedValue(new Error("offline")), () => auth)({ userIds: [7] })
+    ).resolves.toBe(undefined)
 
-    expect(setUser).not.toHaveBeenCalled()
+    expect(auth.setUser).not.toHaveBeenCalled()
   })
 
   it("applies only the response of the latest request", async () => {
     const first = deferred<User>()
     const second = deferred<User>()
     const fetchUser = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
-    const setUser = vi.fn()
-    const refreshMe = makeRefreshMe(fetchUser)
-    const auth = () => ({ user, tokens, setUser })
+    const auth = authState()
+    const refreshMe = makeRefreshMe(fetchUser, () => auth)
 
-    const firstRefresh = refreshMe(auth, { userIds: [7] })
-    const secondRefresh = refreshMe(auth, { userIds: [7] })
+    const firstRefresh = refreshMe({ userIds: [7] })
+    const secondRefresh = refreshMe({ userIds: [7] })
     const latest = { ...user, roles: [] }
     second.resolve(latest)
     await secondRefresh
     first.resolve({ ...user, roles: [3, 12, 20] })
     await firstRefresh
 
-    expect(setUser).toHaveBeenCalledTimes(1)
-    expect(setUser).toHaveBeenCalledWith(latest)
+    expect(auth.setUser).toHaveBeenCalledTimes(1)
+    expect(auth.setUser).toHaveBeenCalledWith(latest)
+  })
+
+  it("drops the response after a logout", async () => {
+    const response = deferred<User>()
+    const setUser = vi.fn()
+    let auth = authState({ setUser })
+    const refreshMe = makeRefreshMe(vi.fn().mockReturnValue(response.promise), () => auth)
+
+    const refresh = refreshMe({ userIds: [7] })
+    auth = authState({ user: null, tokens: null, setUser })
+    response.resolve(user)
+    await refresh
+
+    expect(setUser).not.toHaveBeenCalled()
+  })
+
+  it("drops the response after the login of another user", async () => {
+    const response = deferred<User>()
+    const setUser = vi.fn()
+    let auth = authState({ setUser })
+    const refreshMe = makeRefreshMe(vi.fn().mockReturnValue(response.promise), () => auth)
+
+    const refresh = refreshMe({ userIds: [7] })
+    auth = authState({ user: { ...user, id: 8 }, tokens: { access: "other", refresh: "other" }, setUser })
+    response.resolve(user)
+    await refresh
+
+    expect(setUser).not.toHaveBeenCalled()
   })
 })
