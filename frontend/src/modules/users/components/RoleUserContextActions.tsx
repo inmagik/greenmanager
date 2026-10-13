@@ -1,3 +1,4 @@
+import { useRefreshMe } from "@/auth/auth"
 import type { User } from "@/auth/types"
 import { CheckPermission } from "@/components/CheckPermission"
 import { API_URL } from "@/constants"
@@ -19,6 +20,7 @@ export function RoleUserContextActions({ user, roleId }: Props) {
   const queryClient = useQueryClient()
   // Same endpoint as the bulk removal: it needs only the role-write permission.
   const { mutateAsync: revokeRoleFromUsers } = useRevokeRoleFromUsers(roleId)
+  const refreshMe = useRefreshMe()
 
   return (
     <CheckPermission permission={AUTH_CORE_PERMISSIONS.WRITE_ROLES}>
@@ -51,6 +53,7 @@ export function RoleUserContextActions({ user, roleId }: Props) {
                     .then(() => {
                       queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/users`] })
                       queryClient.invalidateQueries({ queryKey: [`${API_URL}/api/core/auth/roles`] })
+                      refreshMe({ userIds: [user.id] })
                     })
                     .catch((error) => notifyApiError(error))
                 }

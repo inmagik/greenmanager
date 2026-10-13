@@ -1,3 +1,4 @@
+import { useRefreshMe } from "@/auth/auth"
 import { BlockNavigation } from "@/components/BlockNavigation"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
@@ -45,6 +46,7 @@ export function RoleDetail() {
   const { data: role, error: roleError } = useRole(id)
   const { mutateAsync: updateRole } = useUpdateRole()
   const { mutateAsync: revokeRoleFromUsers } = useRevokeRoleFromUsers(id)
+  const refreshMe = useRefreshMe()
   const { data: usersWithRole, isLoading: isLoadingUsers, refetch: refetchUsers } = useUsers(filters)
 
   const selectedUsers = useMemo(() => {
@@ -147,10 +149,12 @@ export function RoleDetail() {
                 cancelProps: { color: "gray", variant: "subtle" },
                 onConfirm: () => {
                   // Only the users listed in the confirmation.
-                  revokeRoleFromUsers({ user_ids: selectedUsers.map((user) => user.id) })
+                  const userIds = selectedUsers.map((user) => user.id)
+                  revokeRoleFromUsers({ user_ids: userIds })
                     .then(() => {
                       setSelection([])
                       refetchUsers()
+                      refreshMe({ userIds })
                     })
                     .catch((error) => notifyApiError(error))
                 },
@@ -206,6 +210,7 @@ export function RoleDetail() {
               onSubmit={async (values) => {
                 await updateRole({ id: role.id, name: values.name, permissions: values.permissions })
                 setEditable(false)
+                refreshMe({ roleIds: [role.id] })
               }}
               onCancel={() => {
                 setEditable(false)

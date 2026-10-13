@@ -1,3 +1,4 @@
+import { useRefreshMe } from "@/auth/auth"
 import { Button } from "@mantine/core"
 import { modals } from "@mantine/modals"
 import { TbPlus } from "react-icons/tb"
@@ -15,6 +16,7 @@ type Props = {
 export default function GrantRoleToUsersAction({ id, refetchUsers, setSelection }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: grantRoleToUsers } = useGrantRoleToUsers(id)
+  const refreshMe = useRefreshMe()
   return (
     <Button
       leftSection={<TbPlus />}
@@ -24,11 +26,13 @@ export default function GrantRoleToUsersAction({ id, refetchUsers, setSelection 
           children: (
             <PickUsersForm
               onSubmit={(users) => {
-                return grantRoleToUsers({ user_ids: users.map((u) => u.id) })
+                const userIds = users.map((u) => u.id)
+                return grantRoleToUsers({ user_ids: userIds })
                   .then(() => {
                     modals.close(modalId)
                     setSelection([])
                     refetchUsers()
+                    refreshMe({ userIds })
                   })
                   .catch((error) => notifyApiError(error))
               }}

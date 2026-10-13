@@ -1,5 +1,5 @@
 import { AlertError } from "@/components/AlertError"
-import { useAuth } from "@/auth/auth"
+import { useAuth, useRefreshMe } from "@/auth/auth"
 import { BlockNavigation } from "@/components/BlockNavigation"
 import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
@@ -22,6 +22,7 @@ import { notifyApiError } from "@/utils"
 export function UserDetail() {
   const { t } = useTranslation()
   const { user: currentUser } = useAuth()
+  const refreshMe = useRefreshMe()
 
   // URL Params
   const { id: idParam, tab: tabParam } = useParams<{ id: string; tab?: string }>()
@@ -171,6 +172,7 @@ export function UserDetail() {
                 // Only the fields of this tab: roles and permissions have their own tab.
                 await updateUser({ id: user.id, full_name: values.full_name, email: values.email })
                 setEditable(false)
+                refreshMe({ userIds: [user.id] })
               }}
               onCancel={() => {
                 setEditable(false)
@@ -191,6 +193,7 @@ export function UserDetail() {
                   roles: values.roles.map((role) => role.id),
                 })
                 setEditable(false)
+                refreshMe({ userIds: [user.id] })
               }}
               onCancel={() => {
                 setEditable(false)

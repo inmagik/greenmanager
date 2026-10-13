@@ -1,3 +1,4 @@
+import { useRefreshMe } from "@/auth/auth"
 import { notifyApiError, requestConfirmation } from "@/utils"
 import { Button, Menu } from "@mantine/core"
 import { TbDots, TbPencil, TbTrash } from "react-icons/tb"
@@ -15,6 +16,7 @@ type Props = {
 export function RoleContextActions({ role, onDelete }: Props) {
   const { t } = useTranslation()
   const { mutateAsync: deleteRole } = useDeleteRole()
+  const refreshMe = useRefreshMe()
 
   return (
     <Menu>
@@ -47,7 +49,10 @@ export function RoleContextActions({ role, onDelete }: Props) {
             ).then((confirmed) => {
               if (confirmed) {
                 deleteRole(role.id)
-                  .then(() => onDelete?.())
+                  .then(() => {
+                    refreshMe({ roleIds: [role.id] })
+                    onDelete?.()
+                  })
                   .catch((error) => notifyApiError(error))
               }
             })

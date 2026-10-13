@@ -80,6 +80,32 @@ def validate_permission_codes(codes):
 class RoleSerializer(serializers.ModelSerializer):
     user_count = serializers.IntegerField(read_only=True)
 
+    def validate_name(self, value):
+        """
+        The name is unique in the tenant (``unique_role_name_per_tenant``). The
+        view assigns the tenant on save, so DRF adds no validator for the
+        constraint, and a duplicate would reach the database as an error 500.
+        """
+        tenant = (
+            self.instance.tenant
+            if self.instance is not None
+            else self.context.get("tenant")
+        )
+        # Without a tenant the view answers with its own error (tenant_required).
+        if tenant is None:
+            return value
+        roles = Role.objects.filter(tenant=tenant, name=value)
+        if self.instance is not None:
+            roles = roles.exclude(pk=self.instance.pk)
+        if roles.exists():
+            raise serializers.ValidationError(
+                {
+                    "code": "role_name_not_unique",
+                    "detail": "A role with this name already exists in the tenant.",
+                }
+            )
+        return value
+
     def validate_permissions(self, value):
         return validate_permission_codes(value)
 

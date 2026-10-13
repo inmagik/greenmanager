@@ -1,3 +1,4 @@
+import { useRefreshMe } from "@/auth/auth"
 import { Header } from "@/components/Header/Header"
 import { Page } from "@/components/Page"
 import { TableEmptyState } from "@/components/Table"
@@ -30,6 +31,7 @@ export function RolesList() {
   const filters = useMemo(() => ({ page, ordering, search: debSearch }), [debSearch, page, ordering])
   const { data, isLoading: isLoadingRoles } = useRoles(filters)
   const { mutateAsync: bulkDeleteRoles } = useBulkDeleteRoles()
+  const refreshMe = useRefreshMe()
 
   // Computed values
   const selectedRoles = useMemo(() => {
@@ -92,8 +94,10 @@ export function RolesList() {
                 cancelProps: { color: "gray", variant: "subtle" },
                 onConfirm: async () => {
                   try {
-                    await bulkDeleteRoles({ ids: selectedRoles.map((r) => r.id) })
+                    const roleIds = selectedRoles.map((r) => r.id)
+                    await bulkDeleteRoles({ ids: roleIds })
                     setSelection([])
+                    refreshMe({ roleIds })
                   } catch (error) {
                     notifyApiError(error)
                   }

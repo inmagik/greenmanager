@@ -1,6 +1,8 @@
 import { MakeAuthTools } from "@inmagik/react-auth"
 import { useAction } from "@inmagik/react-crud"
+import { useCallback } from "react"
 import { API_URL } from "../constants"
+import { touchesUser, type ChangedPrivileges } from "./privileges"
 import type { Credentials, Tokens, User } from "./types"
 
 export async function refresh(tokens: Tokens) {
@@ -96,3 +98,29 @@ export function useUpdateMe() {
 }
 
 export const [AuthProvider, useAuth] = MakeAuthTools<User, Tokens, Credentials>()
+
+/**
+ * After a change to users or roles: if it touches the current user (`touchesUser`), reads `me/` again and replaces
+ * the user of AuthProvider, whose roles and permissions drive the menu and `CheckPermission`. The response of the
+ * change is not enough: it is limited to the current tenant. On failure the user stays as it was until the next load;
+ * the server checks the permissions anyway.
+ */
+export function useRefreshMe() {
+  const { user, tokens, setUser } = useAuth()
+  return useCallback(
+    async (changed: ChangedPrivileges) => {
+      if (!user || !tokens || !touchesUser(user, changed)) {
+        return
+      }
+      try {
+        const updatedUser = await getUserData(tokens)
+        if (updatedUser) {
+          setUser(updatedUser)
+        }
+      } catch {
+        // Network error: see above.
+      }
+    },
+    [user, tokens, setUser]
+  )
+}

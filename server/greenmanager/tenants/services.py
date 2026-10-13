@@ -86,6 +86,9 @@ def save_membership(serializer, **extra):
     membership = serializer.save(**extra)
     for user_id in sorted(user_ids):
         ensure_default_membership_id(user_id)
+    # The default may have been restored on another instance of this membership:
+    # the response is serialized from serializer.instance, the same object.
+    membership.refresh_from_db()
     return membership
 
 

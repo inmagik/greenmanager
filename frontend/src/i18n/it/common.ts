@@ -206,6 +206,7 @@ const translations = {
     direct_permissions_staff_only: "Solo lo staff cambia i permessi diretti di un utente: usa i ruoli.",
     cannot_change_own_account: "Non puoi disattivare o eliminare il tuo account.",
     unknown_permission: "Permessi sconosciuti: {{permissions}}.",
+    role_name_not_unique: "Esiste già un ruolo con questo nome nell'organizzazione.",
     invalid_token: "Il link non è valido o è scaduto. Richiedine uno nuovo.",
     revision_conflict:
       "Qualcun altro ha modificato questi dati dopo che li hai aperti. Ricarica per vedere la versione aggiornata: le modifiche non salvate andranno perse.",
