@@ -113,3 +113,68 @@ export function mergeParts(
   }
   return { type: "MultiPolygon", coordinates: (all as Polygon[]).map((polygon) => polygon.coordinates) }
 }
+
+// The side of `c` from the line through `a` and `b`: 1 on the left, -1 on the right, 0 on the line.
+function side(a: Position, b: Position, c: Position) {
+  return Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+}
+
+// Two segments that cross in a point inside both: touching at an end, or lying on the same line, is not crossing.
+function segmentsCross(a: Position, b: Position, c: Position, d: Position) {
+  return side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0
+}
+
+function segments(polygon: Polygon): [Position, Position][] {
+  return polygon.coordinates.flatMap((ring) =>
+    ring.slice(1).map((end, index): [Position, Position] => [ring[index], end])
+  )
+}
+
+function onSegment(point: Position, [a, b]: [Position, Position]) {
+  return (
+    side(a, b, point) === 0 &&
+    point[0] >= Math.min(a[0], b[0]) &&
+    point[0] <= Math.max(a[0], b[0]) &&
+    point[1] >= Math.min(a[1], b[1]) &&
+    point[1] <= Math.max(a[1], b[1])
+  )
+}
+
+function insideRing([x, y]: Position, ring: Position[]) {
+  let inside = false
+  for (let index = 1; index < ring.length; index++) {
+    const [x1, y1] = ring[index - 1]
+    const [x2, y2] = ring[index]
+    if (y1 > y !== y2 > y && x < x1 + ((y - y1) * (x2 - x1)) / (y2 - y1)) inside = !inside
+  }
+  return inside
+}
+
+// Inside the polygon and not on its boundary: in the shell and out of the holes.
+function strictlyInside(point: Position, polygon: Polygon) {
+  if (segments(polygon).some((segment) => onSegment(point, segment))) return false
+  const [shell, ...holes] = polygon.coordinates
+  return insideRing(point, shell) && !holes.some((hole) => insideRing(point, hole))
+}
+
+function polygonsOverlap(a: Polygon, b: Polygon) {
+  const sidesA = segments(a)
+  const sidesB = segments(b)
+  if (sidesA.some(([p, q]) => sidesB.some(([r, s]) => segmentsCross(p, q, r, s)))) return true
+  // Without crossing sides, one is inside the other if one of its vertices, or the middle of a side, is.
+  const probes = (sides: [Position, Position][]) =>
+    sides.flatMap(([p, q]): Position[] => [p, [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]])
+  return (
+    probes(sidesA).some((point) => strictlyInside(point, b)) || probes(sidesB).some((point) => strictlyInside(point, a))
+  )
+}
+
+/**
+ * Whether two polygons among the parts overlap: the server refuses such a multipart polygon (`geometry_invalid`). Two
+ * parts that touch in a vertex do not overlap; the server refuses a side in common too, which a drawing by hand does
+ * not make. A check on the plane of the coordinates, which guides the drawing: the server makes the real one.
+ */
+export function partsOverlap(parts: Part[]): boolean {
+  const polygons = parts.filter((part): part is Polygon => part.type === "Polygon")
+  return polygons.some((polygon, index) => polygons.slice(index + 1).some((other) => polygonsOverlap(polygon, other)))
+}

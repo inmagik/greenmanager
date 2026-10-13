@@ -160,9 +160,9 @@ export function CreateElementPanel({
                 onChange({
                   ...state,
                   elementClass: choice,
-                  // A position of another type of geometry, and the form of another class, do not serve.
-                  ...(choice?.geometry_type !== kind ? { position: null } : {}),
-                  formShown: false,
+                  // A position of another type of geometry does not serve, nor the form, which keeps the type of its
+                  // position. With the same type the form stays, and follows the class.
+                  ...(choice?.geometry_type !== kind ? { position: null, formShown: false } : {}),
                 })
               }
             />
@@ -185,7 +185,7 @@ export function CreateElementPanel({
               )}
             </Box>
           </ScrollArea>
-          {footer("class", "form", hasPosition(position) && !drawControls?.drawing)}
+          {footer("class", "form", hasPosition(position) && !drawControls?.drawing && !drawControls?.overlap)}
         </>
       )}
       {state.formShown && elementClass && hasPosition(position) && (
@@ -196,6 +196,7 @@ export function CreateElementPanel({
               layout="panel"
               defaultClient={defaultClient}
               defaultClass={elementClass}
+              onClassChange={(choice) => onChange({ ...state, elementClass: choice })}
               mapPosition={{ value: position, onEdit: () => go("position") }}
               onSubmit={async (values) => onCreated(await createElement(values))}
             />

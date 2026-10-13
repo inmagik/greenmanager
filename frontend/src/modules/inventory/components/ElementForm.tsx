@@ -34,7 +34,7 @@ import { DateInput } from "@mantine/dates"
 import { useForm, type FormErrors } from "@mantine/form"
 import { useDebouncedValue } from "@mantine/hooks"
 import { yupResolver } from "mantine-form-yup-resolver"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { TFunction } from "i18next"
 import { useTranslation } from "react-i18next"
 import { TbDeviceFloppy, TbMapPin } from "react-icons/tb"
@@ -87,8 +87,12 @@ type Props = {
   /** The client and the area of a new element, e.g. those of the filters of the list or of the area. */
   defaultClient?: string | null
   defaultArea?: string | null
-  /** The class of a new element, chosen before the position, e.g. on the map page. */
+  /**
+   * The class of a new element, chosen before the position, e.g. on the map page. With `mapPosition` the form follows
+   * it when it changes, and gives the class chosen in the form to `onClassChange`.
+   */
   defaultClass?: ElementClassChoice | null
+  onClassChange?: (choice: ElementClassChoice) => void
   /**
    * The position of a new element given on the map page: the form shows it, with its check and the button to change
    * it, instead of its inputs. The class changes only among those with its type of geometry.
@@ -165,6 +169,7 @@ export function ElementForm({
   defaultClient,
   defaultArea,
   defaultClass,
+  onClassChange,
   mapPosition,
   onSubmit,
   onReload,
@@ -220,6 +225,27 @@ export function ElementForm({
     chosen?.species_mode ?? classEntry?.species_mode ?? savedClass?.species_mode
   const classAttributes = chosen?.class_attributes ?? classEntry?.class_attributes
   const species = speciesInput(speciesMode, values.species_choice)
+  function chooseClass(value: string | null, choice: ElementClassChoice | null) {
+    form.setFieldValue("element_class", value)
+    setClassChoice(choice)
+    if (!choice) return
+    if (isNew && !mapPosition && choice.geometry_type !== geometryType) {
+      form.setFieldValue("position", emptyPosition(choice.geometry_type))
+    }
+    if (choice.species_mode === "composition") form.setFieldValue("species_choice", "composition")
+    if (choice.species_mode === "single") form.setFieldValue("species_choice", "single")
+  }
+
+  // On the map page the class changes also in the step before the form, which meanwhile is hidden: the form follows it,
+  // only when that class changes.
+  const mapClass = mapPosition ? defaultClass : null
+  useEffect(() => {
+    if (!mapClass || mapClass.id === form.getValues().element_class) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    chooseClass(mapClass.id, mapClass)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapClass])
+
   // The attributes are sent when they or the class change: a change of other data does not depend on them (D-051).
   const classChanged = !!element && values.element_class !== element.element_class
   // Another area or class changes the warnings of the saved position: they are checked before saving.
@@ -448,14 +474,8 @@ export function ElementForm({
                 {...readonlySelectProps}
                 value={values.element_class}
                 onChange={(value, choice) => {
-                  form.setFieldValue("element_class", value)
-                  setClassChoice(choice)
-                  if (!choice) return
-                  if (isNew && !mapPosition && choice.geometry_type !== geometryType) {
-                    form.setFieldValue("position", emptyPosition(choice.geometry_type))
-                  }
-                  if (choice.species_mode === "composition") form.setFieldValue("species_choice", "composition")
-                  if (choice.species_mode === "single") form.setFieldValue("species_choice", "single")
+                  chooseClass(value, choice)
+                  if (choice) onClassChange?.(choice)
                 }}
                 error={errors.element_class}
               />

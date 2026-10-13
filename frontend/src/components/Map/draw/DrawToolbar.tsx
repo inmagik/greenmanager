@@ -15,7 +15,7 @@ type Props = {
 export function DrawToolbar({ controls }: Props) {
   const { t } = useTranslation()
   if (!controls) return null
-  const { kind, drawing, canFinish, selected, parts, locked, canUndo } = controls
+  const { kind, drawing, canFinish, selected, parts, locked, overlap, canUndo } = controls
   const hint = drawing
     ? t(`draw.hints.drawing.${kind}`)
     : selected
@@ -30,6 +30,11 @@ export function DrawToolbar({ controls }: Props) {
       <Text size="sm" c="dimmed" aria-live="polite">
         {hint}
       </Text>
+      {overlap && (
+        <Text size="sm" c="red" role="alert">
+          {t("draw.overlap")}
+        </Text>
+      )}
       {locked > 0 && (
         <Text size="sm" c="dimmed">
           {t("draw.locked", { count: locked })}

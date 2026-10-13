@@ -247,3 +247,4 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
    - archiviazione di foto e allegati (domanda 6 di [backend.md](backend.md));
    - accesso tramite gli affidamenti (§5.4 di [04-modello-dati.md](../04-modello-dati.md));
    - invito di un utente già esistente (D-045).
+3. **Prova da smartphone.** La prova di §7 è stata fatta con la PR4b da computer e da uno smartphone emulato in Chromium. Manca quella da smartphone vero, in HTTPS, su Safari per iOS e Chrome per Android (domanda 4 di [frontend-pattern.md](frontend-pattern.md)). → da fare alla revisione della fetta

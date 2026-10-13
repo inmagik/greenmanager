@@ -1,6 +1,6 @@
 import type { MultiLineString, MultiPolygon, Polygon } from "geojson"
 import { describe, expect, it } from "vitest"
-import { geometryParts, mergeParts, partKey, splitParts } from "./multipart"
+import { geometryParts, mergeParts, partKey, partsOverlap, splitParts } from "./multipart"
 
 const square = (x: number, y: number, size = 1): Polygon["coordinates"][number] => [
   [x, y],
@@ -148,6 +148,37 @@ describe("mergeParts", () => {
   it("round-trips a geometry through split and merge", () => {
     const { editable, locked, originals } = splitParts(twoPolygons, "polygon", 9)
     expect(mergeParts("polygon", editable, { originals, locked })).toEqual(twoPolygons)
+  })
+})
+
+describe("partsOverlap", () => {
+  const polygon = (x: number, y: number, size = 1): Polygon => ({ type: "Polygon", coordinates: [square(x, y, size)] })
+
+  it("is false for parts apart", () => {
+    expect(partsOverlap([polygon(10, 44), polygon(12, 44)])).toBe(false)
+  })
+
+  it("is true for parts whose sides cross", () => {
+    expect(partsOverlap([polygon(10, 44), polygon(12, 44), polygon(10.5, 44.5)])).toBe(true)
+  })
+
+  it("is true for a part inside another", () => {
+    expect(partsOverlap([polygon(10, 44, 4), polygon(11, 45)])).toBe(true)
+  })
+
+  it("is false for parts that touch in a vertex", () => {
+    expect(partsOverlap([polygon(10, 44), polygon(11, 45)])).toBe(false)
+  })
+
+  it("is false for a part in the hole of another, true for one over the hole", () => {
+    const [holed] = splitParts(withHole, "polygon", 9).locked
+    expect(partsOverlap([holed, polygon(13.25, 45.25, 0.5)])).toBe(false)
+    expect(partsOverlap([holed, polygon(12.5, 44.5, 2)])).toBe(true)
+  })
+
+  it("leaves out the lines", () => {
+    const line = { type: "LineString" as const, coordinates: square(10, 44) }
+    expect(partsOverlap([line, line])).toBe(false)
   })
 })
 

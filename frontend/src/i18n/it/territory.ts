@@ -125,7 +125,7 @@ export default {
     validation: {
       managementEnd: "La gestione non può finire prima di iniziare",
       municipalityCode: "Il codice ISTAT ha 5 o 6 cifre",
-      geometry: "Scegli un file con il perimetro dell'area",
+      geometry: "Disegna il perimetro sulla mappa o scegli un file con il perimetro dell'area",
     },
   },
   serverErrors: {

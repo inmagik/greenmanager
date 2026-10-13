@@ -181,13 +181,15 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
   - Una parte non toccata riprende le coordinate di partenza: l'arrotondamento non diventa una modifica.
   - Le parti bloccate seguono quelle modificabili, come erano.
   - Senza parti la geometria è `null`.
-- I test (`multipart.test.ts`) coprono la divisione, i buchi, la precisione, le coordinate riprese e il giro completo.
+- `partsOverlap(parts)` dice se due poligoni fra le parti si sovrappongono: il server rifiuta un poligono multiparte così (`geometry_invalid`). Due parti che si toccano in un vertice non si sovrappongono. Il controllo è sul piano delle coordinate e guida il disegno; quello vero resta del server, che rifiuta anche due parti con un lato in comune, che a mano non si disegnano.
+- I test (`multipart.test.ts`) coprono la divisione, i buchi, la precisione, le coordinate riprese, il giro completo e la sovrapposizione delle parti.
 
 ### 2.3 Modifica sulla mappa
 
 - **Linee e poligoni** (`GeometryDraw`): ogni parte è una feature di terra-draw.
   - Toccare una parte la sceglie e ne mostra i vertici: si trascinano, e trascinando il punto a metà di un lato se ne aggiunge uno. Su un computer il clic destro toglie un vertice. Esc toglie la scelta.
   - Una parte non si sposta intera: con un dito succederebbe per errore. Un poligono non può incrociarsi, né disegnandolo né spostandone i vertici: il server lo rifiuterebbe (`geometry_invalid`).
+  - Due poligoni che si sovrappongono il server li rifiuta allo stesso modo. terra-draw controlla ogni parte da sola: la sovrapposizione la segnala un testo sopra i pulsanti (`partsOverlap`), finché si spostano i vertici o si elimina una parte. Nel nuovo elemento dalla mappa (§2.5) il passo della posizione non va avanti.
   - Le parti bloccate sono grigie e tratteggiate; un testo dice che si cambiano solo da file.
   - Senza parti, la mappa parte disegnando la prima.
 - **Pulsanti** (`DrawToolbar`), fuori dalla mappa, con un testo su cosa fare: *Aggiungi parte*, *Elimina parte* (della parte scelta), *Fine parte* e *Annulla la parte* mentre se ne disegna una, *Annulla l'ultima modifica*. *Fine parte* chiude la parte come il tasto Invio, e si attiva quando la parte ha i vertici che servono: due per una linea, tre per un poligono. Un poligono si chiude anche toccando il primo vertice. Il testo è annunciato agli screen reader (`aria-live`).
@@ -218,7 +220,7 @@ Vedi D-058. Linee e poligoni si disegnano e si modificano con terra-draw; un pun
      - un punto: la posizione del dispositivo (*Usa la mia posizione*, con la precisione), il mirino o un tocco. Il testo dice quale punto è posato;
      - linee e poligoni: il disegno di §2.3, con i pulsanti nel pannello;
   3. **dati**: il form dell'elemento (`ElementForm`, con `mapPosition` e il layout `panel`, a una colonna). La posizione vi compare come testo, con *Cambia posizione*, che torna al passo 2, e con il controllo: misure, area proposta, avvisi. Il committente è quello del filtro della mappa, se è attivo.
-- **Stato**: il flusso (`createElement.ts`) tiene la classe, la posizione e il passo. Il form, una volta aperto, resta montato mentre la posizione cambia, e i valori scritti restano. Una classe di un altro tipo di geometria toglie la posizione e il form.
+- **Stato**: il flusso (`createElement.ts`) tiene la classe, la posizione e il passo. Il form, una volta aperto, resta montato mentre la posizione cambia, e i valori scritti restano. Una classe di un altro tipo di geometria toglie la posizione e il form; una dello stesso tipo li lascia, e il form la segue. Una classe scelta nel form torna al passo della classe.
 - **Mappa durante il flusso**: un tocco non sceglie le feature. Al passo 3 la posizione posata si vede come una feature scelta. Dopo il salvataggio la mappa sceglie l'elemento nuovo, e una notifica dice degli alberi vicini.
 - **Su un telefono** il pannello è il drawer di §1.6: alto il 45% dello schermo al passo della posizione, che usa la mappa, e l'85% ai passi della classe e dei dati.
   - La tendina delle classi si apre dentro il drawer (`withinPortal: false`), non in un portale. In un portale, posizionata prima di conoscere la propria larghezza, finiva oltre il bordo destro: Chrome sul telefono allargava la pagina, la tendina si nascondeva, e il ciclo si ripeteva a ogni frame.
@@ -278,10 +280,11 @@ I pattern di base sono in §5 di [frontend.md](frontend.md); le parti comuni dei
 
 ## Domande aperte
 
-1. **Sfondi in produzione.** OpenStreetMap non regge un traffico importante, e il PCN è lento, solo in HTTP e a volte in errore. Quali sfondi per le installazioni: un fornitore di tile, tile proprie, le ortofoto regionali dei committenti? Si sceglie per installazione con `VITE_BASEMAPS`, o serve uno sfondo per committente, nei dati? → da decidere con il deploy
+1. **Sfondi in produzione.** OpenStreetMap non regge un traffico importante, e il PCN è lento, solo in HTTP e a volte in errore. Quali sfondi per le installazioni: un fornitore di tile, tile proprie, le ortofoto regionali dei committenti? Un WMS si usa solo con CORS e HTTPS, o dietro il proxy dell'applicazione come il PCN (§1.5). Si sceglie per installazione con `VITE_BASEMAPS`, o serve uno sfondo per committente, nei dati? → da decidere con il deploy
 2. **Etichette sulla mappa.** Codici e nomi sulla mappa vogliono i glifi dei caratteri, cioè un servizio di font per MapLibre. Servono, o bastano il pannello della feature e la legenda? → da decidere alla revisione della fetta
 3. **Elementi rimossi sulla mappa.** La mappa mostra i presenti. Serve il filtro della presenza della lista, per esempio per vedere i presenti a una data o i rimossi di un periodo? → da decidere alla revisione della fetta
 4. **Disegno sui dispositivi veri.** Lo spike ha provato il tocco in Chromium, emulato. Il trascinamento dei vertici e delle parti, il mirino e la posizione del dispositivo funzionano su Safari per iOS e su Chrome per Android, in HTTPS? → da provare alla revisione della fetta, con la prova di §7 di [fetta-1.md](fetta-1.md)
 5. **Vertici da togliere con il dito.** Un vertice si toglie con il clic destro, che su un telefono non c'è; restano l'annullamento e il ridisegno della parte. Serve un pulsante, o il tocco lungo? → da decidere alla revisione della fetta
 6. **Parti con buchi.** Si cambiano solo da file. Servono sulla mappa, con un'altra libreria o un'estensione di terra-draw, o sono abbastanza rare? → da decidere alla revisione della fetta
 7. **Aggancio e percorsi.** terra-draw aggancia i vertici a quelli di altre geometrie, e una linea si potrebbe tracciare camminando, con la posizione del dispositivo. Servono, per esempio per una siepe lungo il bordo di un'area o per un filare? → dopo la fetta, con l'uso in campo (TR-4)
+8. **Liste in campo.** Su smartphone le liste restano tabelle con le colonne principali (§5). In campo si cerca un elemento dalla lista, per codice o specie, o dalla mappa? Serve una lista a schede, o basta la mappa? Le domande su dettaglio e form sono la 6 e la 7 di [frontend.md](frontend.md). → da decidere alla revisione della fetta, con la prova da smartphone

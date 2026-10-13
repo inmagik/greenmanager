@@ -1,7 +1,15 @@
 import type { FeatureCollection, Geometry } from "geojson"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useGeoJSONLayer, type GeoJSONLayer } from "../useGeoJSONLayer"
-import { DRAW_PRECISION, mergeParts, partKey, splitParts, type MergedGeometry, type Part } from "./multipart"
+import {
+  DRAW_PRECISION,
+  mergeParts,
+  partKey,
+  partsOverlap,
+  splitParts,
+  type MergedGeometry,
+  type Part,
+} from "./multipart"
 import { DRAW_MODES, SELECT_MODE, useTerraDraw, type DrawnKind, type TerraDrawInstance } from "./useTerraDraw"
 
 /** What the drawing does now, and its actions: for a toolbar outside the map (`DrawToolbar`). */
@@ -17,6 +25,8 @@ export type DrawControls = {
   parts: number
   /** The parts that terra-draw does not edit (polygons with holes): they stay as they are. */
   locked: number
+  /** Two polygons overlap: the server would refuse the geometry. */
+  overlap: boolean
   canUndo: boolean
   addPart: () => void
   finishPart: () => void
@@ -55,7 +65,7 @@ const MIN_VERTICES: Record<DrawnKind, number> = { line: 2, polygon: 3 }
  * feature (`splitParts`), and the geometry joins them again (`mergeParts`). Tapping a part selects it and shows its
  * vertices, which move by dragging; dragging the middle of a side adds a vertex, and a right click on a vertex removes
  * it. A new part is drawn with `addPart`. The polygons with holes, which terra-draw does not edit, stay as they are,
- * in grey.
+ * in grey. Two polygons that overlap are told (`overlap`), not refused: the server refuses them.
  */
 export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
   // `kind` and `initial` are read once: a drawing of another kind is another component (`key`).
@@ -67,6 +77,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
   const [vertices, setVertices] = useState(0)
   const [selected, setSelected] = useState<string | number | null>(null)
   const [parts, setParts] = useState(0)
+  const [overlap, setOverlap] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
   const handlers = useRef({ onChange, onControls })
   useEffect(() => {
@@ -81,6 +92,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
         .filter((feature) => feature.properties.mode === DRAW_MODES[kind] && !feature.properties.currentlyDrawing)
         .map((feature) => feature.geometry as Part)
       setParts(finished.length)
+      setOverlap(partsOverlap([...finished, ...lockedRef.current]))
       handlers.current.onChange(mergeParts(kind, finished, { originals: split.originals, locked: lockedRef.current }))
     },
     [kind, split]
@@ -134,6 +146,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
       selected: selected !== null,
       parts,
       locked: locked.length,
+      overlap,
       canUndo,
       addPart: () => {
         if (!draw) return
@@ -165,7 +178,7 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
         emit(draw)
       },
     }),
-    [kind, drawing, vertices, selected, parts, locked, canUndo, draw, emit]
+    [kind, drawing, vertices, selected, parts, locked, overlap, canUndo, draw, emit]
   )
   useEffect(() => {
     handlers.current.onControls(controls)
