@@ -557,7 +557,7 @@ Raggruppamento facoltativo di aree: quartiere, circoscrizione, complesso di un c
 | `client` | → Client | sì | |
 | `code` | intero | sì | Codice numerico, univoco per committente. Il CAM vuole un numero. |
 | `name` | testo | sì | |
-| `geometry` | poligono | | Perimetro ufficiale, se esiste (es. un municipio). Altrimenti la zona è l'insieme delle sue aree. |
+| `geometry` | poligono, anche multiparte | | Perimetro ufficiale, se esiste (es. un municipio). Altrimenti la zona è l'insieme delle sue aree. |
 
 #### Area — Area
 
@@ -1335,7 +1335,7 @@ stateDiagram-v2
     Pianificato --> Annullato : con motivazione
     Pianificato --> Eseguito : l'esecutore registra
     Eseguito --> Eseguito : correzione, con motivazione
-    Eseguito --> Validato : il committente valida, senza non conformità aperte
+    Eseguito --> Validato : il committente valida, senza non conformità aperte o risolte
     Eseguito --> [*] : affidamento senza validazione
     Validato --> [*]
     Annullato --> [*]
