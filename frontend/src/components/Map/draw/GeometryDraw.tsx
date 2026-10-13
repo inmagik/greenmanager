@@ -1,5 +1,6 @@
 import type { FeatureCollection, Geometry } from "geojson"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { GeoJSONStoreFeatures } from "terra-draw"
 import { useGeoJSONLayer, type GeoJSONLayer } from "../useGeoJSONLayer"
 import {
   DRAW_PRECISION,
@@ -62,6 +63,13 @@ const KEY_EVENT = { heldKeys: [], preventDefault: () => {} }
 
 const MIN_VERTICES: Record<DrawnKind, number> = { line: 2, polygon: 3 }
 
+// The vertices placed in a part being drawn: terra-draw counts them for a polygon, not for a line, which has one
+// coordinate more, the one that follows the pointer.
+function placedVertices(feature: GeoJSONStoreFeatures) {
+  if (feature.geometry.type === "LineString") return Math.max(feature.geometry.coordinates.length - 1, 0)
+  return Number(feature.properties.committedCoordinateCount ?? 0)
+}
+
 /**
  * The parts of a line or of a polygon, drawn and edited on the map of `MapView` with terra-draw: each part is a
  * feature (`splitParts`), and the geometry joins them again (`mergeParts`). Tapping a part selects it and shows its
@@ -121,11 +129,22 @@ export function GeometryDraw({ kind, initial, onChange, onControls }: Props) {
       }
       emit(ready)
     })
-    instance.on("change", (ids) => {
+    // The part being drawn, whose vertices are counted.
+    let drawnId: string | number | null = null
+    instance.on("change", (ids, type) => {
       for (const id of ids) {
+        if (type === "delete") {
+          // Undoing the first vertex removes the part.
+          if (id === drawnId) {
+            drawnId = null
+            setVertices(0)
+          }
+          continue
+        }
         const feature = instance.getSnapshotFeature(id)
         if (feature?.properties.currentlyDrawing && feature.properties.mode === DRAW_MODES[kind]) {
-          setVertices(Number(feature.properties.committedCoordinateCount ?? 0))
+          drawnId = id
+          setVertices(placedVertices(feature))
         }
       }
     })

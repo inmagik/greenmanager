@@ -185,6 +185,23 @@ describe("partsOverlap", () => {
   it("is true for parts with a side, or a stretch of it, in common", () => {
     expect(partsOverlap([polygon(10, 44), polygon(11, 44)])).toBe(true)
     expect(partsOverlap([polygon(10, 44), polygon(11, 44.5)])).toBe(true)
+    expect(partsOverlap([polygon(10, 44), polygon(10.5, 45)])).toBe(true)
+  })
+
+  it("is false for a part with a side of no length that touches another", () => {
+    const repeated: Polygon = {
+      type: "Polygon",
+      coordinates: [
+        [
+          [11, 44.5],
+          [11, 44.5],
+          [12, 44],
+          [12, 45],
+          [11, 44.5],
+        ],
+      ],
+    }
+    expect(partsOverlap([polygon(10, 44), repeated])).toBe(false)
   })
 
   it("is true for parts that coincide", () => {

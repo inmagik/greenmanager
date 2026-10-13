@@ -170,8 +170,9 @@ const translations = {
     placeAtCrosshair: "Usa il mirino",
     hints: {
       drawing: {
-        line: "Tocca la mappa per aggiungere i vertici della linea, poi premi Fine parte.",
-        polygon: "Tocca la mappa per aggiungere i vertici del poligono, poi premi Fine parte o tocca il primo vertice.",
+        line: "Tocca la mappa per aggiungere i vertici della linea, poi premi Fine parte. Si salva solo una parte finita.",
+        polygon:
+          "Tocca la mappa per aggiungere i vertici del poligono, poi premi Fine parte o tocca il primo vertice. Si salva solo una parte finita.",
       },
       select: "Tocca una parte per modificarla, o aggiungine un'altra.",
       selected:
