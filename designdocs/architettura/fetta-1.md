@@ -59,7 +59,7 @@ I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le de
 
 ## 3. Sequenza e avanzamento
 
-Aggiornato al 2026-10-12.
+Aggiornato al 2026-10-13.
 
 | PR | Contenuto | Dipende da | Stato |
 |---|---|---|---|
@@ -72,10 +72,10 @@ Aggiornato al 2026-10-12.
 | PR3b | cataloghi (frontend) | PR3a | unita, [#24](https://github.com/inmagik/greenmanager/pull/24) |
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
 | PR3d | elementi (frontend) | PR3c, PR2c | unita, [#26](https://github.com/inmagik/greenmanager/pull/26) |
-| PR4a | mappa: visualizzazione | PR3c, PR3d | in revisione, [#27](https://github.com/inmagik/greenmanager/pull/27); issue [#17](https://github.com/inmagik/greenmanager/issues/17) |
+| PR4a | mappa: visualizzazione | PR3c, PR3d | unita, [#27](https://github.com/inmagik/greenmanager/pull/27) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c) e `inventory` (PR3d). Le geometrie, senza mappa, si importano da file o, per i punti, si danno con le coordinate e il GPS: la mappa arriva con le PR4.
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a). Aree ed elementi si vedono sulla mappa; le geometrie si importano ancora da file o, per i punti, si danno con le coordinate e il GPS: il disegno sulla mappa arriva con la PR4b.
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -146,6 +146,15 @@ Aggiornato al 2026-10-12.
 - Prova nel browser da utente non staff, con la sola lettura e con i soli permessi degli elementi, anche a larghezza smartphone; due revisioni con `pr-reviewer` e una di Copilot, unita senza autofix.
 - Riferimenti: §9.8 di [frontend.md](frontend.md), §8.6–§8.8 di [backend.md](backend.md).
 
+**PR4a: mappa, visualizzazione** ([#27](https://github.com/inmagik/greenmanager/pull/27); issue [#17](https://github.com/inmagik/greenmanager/issues/17); D-057).
+- Componenti della mappa (`components/Map`): wrapper di MapLibre GL 6, con il worker a parte; sfondi raster da tile o WMS, configurati con `VITE_BASEMAPS` e controllati campo per campo; livelli fissi dei layer; `useGeoJSONLayer`, `useMapBbox`, clic sulle feature, posizione dell'utente con il cerchio di precisione; `MiniMap` lazy.
+- Modulo `map`: pagina `/map` lazy, per chi legge aree o elementi; pannello dei livelli con committente, stato dei layer e legenda per categoria; pannello della feature, drawer dal basso su smartphone e colonna a destra su desktop; stato nell'URL. Aree dallo zoom 12, elementi dallo zoom 15, a ogni zoom con un committente, che la mappa inquadra.
+- Dettagli di aree ed elementi: *Vedi sulla mappa* e mini mappa nelle schede Geometria e Posizione, con la geometria nuova tratteggiata prima del salvataggio.
+- Ortofoto: il PCN, solo in HTTP e spesso in errore, passa dal proxy `/wms/pcn` di Vite e di nginx; `nginx.conf` è diventato `nginx.conf.template`, che risolve il nome a ogni richiesta e tiene in cache le sole immagini. MapLibre sta nel chunk `maplibre`, fuori dal bundle principale.
+- Server: categoria della classe nelle proprietà di `geojson/` degli elementi.
+- Prova nel browser da utente non staff, con i soli permessi degli elementi, anche a larghezza smartphone, e con l'ortofoto dell'Emilia-Romagna; due revisioni con `pr-reviewer` e una di Copilot, unita senza autofix.
+- Riferimenti: §1 di [frontend-pattern.md](frontend-pattern.md), §7 e §9.9 di [frontend.md](frontend.md), §8.7 di [backend.md](backend.md).
+
 ## 5. PR da fare
 
 ### Regole delle PR del frontend
@@ -157,35 +166,9 @@ Valgono per le PR3 e PR4:
 - prima di ogni commit `yarn lint` e `yarn build` devono passare;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
 
-### PR4a. Mappa: visualizzazione
-
-Issue [#17](https://github.com/inmagik/greenmanager/issues/17). Dipende dalle PR3c e PR3d, unite.
-
-- **Dipendenze**: `maplibre-gl`, con un wrapper nostro, senza `react-map-gl`.
-- **`src/components/Map/`**:
-  - `MapView` e `MapContext`;
-  - `basemaps.ts`: OSM in sviluppo, ortofoto WMS (PCN o regionali) configurabili con `VITE_BASEMAPS`;
-  - `BasemapSwitcher`, che cambia la visibilità dei layer e mai lo stile;
-  - `useGeoJSONLayer` e `useMapBbox`, sull'action `geojson/` con `bbox`. Le aree si caricano dallo zoom 12, gli elementi dallo zoom 15 o con un committente nel filtro;
-  - `useGeolocation`, la posizione dell'utente con il cerchio di precisione;
-  - `MiniMap`, caricata in modo lazy, per i dettagli.
-- **`src/modules/map/`**:
-  - rotta `/map` lazy, così MapLibre resta in un chunk separato;
-  - `MapPage` con il pannello dei layer e `FeaturePanel`, un `Drawer` in basso su mobile e a destra su desktop;
-  - stato della mappa nell'URL.
-- Pulsante "Vedi sulla mappa" nei dettagli di aree ed elementi.
-- **Documenti**:
-  - decisione D-057: MapLibre, che chiude la domanda 2 di [frontend.md](frontend.md), e il chunk lazy della mappa;
-  - prima parte di [frontend-pattern.md](frontend-pattern.md) (T2): mappa, layer e basemap.
-
-**Verifica**:
-- `yarn build` mette MapLibre nel chunk della mappa;
-- aree ed elementi compaiono sulla mappa e si aprono nel pannello;
-- l'ortofoto si carica, o il rischio CORS è risolto (§6).
-
 ### PR4b. Mappa: disegno e uso in campo
 
-Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalla PR4a.
+Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR3d e PR4a, unite.
 
 - **Spike all'inizio** su terra-draw (`terra-draw`, `terra-draw-maplibre-gl-adapter`):
   - multiparte;
