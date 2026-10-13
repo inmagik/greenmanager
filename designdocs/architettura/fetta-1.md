@@ -54,8 +54,9 @@ Le chiavi esterne verso queste entità si aggiungono dopo, con le loro app e una
 | Zone e aree nell'interfaccia, committente disattivato | D-055 | §9.3 e §9.7 di [frontend.md](frontend.md), §8.5–§8.7 di [backend.md](backend.md) |
 | Elementi nell'interfaccia | D-056 | §9.8 di [frontend.md](frontend.md) |
 | Mappa con MapLibre | D-057 | §1 di [frontend-pattern.md](frontend-pattern.md), §9.9 di [frontend.md](frontend.md) |
+| Disegno sulla mappa e uso in campo | D-058 | §2 e §3 di [frontend-pattern.md](frontend-pattern.md), §9.7–§9.9 di [frontend.md](frontend.md) |
 
-I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend arrivano con le PR3 e PR4: il numero si assegna quando si scrivono, e quello indicato più sotto per la PR4b è provvisorio.
+I riferimenti delle decisioni del backend sono a [backend.md](backend.md). Le decisioni del frontend sono arrivate con le PR3 e PR4, con il numero assegnato quando si sono scritte.
 
 ## 3. Sequenza e avanzamento
 
@@ -75,7 +76,7 @@ Aggiornato al 2026-10-13.
 | PR4a | mappa: visualizzazione | PR3c, PR3d | unita, [#27](https://github.com/inmagik/greenmanager/pull/27) |
 | PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
-- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a). Aree ed elementi si vedono sulla mappa; le geometrie si importano ancora da file o, per i punti, si danno con le coordinate e il GPS: il disegno sulla mappa arriva con la PR4b.
+- Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a). Aree ed elementi si vedono sulla mappa, e con la PR4b le geometrie si disegnano e si modificano sulla mappa, anche multiparte; dalla mappa si crea un elemento nuovo.
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
 - I rilievi delle revisioni rinviati a dopo sono nella issue [#10](https://github.com/inmagik/greenmanager/issues/10). Quelli delle PR2a–PR2c sono stati corretti nella PR2d ([#22](https://github.com/inmagik/greenmanager/pull/22)); nella #10 restano i due della PR1 sull'ordine dei lock.
 
@@ -163,7 +164,7 @@ Valgono per le PR3 e PR4:
 - i moduli seguono i pattern di §4–§5 di [frontend.md](frontend.md) e di `modules/tenants` e `modules/users`: pagine di lista e dettaglio, form, azioni, `navigation.tsx`, `menu.tsx`, `permissions.ts`;
 - i testi visibili stanno nelle traduzioni di `src/i18n/it/`;
 - i codici degli errori e degli avvisi del server si traducono con `serverErrors.<code>`: ogni PR aggiunge quelli che le servono;
-- prima di ogni commit `yarn lint` e `yarn build` devono passare;
+- prima di ogni commit `yarn lint` e `yarn build` devono passare, e dalla PR4b `yarn test`;
 - la prova manuale si fa con `runserver` e `yarn dev`, da utente non staff di un'organizzazione, con un ruolo che dà i permessi del modulo. Un utente di un'altra organizzazione non deve vedere nulla.
 
 ### PR4b. Mappa: disegno e uso in campo
@@ -190,7 +191,7 @@ Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR
 - **Test**: `vitest`, solo in sviluppo, per `multipart.ts` e gli helper del bbox.
 - **Documenti**:
   - `frontend-pattern.md` completo, con le "Domande aperte": liste, dettaglio e form; mappa, disegno e multiparte; uso in campo; mappa pubblica rinviata; basemap e CORS;
-  - decisione nuova, numero provvisorio D-058: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
+  - decisione nuova, D-058: terra-draw e `ScreenWidthGuard` lasciato passare su mobile;
   - §8 di [frontend.md](frontend.md) e [README.md](README.md) di questa cartella;
   - chiusura della fetta: T2 e T3 completati, in attesa di revisione, in [designdocs/README.md](../README.md); riga **Stato** di [AGENTS.md](../../AGENTS.md); `frontend/AGENTS.md`.
 
@@ -198,7 +199,7 @@ Issue [#18](https://github.com/inmagik/greenmanager/issues/18). Dipende dalle PR
 
 ## 6. Rischi da verificare
 
-1. **terra-draw**: multiparte e buchi, adapter con maplibre-gl 6, trascinamento dei vertici sui dispositivi mobili. È lo spike all'inizio della PR4b. L'adapter dichiara `maplibre-gl` dalla versione 4 in su.
+1. **terra-draw** → verificato con lo spike della PR4b (§2.1 di [frontend-pattern.md](frontend-pattern.md)): l'adapter regge MapLibre 6, che resta; le multiparte si dividono in parti; i poligoni con buchi, che terra-draw rifiuta, restano bloccati. Il trascinamento dei vertici funziona con il tocco emulato in Chromium; sui dispositivi veri si prova alla revisione della fetta (domanda 4 di [frontend-pattern.md](frontend-pattern.md)).
 2. **Ortofoto WMS** → verificato con la PR4a (§1.5 di [frontend-pattern.md](frontend-pattern.md)). Il PCN ha CORS ed EPSG:3857, ma solo HTTP, ed è lento e a volte in errore: passa dal proxy `/wms/pcn` di nginx e di Vite, con la cache delle sole immagini. Un'ortofoto regionale in HTTPS con CORS, come l'AGEA 2020 dell'Emilia-Romagna, si configura con `VITE_BASEMAPS` senza proxy.
 3. **Vite 8 (Rolldown)** → verificato con la PR4a: MapLibre sta nel chunk `maplibre`, caricato solo da `MapPage` e `MiniMap` con `import()`; il worker di MapLibre 6 è un file a parte, con `setWorkerUrl`.
 
@@ -214,7 +215,7 @@ I rischi del backend (GeoDjango con `geom_type` nei vincoli, sovrapposizioni con
 - `spectacular --file /dev/null --fail-on-warn`;
 - black, isort e flake8.
 
-**Frontend**, da `frontend/`: `yarn lint` e `yarn build`.
+**Frontend**, da `frontend/`: `yarn lint`, `yarn build` e `yarn test`.
 
 **Prova end-to-end**, con `runserver` e `yarn dev`, da utente non staff di un'organizzazione:
 1. crea un committente;
@@ -237,7 +238,7 @@ La stessa prova si fa da smartphone, in HTTPS. Un utente di un'altra organizzazi
 
 ## Domande aperte
 
-1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-057 sono ipotesi. In particolare:
+1. **Scelte da confermare alla revisione della fetta.** Le decisioni D-041–D-058 sono ipotesi. In particolare:
    - le scelte di D-051 (codice come testo, data di rimozione non futura, attributi controllati solo quando cambiano);
    - la composizione non obbligatoria per le classi che la prevedono;
    - le scelte di D-052 (2 m tra gli alberi, avviso dei vicini solo quando l'albero riceve una posizione, punto al centro dell'area che segue l'area).

@@ -5,7 +5,7 @@ Istruzioni per gli agenti che lavorano sulla SPA React di GreenManager. Contesto
 ## Riferimenti
 
 - **Architettura del frontend**: [designdocs/architettura/frontend.md](../designdocs/architettura/frontend.md). Ci sono struttura, provider, moduli, data fetching, pattern UI, i18n, strumenti e versioni.
-- **Pattern per sezione** (mappa, uso in campo, mappa pubblica): passo T2, [designdocs/architettura/frontend-pattern.md](../designdocs/architettura/frontend-pattern.md). La mappa c'è dalla PR4a; disegno e uso in campo arrivano con la PR4b.
+- **Pattern per sezione** (mappa, disegno, uso in campo, liste, dettaglio e form; mappa pubblica rinviata): passo T2, [designdocs/architettura/frontend-pattern.md](../designdocs/architettura/frontend-pattern.md).
 - **API**: lo schema OpenAPI del server è su `http://localhost:8000/api/schema/swagger-ui/`.
 - **Origine del codice**: lo scaffold viene da `admin/` di [inmagik/data-lab](https://github.com/inmagik/data-lab), con le versioni e alcuni componenti di [inmagik/bottaro-pesatura](https://github.com/inmagik/bottaro-pesatura) (D-036, D-038).
 
@@ -18,9 +18,10 @@ yarn install
 yarn dev        # http://localhost:5173, con proxy di /api verso localhost:8000
 yarn lint       # ESLint
 yarn build      # tsc -b e vite build
+yarn test       # vitest, le funzioni pure (es. components/Map/draw/multipart.ts)
 ```
 
-Prima di ogni commit `yarn lint` e `yarn build` devono passare.
+Prima di ogni commit `yarn lint`, `yarn build` e `yarn test` devono passare.
 
 ## Struttura
 
@@ -54,7 +55,9 @@ Un modulo nuovo compare nel menu e nelle rotte senza toccare file centrali: i pl
   - le azioni di scrittura stanno in `CheckPermission`;
   - il controllo vero è sempre quello del server.
 - **Errori del server**: si traducono con `translateApiError` e le chiavi `serverErrors.<code>`. Il file di traduzioni di un modulo ha i suoi codici sotto `serverErrors`, da aggiungere all'unione in `src/i18n/it/index.ts`.
-- **Mappa** (D-057): MapLibre si carica solo nei chunk lazy. Da qualsiasi pagina si importano `@/components/Map` (che non carica MapLibre) e `mapLink` di `modules/map/links.ts`; `MapView`, i layer e i controlli si importano dal loro file, solo nel codice della pagina `/map` e di `MiniMap`. Dopo `yarn build`, `index-*.js` non deve contenere MapLibre (§1.2 di `frontend-pattern.md`).
+- **Mappa** (D-057, D-058): MapLibre e terra-draw si caricano solo nei chunk lazy. Da qualsiasi pagina si importano `@/components/Map` (che non carica MapLibre: `MiniMap` e `GeometryEditor` sono lazy) e `mapLink` di `modules/map/links.ts`; `MapView`, i layer, i controlli e il disegno (`components/Map/draw/`) si importano dal loro file, solo nel codice della pagina `/map`, di `MiniMap` e di `GeometryEditor`. Dopo `yarn build`, `index-*.js` non deve contenere né MapLibre né terra-draw (§1.2 di `frontend-pattern.md`).
+- **Geometrie** (D-058): linee e poligoni multiparte si modificano sulla mappa una parte alla volta (`splitParts` e `mergeParts`); le parti con buchi restano come sono. Una geometria nuova si controlla con `geometry-check/` e si salva con la revisione, dalla mappa come dal file (§2 di `frontend-pattern.md`).
+- **Uso in campo** (D-058): ogni pagina si usa anche da smartphone (`ScreenWidthGuard` lascia passare tutto); `DataProvider` manda `X-Change-Source: field` dai dispositivi con lo schermo tattile (§3 di `frontend-pattern.md`).
 - **Revisione**: i form di modifica dei dati di dominio mandano la `revision` letta; un `409 revision_conflict` mostra `RevisionConflictAlert`, e il form, con la revisione come `key`, riparte dal record ricaricato (§9.2 di `frontend.md`).
 - **Stile**: Prettier senza punto e virgola, virgolette doppie, riga di 120 caratteri. Import con l'alias `@/` fuori dal modulo, relativi dentro il modulo.
 - **Componenti condivisi** (`components/`, `auth/`, `general/`, moduli `users` e `tenants`): vengono dai progetti di riferimento. Si modificano solo se serve, e ogni differenza va annotata in `frontend.md`.

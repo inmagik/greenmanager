@@ -25,8 +25,8 @@ Questa cartella contiene la specifica del dominio applicativo di GreenManager e,
 | 4. Modello dati | [04-modello-dati.md](04-modello-dati.md) | completato |
 | 5. Consolidamento | [spec.md](spec.md) | da iniziare, in parallelo allo sviluppo (D-040) |
 | T1. Stack e scaffold di riferimento | [architettura/README.md](architettura/README.md), [backend.md](architettura/backend.md), [frontend.md](architettura/frontend.md) | completato |
-| T2. Pattern dell'interfaccia | [architettura/frontend-pattern.md](architettura/frontend-pattern.md) | in corso, con la mappa della prima fetta verticale: prima parte (mappa, layer e sfondi) con la PR4a; disegno e uso in campo con la PR4b di [fetta-1.md](architettura/fetta-1.md) |
-| T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | in corso, con la prima fetta verticale: backend fatto, PR1–PR2d (§8 di backend.md); frontend in corso, PR3a–PR4a unite (§9 di frontend.md); manca il disegno sulla mappa, PR4b. Piano e avanzamento in [fetta-1.md](architettura/fetta-1.md) |
+| T2. Pattern dell'interfaccia | [architettura/frontend-pattern.md](architettura/frontend-pattern.md) | completato con la prima fetta verticale, in attesa della revisione: mappa (PR4a), disegno e uso in campo (PR4b), liste, dettaglio e form; mappa pubblica rinviata |
+| T3. Corrispondenza tra dominio e componenti | aggiornamento di [backend.md](architettura/backend.md) e [frontend.md](architettura/frontend.md) | completato con la prima fetta verticale, in attesa della revisione: backend PR1–PR2d (§8 di backend.md), frontend PR3a–PR4b (§9 di frontend.md). Piano e avanzamento in [fetta-1.md](architettura/fetta-1.md) |
 | T4. Scaffold | codice in `server/` e `frontend/` | completato |
 
 ## I passi della specifica del dominio
