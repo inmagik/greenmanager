@@ -274,9 +274,10 @@ class RolesViewset(
 
     @transaction.atomic
     def perform_update(self, serializer):
-        # Saving the role updates the permissions of its users (receivers.py):
+        # New permissions of the role update those of its users (receivers.py):
         # they are locked first, as the deletion of the role does.
-        self.lock_users(serializer.instance.user_set.all())
+        if "permissions" in serializer.validated_data:
+            self.lock_users(serializer.instance.user_set.all())
         serializer.save()
 
     def role_users(self, request):
