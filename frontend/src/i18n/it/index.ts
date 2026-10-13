@@ -2,6 +2,7 @@ import auth from "./auth"
 import catalogs from "./catalogs"
 import common from "./common"
 import inventory from "./inventory"
+import map from "./map"
 import parties from "./parties"
 import tenants from "./tenants"
 import territory from "./territory"
@@ -17,6 +18,7 @@ export default {
   ...catalogs,
   ...territory,
   ...inventory,
+  ...map,
   serverErrors: {
     ...common.serverErrors,
     ...parties.serverErrors,

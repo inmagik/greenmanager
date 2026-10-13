@@ -2,6 +2,7 @@ import { AlertError } from "@/components/AlertError"
 import { CheckPermission } from "@/components/CheckPermission"
 import { FormFooter } from "@/components/FormFooter"
 import { GeometrySummary } from "@/components/Geometry"
+import { MiniMap, type MiniMapGeometry } from "@/components/Map"
 import { RevisionConflictAlert } from "@/components/RevisionConflictAlert"
 import { areaLabel } from "@/modules/territory/components/areaModals"
 import { notifyApiError, transformErrorsForForm } from "@/utils"
@@ -70,6 +71,11 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
   const geometry = useMemo(
     () => positionGeometry({ mode, latitude, longitude, gpsAccuracy: null, geometry: fileGeometry }),
     [mode, latitude, longitude, fileGeometry]
+  )
+  // The new position, before the save, next to the saved one.
+  const miniMapGeometries = useMemo<MiniMapGeometry[]>(
+    () => [{ geometry: element.geometry }, ...(geometry ? [{ geometry, proposed: true }] : [])],
+    [element.geometry, geometry]
   )
   const chooseArea = useCallback((suggested: Area) => setArea(suggested), [])
 
@@ -175,6 +181,7 @@ export function ElementPositionPanel({ element, editable, onDone, onReload }: Pr
                 </Stack>
               </Alert>
             )}
+            <MiniMap label={t("inventory.position.mapLabel")} geometries={miniMapGeometries} />
           </Stack>
           {editable && (
             <Stack gap="xs">

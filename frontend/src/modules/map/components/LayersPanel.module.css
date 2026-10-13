@@ -1,0 +1,28 @@
+.panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  width: 260px;
+  max-width: calc(100% - 70px);
+}
+
+/* The panel scrolls inside the map, which may be short on a phone. */
+.body {
+  max-height: calc(100dvh - 260px);
+  overflow-y: auto;
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid white;
+  box-shadow: 0 0 0 1px var(--mantine-color-gray-4);
+}
+
+.dot[data-provisional] {
+  border: 2px solid #fab005;
+}

@@ -7,6 +7,19 @@ export type CurrentPosition = { longitude: number; latitude: number; accuracy: n
 export type PositionError = "insecure" | "unsupported" | "denied" | "unavailable" | "timeout"
 
 const ERRORS: Record<number, PositionError> = { 1: "denied", 2: "unavailable", 3: "timeout" }
+
+/** The error of a request of the position, from the code of `GeolocationPositionError`. */
+export function positionError(code: number): PositionError {
+  return ERRORS[code] ?? "unavailable"
+}
+
+/** Why the browser gives no position at all, `null` if it can. */
+export function positionUnavailable(): PositionError | null {
+  if (!window.isSecureContext) return "insecure"
+  if (!("geolocation" in navigator)) return "unsupported"
+  return null
+}
+
 const TIMEOUT_MS = 30000
 
 /**
@@ -29,8 +42,8 @@ export function useCurrentPosition() {
           setError(reason)
           resolve(null)
         }
-        if (!window.isSecureContext) return fail("insecure")
-        if (!("geolocation" in navigator)) return fail("unsupported")
+        const unavailable = positionUnavailable()
+        if (unavailable) return fail(unavailable)
         setLoading(true)
         setError(null)
         navigator.geolocation.getCurrentPosition(
@@ -41,7 +54,7 @@ export function useCurrentPosition() {
           },
           (exc) => {
             if (request !== lastRequest.current) return resolve(null)
-            fail(ERRORS[exc.code] ?? "unavailable")
+            fail(positionError(exc.code))
           },
           { enableHighAccuracy: true, timeout: TIMEOUT_MS, maximumAge: 0 }
         )

@@ -934,6 +934,7 @@ class FilterTests(InventoryTestCase):
         self.assertEqual(
             feature["properties"]["element_class"], self.classes["tree"].pk
         )
+        self.assertEqual(feature["properties"]["category"], "vegetation")
 
 
 class ElementAdminTests(InventoryTestCase):

@@ -1,4 +1,5 @@
 import { geometryKey } from "@/components/Geometry"
+import { useGeoJSON } from "@/components/Map"
 import { API_URL } from "@/constants"
 import type { ElementCategory } from "@/modules/catalogs/types"
 import { useCreate, useData, useDelete, useDetail, useList, usePartialUpdate } from "@inmagik/react-crud"
@@ -52,6 +53,20 @@ export function useElementSearch(filters: ElementFilters) {
 
 export function useElement(id: string | undefined) {
   return useDetail<Element>(elementsEndpoint, id)
+}
+
+/** The properties of an element in `geojson/`. */
+export type ElementFeatureProperties = Pick<
+  ElementListItem,
+  "client" | "area" | "element_class" | "species" | "code" | "tag_number" | "location_status" | "removed_on"
+> & { category: ElementCategory }
+
+/** The elements for the map: in `bbox` (`minx,miny,maxx,maxy`), with the filters of the list. */
+export function useElementsGeoJSON(
+  query: Omit<ElementFilters, "page" | "ordering"> & { bbox?: string },
+  enabled: boolean
+) {
+  return useGeoJSON<ElementFeatureProperties>(elementsEndpoint, query, enabled)
 }
 
 export function useCreateElement() {

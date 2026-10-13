@@ -609,3 +609,26 @@ Stati possibili:
   - chi lavora sul censimento sceglie l'area di un elemento e filtra per zona e area: senza `choices/`, un ruolo con i soli permessi degli elementi non potrebbe crearne. Il dettaglio delle aree resta di chi le legge;
   - rimozione e ripristino sono passaggi del ciclo di vita (EL-7), distinti dalla modifica dei dati, e la motivazione va nello storico. A differenza della disattivazione del committente (D-053) hanno un form, con data e causa: senza la revisione, la correzione di una rimozione sovrascriverebbe in silenzio quella di un collega. Nel lavoro di ogni giorno si guardano gli elementi presenti; i rimossi restano consultabili.
 - **Alternative scartate**: un form per ogni categoria di classe; cambio di classe verso un altro tipo di geometria; coordinate scritte segnate `gps`; area proposta che sostituisce quella scelta; alberi vicini mostrati solo prima del salvataggio; attributi mandati a ogni salvataggio; rimozione e ripristino senza la revisione, come le azioni di un solo campo; lista con presenti e rimossi insieme.
+
+## D-057 — Mappa con MapLibre
+
+- **Data**: 2026-10-12 · **Passo**: T2, prima fetta verticale · **Stato**: ipotesi, da confermare alla revisione della fetta
+- **Decisione**:
+  - la mappa usa MapLibre GL JS 6 (`maplibre-gl`) con un wrapper nostro in `components/Map`, senza `react-map-gl`. Chiude la domanda 2 di [frontend.md](architettura/frontend.md) per la visualizzazione; il disegno, con terra-draw, arriva con la PR4b;
+  - MapLibre si carica solo con la pagina `/map` e con la mini mappa dei dettagli, entrambe lazy: sta in un chunk proprio, e il suo worker in un file a parte;
+  - gli sfondi sono raster, da tile o da un WMS in EPSG:3857, e si configurano con `VITE_BASEMAPS`. Senza la variabile ci sono OpenStreetMap e l'ortofoto 2012 del Portale Cartografico Nazionale (PCN). Il cambio di sfondo cambia la visibilità dei layer, mai lo stile. Un WMS solo in HTTP, come il PCN, passa da un proxy di nginx e di Vite (`/wms/pcn`); nginx tiene in cache le sole immagini;
+  - i dati arrivano dalle action `geojson/` con il `bbox` della parte visibile, allargato a una griglia che dipende dallo zoom. Le aree si caricano dallo zoom 12 e gli elementi dallo zoom 15. Con un committente nel filtro i dati si caricano a ogni zoom, e le aree del committente arrivano tutte insieme, così la mappa le inquadra;
+  - gli elementi presenti sono colorati per categoria della classe, che il server aggiunge alle proprietà di `geojson/` (`category`); una posizione provvisoria ha il bordo giallo;
+  - i layer stanno in livelli fissi (`surfaces`, `features`, `selection`, `position`): l'ordine non dipende da quando si montano;
+  - un clic apre la feature in un pannello con i dati principali e il link al dettaglio. Su smartphone il pannello è un drawer dal basso, sopra la mappa; su desktop è una colonna a destra, accanto alla mappa, che non ne copre i controlli;
+  - lo stato della mappa sta nell'URL: vista, sfondo, layer e feature scelta. Il committente è quello delle liste (D-053);
+  - "Vedi sulla mappa", nei dettagli di aree ed elementi, apre la mappa sul committente del record, con il record scelto e inquadrato. Le schede Geometria e Posizione hanno una mini mappa con il record e, prima del salvataggio, la geometria nuova.
+- **Motivazione**:
+  - MapLibre e terra-draw sono la scelta del responsabile di progetto (§1 di [fetta-1.md](architettura/fetta-1.md)). MapLibre disegna con WebGL migliaia di punti, e terra-draw ha un adapter per disegnare e modificare linee e poligoni (PR4b). Il wrapper è piccolo e lascia a noi l'ordine dei layer e il ciclo di vita della mappa;
+  - MapLibre pesa circa 1 MB (280 kB compressi) e non serve a chi lavora sulle liste. Nella versione 6 cerca il worker accanto al proprio modulo, che il bundle sposta: Vite copia il worker e `setWorkerUrl` gliene dà l'indirizzo;
+  - lo stile si ricarica solo perdendo i layer aggiunti, e MapLibre non scarica le tile dei layer nascosti;
+  - il PCN ha CORS ed EPSG:3857, ma risponde solo in HTTP: da un'applicazione in HTTPS il browser non lo carica. È anche lento e a volte risponde con errori, che nginx non deve tenere in cache. Un'ortofoto regionale in HTTPS con CORS, come l'AGEA 2020 dell'Emilia-Romagna, si configura senza proxy;
+  - con la griglia, i piccoli spostamenti della mappa riusano i dati già caricati. Le soglie di zoom evitano di chiedere gli elementi di tutti i committenti della parte visibile. Con un committente i dati sono di meno, e il server tronca comunque oltre `GEOJSON_MAX_FEATURES`, con un avviso nel pannello dei livelli;
+  - la categoria della classe colora gli elementi in modo leggibile (vegetazione, arredi, giochi, impianti). Ricavarla nel frontend dalle classi disponibili lascerebbe senza colore gli elementi di una classe nascosta o ritirata;
+  - un drawer sopra la mappa, su desktop, coprirebbe lo zoom e la posizione. Su smartphone due colonne non ci stanno.
+- **Alternative scartate**: Leaflet o OpenLayers; `react-map-gl`; MapLibre nel bundle principale; uno stile per ogni sfondo; il PCN chiamato direttamente; i dati senza `bbox`; i colori ricavati nel frontend dalle classi disponibili; il drawer sopra la mappa anche su desktop.

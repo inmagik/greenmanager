@@ -57,6 +57,7 @@ export default {
     geometry: {
       current: "Perimetro salvato",
       replace: "Sostituisci da file",
+      mapLabel: "Mappa del perimetro dell'area",
     },
     geometryCheck: {
       chooseClient: "Scegli il committente per calcolare superficie e perimetro e controllare le sovrapposizioni.",

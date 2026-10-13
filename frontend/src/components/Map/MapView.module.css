@@ -1,0 +1,6 @@
+/* The container gets also the class of MapLibre, whose style says `position: relative`. */
+.map,
+.map:global(.maplibregl-map) {
+  position: absolute;
+  inset: 0;
+}

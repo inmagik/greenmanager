@@ -141,6 +141,26 @@ const translations = {
       tooLarge: "Il file supera {{max}} MB.",
     },
   },
+  mapView: {
+    basemap: "Sfondo",
+    basemaps: {
+      osm: "OpenStreetMap",
+      pcn: "Ortofoto 2012 (Geoportale Nazionale)",
+    },
+    controls: {
+      zoomIn: "Aumenta lo zoom",
+      zoomOut: "Riduci lo zoom",
+      toggleAttribution: "Mostra o nascondi le fonti della mappa",
+      cooperativeWindows: "Usa Ctrl + rotellina per lo zoom della mappa",
+      cooperativeMac: "Usa ⌘ + rotellina per lo zoom della mappa",
+      cooperativeMobile: "Usa due dita per spostare la mappa",
+    },
+    locate: {
+      start: "Mostra la mia posizione",
+      stop: "Nascondi la mia posizione",
+    },
+    showOnMap: "Vedi sulla mappa",
+  },
   geolocation: {
     locate: "Usa la mia posizione",
     errors: {
@@ -176,6 +196,7 @@ const translations = {
     geometry_invalid: "La geometria non è valida: {{reason}}.",
   },
   navigation: {
+    map: "Mappa",
     tenants: "Organizzazioni",
     parties: "Committenti",
     territory: "Territorio",

@@ -1,13 +1,14 @@
 import { AlertError } from "@/components/AlertError"
 import { FormFooter } from "@/components/FormFooter"
 import { GeometryFileInput, GeometrySummary } from "@/components/Geometry"
+import { MiniMap, type MiniMapGeometry } from "@/components/Map"
 import { RevisionConflictAlert } from "@/components/RevisionConflictAlert"
 import { transformErrorsForForm } from "@/utils"
 import { isRevisionConflict } from "@/utils/tracking"
 import { ApiError } from "@inmagik/react-crud/dist/crud/utils"
 import { Button, Group, Stack, Text } from "@mantine/core"
 import type { MultiPolygon, Polygon } from "geojson"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { TbDeviceFloppy } from "react-icons/tb"
 import { useUpdateArea } from "../api/areas"
@@ -30,6 +31,11 @@ type Props = {
 export function AreaGeometryPanel({ area, editable, onDone, onReload }: Props) {
   const { t } = useTranslation()
   const [geometry, setGeometry] = useState<Polygon | MultiPolygon | null>(null)
+  // The perimeter read from a file, before the save, next to the saved one.
+  const miniMapGeometries = useMemo<MiniMapGeometry[]>(
+    () => [{ geometry: area.geometry }, ...(geometry ? [{ geometry, proposed: true }] : [])],
+    [area.geometry, geometry]
+  )
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [conflict, setConflict] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -73,6 +79,7 @@ export function AreaGeometryPanel({ area, editable, onDone, onReload }: Props) {
             {t("territory.geometry.current")}
           </Text>
           <GeometrySummary geometry={area.geometry} measures={area} />
+          <MiniMap label={t("territory.geometry.mapLabel")} geometries={miniMapGeometries} />
         </Stack>
         {editable && (
           <Stack gap="xs">

@@ -2,7 +2,7 @@ import django_filters as FS
 from catalogs.models import ElementClass
 from core.errors import api_error
 from core.serializers import pop_revision
-from django.db.models import Prefetch
+from django.db.models import F, Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from inmagik_utils.structural_filters import StructuralFilterSet
@@ -96,6 +96,8 @@ class ElementViewSet(AssetViewSet):
         "client",
         "area",
         "element_class",
+        # The category of the class, which the map gives the colors by.
+        "category",
         "species",
         "code",
         "tag_number",
@@ -121,8 +123,10 @@ class ElementViewSet(AssetViewSet):
             # The flag of the elements outside their area, a spatial subquery,
             # only where it is shown; the filter adds it where it is asked.
             return queryset.with_outside_area_flag()
-        if self.action in ("choices", "geojson"):
+        if self.action == "choices":
             return queryset
+        if self.action == "geojson":
+            return queryset.annotate(category=F("element_class__category"))
         # The detail and the writes need the geometry and the composition.
         return (
             queryset.defer(None)

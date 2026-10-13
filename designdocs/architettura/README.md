@@ -13,9 +13,10 @@
 | questo file | componenti, progetti di riferimento, cosa si copia e cosa si scarta |
 | [backend.md](backend.md) | progetto Django: struttura, settings, app core, pattern delle app di dominio, ambiente, versioni |
 | [frontend.md](frontend.md) | SPA React: struttura, provider, moduli, data fetching, pattern UI di base, versioni |
+| [frontend-pattern.md](frontend-pattern.md) | pattern dell'interfaccia per sezione (T2): mappa, layer e sfondi; disegno e uso in campo con la PR4b |
 | [fetta-1.md](fetta-1.md) | prima fetta verticale: perimetro, sequenza delle PR e avanzamento, PR da fare, verifica |
 
-I pattern dell'interfaccia per sezione (T2) e la corrispondenza tra entità del dominio e app (T3) si scrivono con la prima fetta verticale (D-040): T3 in §8 di [backend.md](backend.md) e in [frontend.md](frontend.md), T2 in `frontend-pattern.md`.
+I pattern dell'interfaccia per sezione (T2) e la corrispondenza tra entità del dominio e app (T3) si scrivono con la prima fetta verticale (D-040): T3 in §8 di [backend.md](backend.md) e in [frontend.md](frontend.md), T2 in [frontend-pattern.md](frontend-pattern.md).
 
 ## 1. Componenti
 
@@ -112,7 +113,7 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 | `package.json` | si adatta | versioni di §8 di [frontend.md](frontend.md) |
 | `yarn.lock` | si scarta | si rigenera partendo da quello di bottaro-pesatura (§8 di [frontend.md](frontend.md)) |
 | `public/` | si scarta | marchio di data-lab; al suo posto un logo provvisorio in `public/logo.svg` e `public/favicon.svg` |
-| `vite.config.ts`, `plugins/`, `tsconfig.*`, `eslint.config.js`, `.prettierrc`, `postcss.config.cjs`, `index.html`, `Dockerfile`, `nginx.conf`, `build_image.sh` | si copia | |
+| `vite.config.ts`, `plugins/`, `tsconfig.*`, `eslint.config.js`, `.prettierrc`, `postcss.config.cjs`, `index.html`, `Dockerfile`, `nginx.conf`, `build_image.sh` | si copia | `nginx.conf` è diventato `nginx.conf.template` con la mappa (D-057, §7 di [frontend.md](frontend.md)) |
 | `src/main.tsx`, `src/App.tsx`, `src/Navigation.tsx`, `src/declarations.d.ts`, `src/mantine_customization.css` | si adatta | senza gli stili dei pacchetti non usati |
 | `src/auth/`, `src/general/`, `src/context/`, `src/utils.tsx`, `src/utils/` | si copia | |
 | `src/hooks/`: `useHasPermission`, `useTenant`, `useUrlParams` | si copia | |

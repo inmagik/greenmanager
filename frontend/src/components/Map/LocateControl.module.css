@@ -1,0 +1,8 @@
+/* Under the zoom buttons of MapLibre, on the right. */
+.control {
+  position: absolute;
+  top: 82px;
+  right: 10px;
+  z-index: 2;
+  box-shadow: var(--mantine-shadow-xs);
+}

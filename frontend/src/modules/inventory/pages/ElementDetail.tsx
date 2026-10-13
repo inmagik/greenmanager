@@ -4,13 +4,14 @@ import { Header } from "@/components/Header"
 import { Page } from "@/components/Page"
 import { QueryErrorPage } from "@/components/StatusPage"
 import { WarningsAlert } from "@/components/WarningsAlert"
+import { mapLink } from "@/modules/map/links"
 import { lastEditDetails } from "@/utils/tracking"
 import { Alert, Badge, Button, Center, Group, Loader, ScrollArea, Stack, Tabs, Text } from "@mantine/core"
 import dayjs from "dayjs"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { TbClipboardList, TbHistory, TbMapPin, TbPencil, TbRestore, TbTree } from "react-icons/tb"
-import { useNavigate, useParams } from "react-router-dom"
+import { TbClipboardList, TbHistory, TbMap, TbMapPin, TbPencil, TbRestore, TbTree } from "react-icons/tb"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { useElement, useUpdateElement } from "../api/elements"
 import { ElementContextActions } from "../components/ElementContextActions"
 import { ElementForm } from "../components/ElementForm"
@@ -69,6 +70,14 @@ export function ElementDetail() {
         lastEditDetails={lastEditDetails(element)}
         actions={
           <>
+            <Button
+              variant="default"
+              leftSection={<TbMap />}
+              component={Link}
+              to={mapLink({ client: element.client, element: element.id })}
+            >
+              {t("mapView.showOnMap")}
+            </Button>
             <Button variant="default" leftSection={<TbHistory />} onClick={() => openElementHistory(element, t)}>
               {t("history.open")}
             </Button>

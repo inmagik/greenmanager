@@ -7,13 +7,14 @@ import { WarningsAlert } from "@/components/WarningsAlert"
 import { useHasPermission } from "@/hooks/useHasPermission"
 import { AreaElementsPanel } from "@/modules/inventory/components/AreaElementsPanel"
 import { INVENTORY_PERMISSIONS } from "@/modules/inventory/permissions"
+import { mapLink } from "@/modules/map/links"
 import { lastEditDetails } from "@/utils/tracking"
 import { Badge, Box, Button, Center, Group, Loader, ScrollArea, Tabs, Text } from "@mantine/core"
 import dayjs from "dayjs"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { TbClipboardList, TbHistory, TbListTree, TbPencil, TbPolygon } from "react-icons/tb"
-import { useNavigate, useParams } from "react-router-dom"
+import { TbClipboardList, TbHistory, TbListTree, TbMap, TbPencil, TbPolygon } from "react-icons/tb"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { useArea, useUpdateArea } from "../api/areas"
 import { AreaContextActions } from "../components/AreaContextActions"
 import { AreaForm } from "../components/AreaForm"
@@ -70,6 +71,14 @@ export function AreaDetail() {
         lastEditDetails={lastEditDetails(area)}
         actions={
           <>
+            <Button
+              variant="default"
+              leftSection={<TbMap />}
+              component={Link}
+              to={mapLink({ client: area.client, area: area.id })}
+            >
+              {t("mapView.showOnMap")}
+            </Button>
             <Button variant="default" leftSection={<TbHistory />} onClick={() => openAreaHistory(area, t)}>
               {t("history.open")}
             </Button>
