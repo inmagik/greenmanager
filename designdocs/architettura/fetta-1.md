@@ -74,7 +74,7 @@ Aggiornato al 2026-10-13.
 | PR3c | zone e aree (frontend) | PR3a, PR3b | unita, [#25](https://github.com/inmagik/greenmanager/pull/25) |
 | PR3d | elementi (frontend) | PR3c, PR2c | unita, [#26](https://github.com/inmagik/greenmanager/pull/26) |
 | PR4a | mappa: visualizzazione | PR3c, PR3d | unita, [#27](https://github.com/inmagik/greenmanager/pull/27) |
-| PR4b | mappa: disegno e uso in campo | PR3d, PR4a | da fare, issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
+| PR4b | mappa: disegno e uso in campo | PR3d, PR4a | in revisione, [#28](https://github.com/inmagik/greenmanager/pull/28); issue [#18](https://github.com/inmagik/greenmanager/issues/18) |
 
 - Il backend della fetta è completo: PR1–PR2d unite. Il frontend ha i moduli dello scaffold (T4), `users` e `tenants`, e i moduli di dominio `parties` (PR3a), `catalogs` (PR3b), `territory` (PR3c), `inventory` (PR3d) e `map` (PR4a). Aree ed elementi si vedono sulla mappa, e con la PR4b le geometrie si disegnano e si modificano sulla mappa, anche multiparte; dalla mappa si crea un elemento nuovo.
 - La PR2 e la PR3 del piano iniziale sono state divise: la PR2 in quattro, con la PR2d per le correzioni finali, la PR3 in quattro. Anche la mappa, PR4 nel piano iniziale, è divisa in due. Così ogni PR resta nella misura che la revisione di Copilot copre in uno o due giri.
