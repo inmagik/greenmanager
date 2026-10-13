@@ -85,7 +85,7 @@ Il dominio è regolato da leggi, criteri per gli appalti pubblici e standard tec
 **Vincoli nominati, non specificati nel dominio**: autenticazione, multi-tenancy, ruoli e permessi, infrastruttura, deploy, design dell'interfaccia. I primi tre hanno un'implementazione di riferimento nel binario tecnico ([architettura/](architettura/README.md)). I vincoli che il dominio pone alla multi-tenancy sono in §8.3.
 
 **Fuori dal prodotto** (§3.12 di [03-features.md](03-features.md)):
-- preventivi, budget e costi a consuntivo; CRM, canoni, pacchetti di ore, rinnovi dei contratti; fatturazione, magazzino, contabilità;
+- preventivi, budget e costi a consuntivo; CRM, canoni, pacchetti di ore, rinnovi dei contratti, proposte commerciali; fatturazione, magazzino, contabilità; materiali diversi dalle piante e dai prodotti fitosanitari;
 - flotta e posizione dei mezzi; gestione degli impianti di irrigazione e illuminazione, i cui componenti si censiscono come arredi;
 - alberi privati che interferiscono con strade e reti; censimento partecipativo dei cittadini; censimento da scansioni e immagini, che entra con l'import;
 - procedimento autorizzativo (istanze, pareri, termini): si registrano solo gli estremi dell'atto (D-024);
@@ -223,7 +223,7 @@ Regole:
 - **Vincolo** (`Protection`): una tutela che limita gli interventi. Ha un tipo (albero monumentale, bene culturale o paesaggistico, area di quarantena), il riferimento all'elenco o all'atto e gli oggetti tutelati: elementi, aree e, in v2, una zona disegnata sulla mappa.
 
 Regole:
-- **sovrapposizioni** (AR-5): le aree dello stesso committente non si sovrappongono, perché le superfici si sommano. Il sistema avvisa e non blocca: dati importati e rilievi in campo possono essere imprecisi, e le aree sovrapposte restano in un elenco da sistemare. Nella fetta due aree si sovrappongono se le parti interne si intersecano e i periodi di gestione si sovrappongono; le aree fittizie non contano (D-050, *ipotesi*);
+- **sovrapposizioni** (AR-5): le aree dello stesso committente non si sovrappongono, perché le superfici si sommano. Il sistema avvisa e non blocca: dati importati e rilievi in campo possono essere imprecisi, e le aree sovrapposte restano in un elenco da sistemare. Nella fetta due aree si sovrappongono se le parti interne si intersecano e i periodi di gestione si sovrappongono: due aree che si toccano non si sovrappongono, e le aree fittizie non contano (D-050, *ipotesi*);
 - **più parti**: un parco diviso da una strada può essere una sola area multiparte. Le parti con gestione o classificazione diverse restano aree distinte della stessa zona;
 - **fine della gestione**: un'area chiusa resta nello storico, e i suoi elementi vanno rimossi o spostati;
 - **storico**: i cambi di perimetro e di classificazione restano nello storico delle modifiche, da cui si ricostruiscono le superfici a una data;
@@ -306,7 +306,7 @@ stateDiagram-v2
     Pianificato --> Annullato : con motivazione
     Pianificato --> Eseguito : l'esecutore registra
     Eseguito --> Eseguito : correzione, con motivazione
-    Eseguito --> Validato : il committente valida, senza non conformità aperte
+    Eseguito --> Validato : il committente valida, senza non conformità aperte o risolte
     Eseguito --> [*] : affidamento senza validazione
     Validato --> [*]
     Annullato --> [*]
@@ -629,10 +629,10 @@ La multi-tenancy è fuori dalla specifica del dominio, ma il dominio le pone dei
 1. chi lavora per l'organizzazione di gestione accede a tutto il patrimonio del committente;
 2. un esecutore di un'altra organizzazione accede agli interventi dei suoi affidamenti e agli elementi delle aree coperte, e li modifica solo se l'affidamento prevede l'aggiornamento del censimento;
 3. un valutatore esterno accede agli alberi degli interventi di valutazione che gli sono affidati;
-4. chi agisce per il committente, come l'amministratore di condominio in K3, consulta il patrimonio e valida l'eseguito (domanda 1);
+4. chi agisce per il committente, come l'amministratore di condominio in K3, consulta il patrimonio e valida l'eseguito (Domande aperte, punto 1);
 5. la mappa pubblica legge solo ciò che il committente pubblica.
 
-Nell'implementazione di riferimento l'organizzazione è il tenant dello scaffold, e i dati del patrimonio si filtrano tramite l'organizzazione di gestione del committente (D-037, D-044). La prima fetta realizza il vincolo 1; gli altri arrivano con gli affidamenti e la mappa pubblica.
+Nell'implementazione di riferimento l'organizzazione è il tenant dello scaffold, e i dati del patrimonio si filtrano tramite l'organizzazione di gestione del committente (D-037; D-044, *ipotesi*). La prima fetta realizza il vincolo 1; gli altri arrivano con gli affidamenti e la mappa pubblica.
 
 ### 8.4 Interfaccia
 
@@ -645,12 +645,12 @@ Punti che la specifica non può chiudere da sola, da verificare prima di mettere
 1. **Verifica legale** (domanda 2 di [04-modello-dati.md](04-modello-dati.md); §2 di [02-benchmark.md](02-benchmark.md)):
    - il consenso alla pubblicazione del testo delle dediche, che può contenere il nome di un minore (EL-14, PU-3, v2);
    - i dati sull'attività degli operatori: data, ora e posizione delle foto e delle registrazioni in campo descrivono dove e quando ha lavorato una persona. Servono alla prova dell'esecuzione, ma possono ricadere nelle regole sul controllo a distanza dei lavoratori;
-   - la responsabilità del custode e i procedimenti autorizzativi (§2.5 e §2.6 di [02-benchmark.md](02-benchmark.md)), prima che diventino regole di business vincolanti.
+   - le regole che vengono dalla lettura delle norme, prima che diventino vincolanti: la responsabilità del custode (§2.5 di [02-benchmark.md](02-benchmark.md)) e quali interventi su un oggetto vincolato richiedono una comunicazione o un'autorizzazione (§2.6, IN-14). Il procedimento resta fuori (D-024): si verifica solo cosa il sistema chiede prima di registrare l'eseguito.
 2. **Export CAM su file reali** (domanda 1 di [04-modello-dati.md](04-modello-dati.md)), da verificare con file ricevuti da un ente quando si realizza l'export (RE-7):
    - il codice ISTAT, che il modello v2.1 dà di 5 caratteri mentre i codici dei comuni sono di 6 cifre;
    - i valori del campo `STATO`, testo libero da allineare all'uso degli enti;
    - un oggetto per parte delle geometrie multiparte: chi legge il file vede più oggetti con lo stesso codice.
-3. **Dati iniziali dei cataloghi**: le licenze degli open data da cui viene l'elenco delle specie, e la nomenclatura di riferimento (D-048); le destinazioni d'uso, provvisorie, da rivedere con i primi committenti.
+3. **Dati iniziali dei cataloghi**: le licenze degli open data da cui viene l'elenco delle specie, e la nomenclatura di riferimento (D-048, *ipotesi*); le destinazioni d'uso, provvisorie, da rivedere con i primi committenti.
 
 Fuori dalla specifica del dominio, ma da verificare prima della vendita agli enti: la qualificazione dei servizi cloud per la pubblica amministrazione (§4.4 di [02-benchmark.md](02-benchmark.md)).
 
@@ -663,7 +663,7 @@ Il **binario tecnico** fissa stack, struttura del codice e pattern, in [architet
 - job asincroni per import, export e generazione del piano (D-039).
 
 La **prima fetta verticale** (D-040) porta in uso il primo pezzo del censimento, dal database alla mappa: cataloghi, committenti, zone e aree, elementi con la composizione e il ciclo di vita, mappa con il disegno delle geometrie e la creazione degli elementi in campo. Piano e avanzamento sono in [fetta-1.md](architettura/fetta-1.md).
-- Le scelte della fetta che precisano regole del dominio sono riportate in questo documento, segnate *ipotesi*: D-042 (revisione), D-046 (campi bloccati dei cataloghi), D-050 (sovrapposizioni), D-051 (codice, cartellino, rimozione), D-052 (alberi vicini, area proposta), D-055 (committente disattivato).
+- Le scelte della fetta citate in questo documento sono segnate *ipotesi*: D-042 (revisione), D-044 (accesso ai dati del patrimonio), D-046 (campi bloccati dei cataloghi), D-048 (dati iniziali dei cataloghi), D-050 (sovrapposizioni), D-051 (codice, cartellino, rimozione), D-052 (alberi vicini, area proposta), D-055 (committente disattivato).
 - Si confermano alla revisione della fetta, che comprende la prova da smartphone vero in HTTPS.
 - Il resto del modello non è ancora realizzato: persone ed esecutori, affidamenti, registri dello stato, interventi, non conformità, import ed export, mappa pubblica.
 
@@ -676,4 +676,9 @@ Ereditate dallo [Step 4](04-modello-dati.md#domande-aperte), con il numero origi
 - **Verifica legale sui dati personali** (2): consenso alla pubblicazione del testo delle dediche; data, ora e posizione dell'attività degli operatori. → **chiusa** per lo Step 5: riportata in §9, punto 1, come verifica prima del rilascio.
 
 Emerse in questo passo:
-1. **Il committente che non gestisce il proprio patrimonio.** Secondo D-032 l'organizzazione di gestione del committente organizza il patrimonio, emette gli affidamenti e valida. In K3 però l'organizzazione di gestione è la ditta, che è anche l'esecutore: nello scenario 5.8 valida l'amministratore del condominio, che non lavora per la ditta. Il modello nomina il bisogno come vincolo per la multi-tenancy (§8.3, punto 4), ma non dice come il committente entra nel sistema. Proposta: il committente può essere collegato a un'organizzazione propria, come l'esecutore (`Client.linked_organization`), e chi lavora per quell'organizzazione consulta il patrimonio (AF-4). L'eseguito lo valida chi agisce per il committente, cioè l'organizzazione di gestione o quella collegata al committente, mai l'organizzazione dell'esecutore (CE-1). Un committente che non usa il sistema riceve il rapportino in PDF, e l'affidamento non chiede la validazione. → da decidere con l'accesso tramite gli affidamenti (domanda 2 di [fetta-1.md](architettura/fetta-1.md)), prima della fetta che introduce affidamenti e validazione
+1. **Il committente che non gestisce il proprio patrimonio.** Secondo D-032 l'organizzazione di gestione del committente organizza il patrimonio, emette gli affidamenti e valida. In K3 però l'organizzazione di gestione è la ditta, che è anche l'esecutore: nello scenario 5.8 valida l'amministratore del condominio, che non lavora per la ditta. Il modello nomina il bisogno come vincolo per la multi-tenancy (§8.3, punto 4), ma non dice come il committente entra nel sistema. Proposta:
+   - il committente può essere collegato a un'organizzazione propria, come l'esecutore (`Client.linked_organization`), e chi lavora per quell'organizzazione consulta il patrimonio (AF-4). Oggi i dati del patrimonio si vedono solo tramite l'organizzazione di gestione (D-037, D-044, §5.4 di [04-modello-dati.md](04-modello-dati.md)): il collegamento aggiunge un secondo accesso, in sola lettura salvo la validazione, come gli affidamenti aggiungeranno quello degli esecutori;
+   - l'eseguito lo valida chi agisce per il committente, cioè l'organizzazione di gestione o quella collegata al committente, mai l'organizzazione dell'esecutore (CE-1). La validazione resta un'indicazione dell'affidamento (D-025);
+   - un committente che non usa il sistema non valida online. Da scegliere tra due strade: l'affidamento non chiede la validazione e il committente riceve il rapportino in PDF, come l'azienda dello scenario 5.8; oppure la validazione si registra per suo conto, con il rapportino firmato dal committente allegato, come la valutazione di un valutatore esterno (D-022). In questo caso chi la registra non valida: riporta la firma del committente, che resta la prova.
+
+   Se accettata, la proposta va registrata come decisione e riportata in §3.2 e §5.4 di [04-modello-dati.md](04-modello-dati.md). → da decidere con l'accesso tramite gli affidamenti (domanda 2 di [fetta-1.md](architettura/fetta-1.md)), prima della fetta che introduce affidamenti e validazione

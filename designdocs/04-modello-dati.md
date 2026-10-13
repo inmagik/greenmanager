@@ -1335,7 +1335,7 @@ stateDiagram-v2
     Pianificato --> Annullato : con motivazione
     Pianificato --> Eseguito : l'esecutore registra
     Eseguito --> Eseguito : correzione, con motivazione
-    Eseguito --> Validato : il committente valida, senza non conformità aperte
+    Eseguito --> Validato : il committente valida, senza non conformità aperte o risolte
     Eseguito --> [*] : affidamento senza validazione
     Validato --> [*]
     Annullato --> [*]
