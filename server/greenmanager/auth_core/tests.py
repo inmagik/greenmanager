@@ -18,11 +18,10 @@ from .serializers import RoleSerializer, UserSerializer
 
 def first_query(queries, *fragments):
     """Position of the first captured query that contains all the fragments."""
-    return next(
-        index
-        for index, query in enumerate(queries.captured_queries)
-        if all(fragment in query["sql"] for fragment in fragments)
-    )
+    for index, query in enumerate(queries.captured_queries):
+        if all(fragment in query["sql"] for fragment in fragments):
+            return index
+    raise AssertionError(f"No query contains {fragments}")
 
 
 USERS_LOCKED_IN_KEY_ORDER = (
@@ -423,6 +422,25 @@ class TenantScopedUsersTests(APITestCase):
             first_query(queries, 'DELETE FROM "auth_core_user_roles"'),
         )
         self.assertFalse(self.role.user_set.exists())
+
+    def test_role_update_locks_the_users_in_key_order_before_the_role(self):
+        self.grant_role_permission()
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.patch(
+                f"/api/core/auth/roles/{self.role.pk}/",
+                {"permissions": ["auth_core.READ_USERS"]},
+                format="json",
+                **self.tenant_header,
+            )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertLess(
+            first_query(queries, *USERS_LOCKED_IN_KEY_ORDER),
+            first_query(queries, 'UPDATE "auth_core_role"'),
+        )
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.all_permissions, ["auth_core.READ_USERS"])
 
     def test_revoke_from_requires_role_permission(self):
         response = self.client.post(

@@ -122,8 +122,8 @@ class Command(BaseCommand):
 
         existing = Species.objects.system().filter(code=code)
         if update:
-            # Locked before the name, as in services.update_entry: a concurrent
-            # change from the API is not overwritten with stale values.
+            # Locked before the name, as in services.update_entry. The lock of the
+            # table (lock_table) already holds back the changes from the API.
             existing = existing.select_for_update()
         entry = existing.first()
         if entry is not None and not update:

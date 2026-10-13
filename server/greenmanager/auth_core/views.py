@@ -272,6 +272,13 @@ class RolesViewset(
             )
         serializer.save(tenant=tenant)
 
+    @transaction.atomic
+    def perform_update(self, serializer):
+        # Saving the role updates the permissions of its users (receivers.py):
+        # they are locked first, as the deletion of the role does.
+        self.lock_users(serializer.instance.user_set.all())
+        serializer.save()
+
     def role_users(self, request):
         serializer = RoleUsersSerializer(
             data=request.data, context=self.get_serializer_context()
@@ -281,13 +288,14 @@ class RolesViewset(
 
     def lock_users(self, users):
         """
-        Lock the users in key order, before their roles change: the same order as
-        UserSerializer.update, which locks the user and then changes the roles.
-        Otherwise the row of the roles is written first, the receiver of
-        m2m_changed then saves the user, and the two requests can deadlock.
+        Lock the users in key order, before their roles, or a role they have,
+        change: the same order as UserSerializer.update, which locks the user and
+        then changes the roles. Otherwise the row of the roles is written first,
+        the receiver of m2m_changed then saves the user, and the two requests can
+        deadlock.
         """
         return list(
-            User.objects.select_for_update()
+            User.objects.select_for_update(of=("self",))
             .filter(pk__in=[user.pk for user in users])
             .order_by("pk")
         )
