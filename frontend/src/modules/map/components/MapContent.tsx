@@ -27,7 +27,7 @@ import {
 } from "../layers"
 import { LayersPanel, type LayerStatus } from "./LayersPanel"
 
-/** The height of the drawer of the feature on a phone, as a share of the map (`FeaturePanel`). */
+/** The height of the drawer of the feature on a phone, as a share of the screen (`FeaturePanel`). */
 export const DRAWER_SHARE = 0.45
 
 /**
@@ -51,9 +51,13 @@ type Props = {
   onFitted: () => void
 }
 
-// The part of the map that the drawer of the feature covers on a phone, in pixels.
+// The part of the map that the drawer of the feature covers on a phone, in pixels: the drawer is a share of the
+// screen, from its bottom, and the map is lower than the screen.
 function drawerHeight(map: MapLibreMap, mobile: boolean) {
-  return mobile ? map.getContainer().clientHeight * DRAWER_SHARE : 0
+  if (!mobile) return 0
+  const drawerTop = window.innerHeight * (1 - DRAWER_SHARE)
+  const { top, bottom } = map.getContainer().getBoundingClientRect()
+  return Math.max(0, bottom - Math.max(drawerTop, top))
 }
 
 // The areas of a client come without a box: zooming in does not show the ones left out.

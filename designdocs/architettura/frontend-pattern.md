@@ -103,7 +103,7 @@ MapLibre 6 cerca il worker accanto al proprio modulo, che il bundle sposta. `map
   Senza CORS un WMS non si usa: MapLibre disegna le immagini con WebGL, che le vuole dello stesso dominio o con CORS. Un servizio solo in HTTP non si carica da un'applicazione in HTTPS (contenuto misto).
 - **Proxy del PCN**: `/wms/pcn` in `vite.config.ts` e in `nginx.conf.template` inoltra a `http://wms.pcn.minambiente.it/ogc`.
   - nginx tiene in cache per 30 giorni le risposte che sono immagini: un WMS dà gli errori in XML con lo stato 200, e non vanno in cache.
-  - nginx risolve il nome del servizio a ogni richiesta, con il DNS del container (`resolver`): con un nome scritto nel `proxy_pass`, senza DNS all'avvio non partirebbe nemmeno il resto dell'applicazione.
+  - nginx risolve il nome del servizio a ogni richiesta, con il DNS del container (`resolver`): con un nome scritto nel `proxy_pass`, senza DNS all'avvio non partirebbe nemmeno il resto dell'applicazione. Resta un caso: un container il cui `/etc/resolv.conf` non ha nessun `nameserver` non parte (`no name servers defined`). Docker scrive sempre i DNS nel container, anche senza rete.
 - OpenStreetMap chiede di non usare le sue tile per un traffico importante: in produzione serve un fornitore di tile, o tile proprie (domanda 1).
 
 ### 1.6 Pagina della mappa: `map`
@@ -115,7 +115,7 @@ MapLibre 6 cerca il worker accanto al proprio modulo, che il bundle sposta. `map
   - lo sfondo.
 - **Clic**: la feature sotto il dito, con la priorità punti, linee e poligoni degli elementi, poi aree. Un clic dove non c'è nulla chiude il pannello della feature. Sui layer il puntatore è una mano.
 - **Pannello della feature**: titolo, segni (rimosso, provvisoria, fittizia), avvisi del record, dati principali; *Apri la scheda* e *Inquadra*. Legge il dettaglio del record.
-  - Su smartphone è un drawer dal basso, alto il 45% della mappa, senza sfondo scuro: la mappa sopra resta usabile. La feature toccata va al centro della parte sopra il drawer, e *Inquadra* ne tiene conto.
+  - Su smartphone è un drawer dal basso, alto il 45% dello schermo, senza sfondo scuro: la mappa sopra resta usabile. La feature toccata va al centro della parte della mappa sopra il drawer, e *Inquadra* ne tiene conto.
   - Su desktop è una colonna di 360 pixel a destra, accanto alla mappa, che si restringe senza che il pannello ne copra i controlli; ciò che la mappa mostra resta al suo posto.
   - Una feature di un layer che l'utente non legge, per esempio da un link condiviso, non si sceglie.
 - **Stato nell'URL** (`useMapUrlState`), così la mappa si ricarica e si condivide:

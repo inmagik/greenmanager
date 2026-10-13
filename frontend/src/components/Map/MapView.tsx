@@ -69,6 +69,8 @@ export function MapView({ initialView, basemap, compact = false, label, onViewCh
       maxZoom: 21,
       attributionControl: false,
       cooperativeGestures: compact,
+      // One copy of the world: the boxes of the data stay within -180 and 180.
+      renderWorldCopies: false,
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false,
@@ -89,7 +91,7 @@ export function MapView({ initialView, basemap, compact = false, label, onViewCh
       if (change) instance.panBy([-change / 2, 0], { duration: 0 })
     })
     instance.on("moveend", () => {
-      const { lng, lat } = instance.getCenter()
+      const { lng, lat } = instance.getCenter().wrap()
       viewChange.current?.({ center: [lng, lat], zoom: instance.getZoom() })
     })
     return () => {

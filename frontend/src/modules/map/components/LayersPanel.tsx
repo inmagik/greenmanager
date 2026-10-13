@@ -3,7 +3,7 @@ import { ELEMENT_CATEGORIES } from "@/modules/catalogs/types"
 import { ClientSelect } from "@/modules/parties/components/ClientSelect"
 import { ActionIcon, Box, Checkbox, Collapse, Divider, Group, Loader, Paper, Stack, Text } from "@mantine/core"
 import { useDisclosure, useMediaQuery } from "@mantine/hooks"
-import type { ReactNode } from "react"
+import { useId, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { TbChevronDown, TbChevronUp, TbStack2 } from "react-icons/tb"
 import type { MapLayer } from "../hooks/useMapUrlState"
@@ -60,6 +60,7 @@ export function LayersPanel({
   const { t } = useTranslation()
   const mobile = useMediaQuery("(max-width: 47.99em)", false, { getInitialValueInEffect: false })
   const [opened, { toggle }] = useDisclosure(!mobile)
+  const bodyId = useId()
   const statuses: [MapLayer, LayerStatus | null][] = [
     ["areas", areas],
     ["elements", elements],
@@ -79,6 +80,7 @@ export function LayersPanel({
           color="gray"
           onClick={toggle}
           aria-expanded={opened}
+          aria-controls={bodyId}
           aria-label={t(opened ? "map.layers.hide" : "map.layers.show")}
         >
           {opened ? <TbChevronUp /> : <TbChevronDown />}
@@ -86,7 +88,7 @@ export function LayersPanel({
       </Group>
       {/* Hidden with CSS: the basemap switcher keeps applying the basemap of the URL. */}
       <Collapse expanded={opened} keepMountedMode="display-none">
-        <Box className={classes.body}>
+        <Box id={bodyId} className={classes.body}>
           <Stack gap="sm" px="sm" pb="sm">
             <ClientSelect size="xs" clearable value={client} onChange={onClientChange} />
             {statuses.map(

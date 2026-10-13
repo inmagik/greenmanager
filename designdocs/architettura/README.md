@@ -113,7 +113,7 @@ Origine: `admin/` di data-lab. In GreenManager la cartella si chiama `frontend/`
 | `package.json` | si adatta | versioni di §8 di [frontend.md](frontend.md) |
 | `yarn.lock` | si scarta | si rigenera partendo da quello di bottaro-pesatura (§8 di [frontend.md](frontend.md)) |
 | `public/` | si scarta | marchio di data-lab; al suo posto un logo provvisorio in `public/logo.svg` e `public/favicon.svg` |
-| `vite.config.ts`, `plugins/`, `tsconfig.*`, `eslint.config.js`, `.prettierrc`, `postcss.config.cjs`, `index.html`, `Dockerfile`, `nginx.conf`, `build_image.sh` | si copia | |
+| `vite.config.ts`, `plugins/`, `tsconfig.*`, `eslint.config.js`, `.prettierrc`, `postcss.config.cjs`, `index.html`, `Dockerfile`, `nginx.conf`, `build_image.sh` | si copia | `nginx.conf` è diventato `nginx.conf.template` con la mappa (D-057, §7 di [frontend.md](frontend.md)) |
 | `src/main.tsx`, `src/App.tsx`, `src/Navigation.tsx`, `src/declarations.d.ts`, `src/mantine_customization.css` | si adatta | senza gli stili dei pacchetti non usati |
 | `src/auth/`, `src/general/`, `src/context/`, `src/utils.tsx`, `src/utils/` | si copia | |
 | `src/hooks/`: `useHasPermission`, `useTenant`, `useUrlParams` | si copia | |

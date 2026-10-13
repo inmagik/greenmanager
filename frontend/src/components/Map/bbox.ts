@@ -5,9 +5,16 @@ export type Bbox = [number, number, number, number]
 
 const WORLD: Bbox = [-180, -90, 180, 90]
 
-/** The box within the limits of WGS84, which the server checks (`bbox_invalid`). */
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+/** The box within the limits of WGS84, which the server checks (`bbox_invalid`): every value, not only the edges. */
 export function clampBbox([west, south, east, north]: Bbox): Bbox {
-  return [Math.max(west, WORLD[0]), Math.max(south, WORLD[1]), Math.min(east, WORLD[2]), Math.min(north, WORLD[3])]
+  return [
+    clamp(west, WORLD[0], WORLD[2]),
+    clamp(south, WORLD[1], WORLD[3]),
+    clamp(east, WORLD[0], WORLD[2]),
+    clamp(north, WORLD[1], WORLD[3]),
+  ]
 }
 
 /**

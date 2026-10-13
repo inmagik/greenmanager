@@ -8,13 +8,18 @@ export type MapLayer = (typeof MAP_LAYERS)[number]
 /** The feature selected on the map, which the panel shows. */
 export type Selection = { kind: "area" | "element"; id: string }
 
+// The latitudes of the Web Mercator projection of MapLibre.
+const MAX_LATITUDE = 85.051129
+
 // The view as `zoom/latitude/longitude`, like the links of OpenStreetMap.
 function parseView(value: string | null): MapViewState | null {
   const parts = value?.split("/").map(Number)
   if (!parts || parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return null
   const [zoom, latitude, longitude] = parts
-  if (Math.abs(latitude) > 85 || Math.abs(longitude) > 180 || zoom < 0 || zoom > 22) return null
-  return { center: [longitude, latitude], zoom }
+  if (Math.abs(latitude) > MAX_LATITUDE || zoom < 0 || zoom > 22) return null
+  // A longitude beyond ±180 is the same place, in -180..180.
+  const wrapped = Math.abs(longitude) <= 180 ? longitude : ((((longitude + 180) % 360) + 360) % 360) - 180
+  return { center: [wrapped, latitude], zoom }
 }
 
 function formatView({ center: [longitude, latitude], zoom }: MapViewState) {
